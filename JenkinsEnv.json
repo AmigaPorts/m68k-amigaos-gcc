@@ -2,8 +2,8 @@
     "builds": [
         {
             "DockerRoot": "amigadev",
-            "DockerImage": "m68k-amigaos",
-            "DockerTag": "gcc10",
+            "DockerImage": "m68k-amigaos-gcc10",
+            "DockerTag": "latest",
             "Dockerfile": "Dockerfile",
             "BuildIfSuccessful": "docker-amiga-gcc",
             "BuildParam": "m68k-amigaos-gcc10"
