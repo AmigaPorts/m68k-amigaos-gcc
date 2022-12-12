@@ -39,12 +39,15 @@ def killall_jobs() {
 }
 
 def buildStep(DOCKER_ROOT, DOCKERIMAGE, DOCKERTAG, DOCKERFILE, BUILD_NEXT, BUILD_PARAM) {
-	def fixed_job_name = env.JOB_NAME.replace('%2F','/')
+	def split_job_name = env.JOB_NAME.split(/\/{1}/);
+	def fixed_job_name = split_job_name[1].replace('%2F',' ');
+	def buildenv = '';
+	def tag = '';
+
 	try {
 		checkout scm;
 
-		def buildenv = '';
-		def tag = '';
+
 		if (env.BRANCH_NAME.equals('master')) {
 			buildenv = 'production';
 			tag = "${DOCKERTAG}";
@@ -74,7 +77,8 @@ def buildStep(DOCKER_ROOT, DOCKERIMAGE, DOCKERTAG, DOCKERFILE, BUILD_NEXT, BUILD
 			build job: "${BUILD_NEXT}/${env.BRANCH_NAME}", wait: true, parameters: [string(name: 'BUILD_IMAGE', value: String.valueOf(BUILD_PARAM))]
 		}
 	} catch(err) {
-		slackSend color: "danger", channel: "#jenkins", message: "Build Failed: ${fixed_job_name} #${env.BUILD_NUMBER} Target: ${DOCKER_ROOT}/${DOCKERIMAGE}:${tag} (<${env.BUILD_URL}|Open>)"
+		discordSend description: "Build Failed: ${fixed_job_name} #${env.BUILD_NUMBER} Target: ${DOCKER_ROOT}/${DOCKERIMAGE}:${tag}", footer: "AmigaDev CI/CD", link: env.BUILD_URL, result: currentBuild.currentResult, title: "[${split_job_name[0]}] Build Failed: ${fixed_job_name} #${env.BUILD_NUMBER}", webhookURL: env.AMIGADEV_WEBHOOK
+
 		currentBuild.result = 'FAILURE'
 		notify("Build Failed: ${fixed_job_name} #${env.BUILD_NUMBER} Target: ${DOCKER_ROOT}/${DOCKERIMAGE}:${tag}")
 		throw err
@@ -83,10 +87,17 @@ def buildStep(DOCKER_ROOT, DOCKERIMAGE, DOCKERTAG, DOCKERFILE, BUILD_NEXT, BUILD
 
 node('master') {
 	killall_jobs();
-	def fixed_job_name = env.JOB_NAME.replace('%2F','/');
-	slackSend color: "good", channel: "#jenkins", message: "Build Started: ${fixed_job_name} #${env.BUILD_NUMBER} (<${env.BUILD_URL}|Open>)";
+	def split_job_name = env.JOB_NAME.split(/\/{1}/);
+	def fixed_job_name = split_job_name[1].replace('%2F',' ');
 	
 	checkout scm;
+	
+	env.COMMIT_MSG = sh (
+		script: 'git log -1 --pretty=%B ${GIT_COMMIT}',
+		returnStdout: true
+	).trim();
+
+	discordSend description: "${env.COMMIT_MSG}", footer: "AmigaDev CI/CD", link: env.BUILD_URL, result: currentBuild.currentResult, title: "[${split_job_name[0]}] Build Started: ${fixed_job_name} #${env.BUILD_NUMBER}", webhookURL: env.AMIGADEV_WEBHOOK;
 
 	def branches = [:]
 	def project = readJSON file: "JenkinsEnv.json";
@@ -103,4 +114,3 @@ node('master') {
 
 	parallel branches;
 }
-
