@@ -152,10 +152,10 @@ help:
 	@echo "the optional parameter THREADS=posix will build it with thread support"
 
 # =================================================
-# all
+# all // disable clib2 for now
 # =================================================
-.PHONY: all gcc gdb gprof binutils fd2sfd fd2pragma ira sfdc vasm vbcc vlink libnix ixemul libgcc clib2 libdebug libSDL12 libpthread ndk ndk13 min
-all: gcc binutils gdb gprof fd2sfd fd2pragma ira sfdc vbcc vasm vlink libnix ixemul libgcc clib2 libdebug libpthread libSDL12 ndk ndk13
+.PHONY: all gcc gdb gprof binutils fd2sfd fd2pragma ira sfdc vasm vbcc vlink libnix ixemul libgcc libdebug libSDL12 libpthread ndk ndk13 min
+all: gcc binutils gdb gprof fd2sfd fd2pragma ira sfdc vbcc vasm vlink libnix ixemul libgcc libdebug libpthread libSDL12 ndk ndk13
 
 min: binutils gcc gprof libnix libgcc
 
