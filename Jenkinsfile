@@ -51,6 +51,7 @@ def buildStep(DOCKER_ROOT, DOCKERIMAGE, DOCKERTAG, DOCKERFILE, BUILD_NEXT, BUILD
 		} else if (env.BRANCH_NAME.equals('gcc10')) {
 			buildenv = 'production';
 			tag = "${DOCKERTAG}";
+			env.BRANCH_NAME = "master";
 		} else if (env.BRANCH_NAME.equals('dev')) {
 			buildenv = 'development';
 			tag = "${DOCKERTAG}-dev";
