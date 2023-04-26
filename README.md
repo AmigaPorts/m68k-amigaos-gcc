@@ -14,6 +14,30 @@ Right now these tools are build:
 * vlink
 * libnix
 * ixemul (not really, but the headers are used)
+# COPYRIGHTS
+* amiga-netinclude: 'Roadshow' -- Amiga TCP/IP stack, Copyright © 2001-2016 by Olaf Barthel. Freely Distributable.
+* aros-stuff: libpthread, Copyright (C) 2014 Szilard Biro.
+* binutils: Free Software Foundation, GNU GENERAL PUBLIC LICENSE V2.
+* clib2: Copyright (c) 2002-2015 by Olaf Barthel.
+* fd2pragma: Dirk Stoecker, public domain.
+* fd2sfd: Martin Blom et al, GNU GENERAL PUBLIC LICENSE V2.
+* gcc: Free Software Foundation, GNU GENERAL PUBLIC LICENSE V2.
+* ira: Tim Ruehsen, Ilkka Lehtoranta, Frank Wille, Nicolas Bastien. Freeware.
+* ixemul: Markus Wild, Rafael W. Luebbert, Leonard Norrgard, Jeff Shepherd, Matthias Fleischer, Hans Verkuil. GNU GENERAL PUBLIC LICENSE V2.
+* libdebug: ?, GNU GENERAL PUBLIC LICENSE V2.
+* libnix: Matthias Fleischer, Gunther Nikl. Public Domain.
+* NDK3.2: Hyperion, unknown license...
+* newlib: Free Software Foundation, GNU GENERAL PUBLIC LICENSE V2.
+* sfdc: Martin Blom, GNU GENERAL PUBLIC LICENSE V2.
+* vasm: copyright in 2002-2022 by Volker Barthelmann, free for non-commercial purposes.
+* vbcc: copyright in 1995-2022 by Volker Barthelmann, free for non-commercial purposes.
+* vlink: copyright 1995-2022 by Frank Wille, free for non-commercial purposes.
+
+There are also libraries - calles SDK - which can be downloaded and installed plus libraries that are built from source. All of these provide their own copyrights - too long to list here.
+
+To get it work together and enhance it, some patches are applied here and there and the gcc compiler contains a tad more hacks/enhancements.
+None if these changese modifies the original copyright in any way. All other stuff here is published using the GNU GENERAL PUBLIC LICENSE V2.
+
 # Short Guide
 ## Prerequisites
 ### Centos
@@ -31,7 +55,7 @@ If building with a normal user, the `PREFIX` directory must be writable (default
 Install Homebrew (https://brew.sh/) or any other package manager first. The compiler will be installed together with XCode. Once XCode and Homebrew are up install the required packages:
 
 ```
-brew install bash wget make lhasa gmp mpfr libmpc flex gettext gnu-sed texinfo gcc@12 make autoconf
+brew install bash wget make lhasa gmp mpfr libmpc flex gettext gnu-sed texinfo gcc@12 make autoconf bison
 ```
 
 By default macOS uses an outdated version of bash. Therefore, on macOS host always pass the the SHELL=/usr/local/bin/bash parameter (or any other valid path pointing to bash), e.g.:
@@ -46,7 +70,16 @@ On macOS it may be also necessary to point to the brew version of gcc make and a
 CC=gcc-12 CXX=g++-12 gmake all SHELL=$(brew --prefix)/bin/bash
 ```
 
-**ALSO NOTE** If you want `m68k-amigaos-gdb` then you have to build it with `gcc`
+**NOTE**
+
+* If you want `m68k-amigaos-gdb` then you have to build it with `gcc`
+* The `gdb` build also needs a more recent `bison` version than the one installed
+  in macOS. Use the version from Homebrew instead. It's keg only so you need
+  to add it to your `PATH` manually:
+
+```
+export PATH=$(brew --prefix bison)/bin:$PATH
+```
 
 ### macOS on M1
 Native builds on M1 Macs are now directly supported.
@@ -91,14 +124,14 @@ make all 		          build and install all
 make <target>		      builds a target: binutils, gcc, fd2sfd, fd2pragma, ira, sfdc, vbcc, vlink, libnix, ixemul, libgcc
 make clean		        remove the build folder
 make clean-<target>	  remove the target's build folder
-make clean-prefix	    remove all content from the prefix folder
+make drop-prefix	    remove all content from the prefix folder, beware!
 make update		        perform git pull for all targets
 make update-<target>	perform git pull for the given target
 ```
 display which targets can be build, you'll mostly use
 *`make all`
 *`make clean`
-*`make clean-prefix`
+*`make drop-prefix`
 
 to use NDK3.2 add `NDK=3.2` to the make parameters
 
@@ -122,7 +155,7 @@ Simply run `make all`. Also add -j to speedup the build.
 
 ```
 make clean
-make clean-prefix
+make drop-prefix
 time make all -j3
 ```
 takes roughly 10 minutes on my laptop running ubuntu. takes forever running cygwin on windows^^.

@@ -349,6 +349,17 @@ ifneq (m68k-elf,$(TARGET))
 CONFIG_BINUTILS += --disable-plugins
 endif
 
+# FreeBSD, OSX : libs added by the command brew install gmp
+ifeq (Darwin, $(findstring Darwin, $(UNAME_S)))
+	BREW_PREFIX := $$(brew --prefix)
+	CONFIG_BINUTILS += --with-libgmp-prefix=$(BREW_PREFIX)
+endif
+
+ifeq (FreeBSD, $(findstring FreeBSD, $(UNAME_S)))
+	PORTS_PREFIX?=/usr/local
+	CONFIG_BINUTILS += --with-libgmp-prefix=$(PORTS_PREFIX)
+endif
+
 BINUTILS_CMD := $(TARGET)-addr2line $(TARGET)-ar $(TARGET)-as $(TARGET)-c++filt \
 	$(TARGET)-ld $(TARGET)-nm $(TARGET)-objcopy $(TARGET)-objdump $(TARGET)-ranlib \
 	$(TARGET)-readelf $(TARGET)-size $(TARGET)-strings $(TARGET)-strip
@@ -623,34 +634,50 @@ lha: $(BUILD)/_lha_done
 $(BUILD)/_lha_done:
 	@if [ ! -e "$$(which lha 2>/dev/null)" ]; then \
 	  cd $(BUILD) && rm -rf lha; \
-	  $(L0) "clone lha"$(L1) git clone -b $(lha_BRANCH) $(lha_URL); $(L2); \
+	  $(L00)"clone lha"$(L1) git clone -b $(lha_BRANCH) $(lha_URL); $(L2); \
 	  cd lha; \
-	  $(L0) "configure lha"$(L1) aclocal; autoheader; automake -a; autoconf; ./configure; $(L2); \
-	  $(L0) "make lha"$(L1) make all; $(L2); \
-	  $(L0) "install lha"$(L1) mkdir -p $(PREFIX)/bin/; install src/lha$(EXEEXT) $(PREFIX)/bin/lha$(EXEEXT); $(L2); \
+	  $(L00)"configure lha"$(L1) aclocal; autoheader; automake -a; autoconf; ./configure; $(L2); \
+	  $(L00)"make lha"$(L1) make all; $(L2); \
+	  $(L00)"install lha"$(L1) mkdir -p $(PREFIX)/bin/; install src/lha$(EXEEXT) $(PREFIX)/bin/lha$(EXEEXT); $(L2); \
 	fi
 	@echo "done" >$@
 
 
 .PHONY: vbcc-target
-vbcc-target: $(BUILD)/vbcc_target_$(TARGET)/_done
+vbcc-target: $(BUILD)/vbcc_target_$(TARGET)/_done $(BUILD)/vbcc_target_m68k-kick13/_done
 
-$(BUILD)/vbcc_target_$(TARGET)/_done: $(BUILD)/vbcc_target_$(TARGET).info patches/vc.config $(BUILD)/vasm/_done
-	@mkdir -p $(PREFIX)/$(TARGET)/vbcc/include
-	$(L0)"copying vbcc headers"$(L1) rsync --no-group $(BUILD)/vbcc_target_$(TARGET)/targets/$(TARGET)/include/* $(PREFIX)/$(TARGET)/vbcc/include $(L2)
-	@mkdir -p $(PREFIX)/$(TARGET)/vbcc/lib
-	$(L0)"copying vbcc headers"$(L1) rsync --no-group $(BUILD)/vbcc_target_$(TARGET)/targets/$(TARGET)/lib/* $(PREFIX)/$(TARGET)/vbcc/lib $(L2)
+$(BUILD)/vbcc_target_m68k-kick13/_done: $(BUILD)/vbcc_target_m68k-kick13.info patches/vc.config $(BUILD)/vasm/_done
+	@mkdir -p $(PREFIX)/m68k-kick13/vbcc/include
+	$(L0)"copying vbcc headers"$(L1) rsync --no-group $(BUILD)/vbcc_target_m68k-kick13/targets/m68k-kick13/include/* $(PREFIX)/m68k-kick13/vbcc/include $(L2)
+	@mkdir -p $(PREFIX)/m68k-kick13/vbcc/lib
+	$(L0)"copying vbcc headers"$(L1) rsync --no-group $(BUILD)/vbcc_target_m68k-kick13/targets/m68k-kick13/lib/* $(PREFIX)/m68k-kick13/vbcc/lib $(L2)
+	@echo "done" >$@
+	$(L0)"creating vbcc kick13 config"$(L1) $(SED) -e "s|PREFIX|$(PREFIX)|g" patches/kick13.config >$(BUILD)/vasm/kick13.config ;\
+	install $(BUILD)/vasm/kick13.config $(PREFIX)/bin/ $(L2)
+
+$(BUILD)/vbcc_target_m68k-amigaos/_done: $(BUILD)/vbcc_target_m68k-amigaos.info $(BUILD)/vasm/_done
+	@mkdir -p $(PREFIX)/m68k-amigaos/vbcc/include
+	$(L0)"copying vbcc headers"$(L1) rsync --no-group $(BUILD)/vbcc_target_m68k-amigaos/targets/m68k-amigaos/include/* $(PREFIX)/m68k-amigaos/vbcc/include $(L2)
+	@mkdir -p $(PREFIX)/m68k-amigaos/vbcc/lib
+	$(L0)"copying vbcc headers"$(L1) rsync --no-group $(BUILD)/vbcc_target_m68k-amigaos/targets/m68k-amigaos/lib/* $(PREFIX)/m68k-amigaos/vbcc/lib $(L2)
 	@echo "done" >$@
 	$(L0)"creating vbcc config"$(L1) $(SED) -e "s|PREFIX|$(PREFIX)|g" patches/vc.config >$(BUILD)/vasm/vc.config ;\
 	install $(BUILD)/vasm/vc.config $(PREFIX)/bin/ $(L2)
 
 
-$(BUILD)/vbcc_target_$(TARGET).info: $(DOWNLOAD)/vbcc_target_$(TARGET).lha $(BUILD)/_lha_done
-	$(L0)"unpack vbcc_target_$(TARGET)"$(L1) cd $(BUILD) && lha xf $(DOWNLOAD)/vbcc_target_$(TARGET).lha $(L2)
-	@touch $(BUILD)/vbcc_target_$(TARGET).info
+$(BUILD)/vbcc_target_m68k-kick13.info: $(DOWNLOAD)/vbcc_target_m68k-kick13.lha $(BUILD)/_lha_done
+	$(L0)"unpack vbcc_target_m68k-kick13"$(L1) cd $(BUILD) && lha xf $(DOWNLOAD)/vbcc_target_m68k-kick13.lha $(L2)
+	@touch $(BUILD)/vbcc_target_m68k-kick13.info
 
-$(DOWNLOAD)/vbcc_target_$(TARGET).lha:
-	$(L0)"downloading vbcc_target"$(L1) cd $(DOWNLOAD) && wget http://aminet.net/dev/c/vbcc_target_m68k-amiga.lha -O vbcc_target_$(TARGET).lha $(L2)
+$(BUILD)/vbcc_target_m68k-amigaos.info: $(DOWNLOAD)/vbcc_target_m68k-amigaos.lha $(BUILD)/_lha_done
+	$(L0)"unpack vbcc_target_m68k-amigaos"$(L1) cd $(BUILD) && lha xf $(DOWNLOAD)/vbcc_target_m68k-amigaos.lha $(L2)
+	@touch $(BUILD)/vbcc_target_m68k-amigaos.info
+
+$(DOWNLOAD)/vbcc_target_m68k-kick13.lha:
+	$(L0)"downloading vbcc_target"$(L1) cd $(DOWNLOAD) && wget http://aminet.net/dev/c/vbcc_target_m68k-kick13.lha -O vbcc_target_m68k-kick13.lha $(L2)
+
+$(DOWNLOAD)/vbcc_target_m68k-amigaos.lha:
+	$(L0)"downloading vbcc_target"$(L1) cd $(DOWNLOAD) && wget http://aminet.net/dev/c/vbcc_target_m68k-amiga.lha -O vbcc_target_m68k-amigaos.lha $(L2)
 
 # =================================================
 # L I B R A R I E S
@@ -792,14 +819,15 @@ $(PROJECTS)/amiga-netinclude/README.md:
 # =================================================
 # libamiga
 # =================================================
-LIBAMIGA := $(PREFIX)/$(TARGET)/lib/libamiga.a $(PREFIX)/$(TARGET)/lib/libb/libamiga.a
+LIBAMIGA := $(PREFIX)/$(TARGET)/lib/libamiga.a
 
 libamiga: $(LIBAMIGA)
 	@echo "built $(LIBAMIGA)"
 
-$(LIBAMIGA):
+$(LIBAMIGA): $(BUILD)/ndk-include_ndk $(PROJECTS)/$(NDK_FOLDER_NAME_LIBS)/amiga.lib
 	@mkdir -p $(@D)
-	@cp -p $(patsubst $(PREFIX)/$(TARGET)/%,%,$@) $(@D)
+	#@cp $(PROJECTS)/$(NDK_FOLDER_NAME_LIBS)/amiga.lib $@
+	@cp lib/libamiga.a $@
 
 # =================================================
 # libnix
@@ -917,7 +945,7 @@ $(BUILD)/newlib/newlib/libc.a: $(BUILD)/newlib/newlib/Makefile $(NEWLIB_FILES)
 $(BUILD)/newlib/newlib/Makefile: $(PROJECTS)/newlib-cygwin/newlib/configure $(BUILD)/ndk-include_ndk $(BUILD)/gcc/_done
 	@mkdir -p $(BUILD)/newlib/newlib
 	@if [ ! -f "$(BUILD)/newlib/newlib/Makefile" ]; then \
-	$(L0) "configure newlib"$(L1) cd $(BUILD)/newlib/newlib && $(NEWLIB_CONFIG) CFLAGS="$(CFLAGS_FOR_TARGET)" CC_FOR_BUILD="$(CC)" CXXFLAGS="$(CXXFLAGS_FOR_TARGET)" $(PROJECTS)/newlib-cygwin/newlib/configure --host=$(TARGET) --prefix=$(PREFIX) --enable-newlib-io-long-long --enable-newlib-io-c99-formats --enable-newlib-reent-small --enable-newlib-mb --enable-newlib-long-time_t $(L2) \
+	$(L00)"configure newlib"$(L1) cd $(BUILD)/newlib/newlib && $(NEWLIB_CONFIG) CFLAGS="$(CFLAGS_FOR_TARGET)" CC_FOR_BUILD="$(CC)" CXXFLAGS="$(CXXFLAGS_FOR_TARGET)" $(PROJECTS)/newlib-cygwin/newlib/configure --host=$(TARGET) --prefix=$(PREFIX) --enable-newlib-io-long-long --enable-newlib-io-c99-formats --enable-newlib-reent-small --enable-newlib-mb --enable-newlib-long-time_t $(L2) \
 	; else touch "$(BUILD)/newlib/newlib/Makefile"; fi
 
 $(PROJECTS)/newlib-cygwin/newlib/configure:
@@ -1045,7 +1073,11 @@ branch:
 	    mv .repos .repos.bak; \
 	    grep -v $(mod) .repos.bak > .repos; \
 	    echo "$(mod) $$url $(branch)" >> .repos; \
-		$(MAKE) update-repos; \
+	    pushd projects/$(mod); \
+	    git fetch origin $(branch):$(branch); \
+	    git checkout $(branch); \
+	    git branch --set-upstream-to=origin/$(branch) $(branch); \
+	    popd ; \
 	else \
 		echo "$(mod) $(branch) does NOT exist!"; \
 	fi
