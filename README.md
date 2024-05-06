@@ -1,9 +1,11 @@
 # amiga-gcc       [![Donate](https://img.shields.io/badge/Donate-PayPal-green.svg)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=YRRBRLCKDU3H6)
-The GNU C-Compiler with Binutils and other useful tools for cross development
 
-This is a Makefile based approach to build the same files as in the old amigaos-toolchain to reduce the build time.
+The GNU C Compiler with binutils and other useful tools for cross compiling software for the Commodore Amiga.
 
-Right now these tools are build:
+This is a Makefile based approach to building the amigaos-toolchain, aiming to reduce its build time.
+
+Currently, these tools are built:
+
 * binutils
 * gcc with libs for C/C++/ObjC
 * fd2sfd
@@ -14,6 +16,7 @@ Right now these tools are build:
 * vlink
 * libnix
 * ixemul (not really, but the headers are used)
+
 # COPYRIGHTS
 * amiga-netinclude: 'Roadshow' -- Amiga TCP/IP stack, Copyright © 2001-2016 by Olaf Barthel. Freely Distributable.
 * aros-stuff: libpthread, Copyright (C) 2014 Szilard Biro.
@@ -33,12 +36,10 @@ Right now these tools are build:
 * vbcc: copyright in 1995-2022 by Volker Barthelmann, free for non-commercial purposes.
 * vlink: copyright 1995-2022 by Frank Wille, free for non-commercial purposes.
 
-There are also libraries - calles SDK - which can be downloaded and installed plus libraries that are built from source. All of these provide their own copyrights - too long to list here.
+There are also libraries (SDKs) which can be downloaded and installed. These libraries can all be built from source. All of these libraries are provided under their respective licenses.
 
-To get it work together and enhance it, some patches are applied here and there and the gcc compiler contains a tad more hacks/enhancements.
-None if these changese modifies the original copyright in any way. All other stuff here is published using the GNU GENERAL PUBLIC LICENSE V2.
+Various AmigaOS-specific patches have been applied to this version of gcc. None if these changes modify the original copyright in any way. All other changes are published under the terms of the GNU GENERAL PUBLIC LICENSE V2.
 
-# Short Guide
 ## Prerequisites
 ### Centos
 `sudo yum install wget gcc gcc-c++ python git perl-Pod-Simple gperf patch autoconf automake make makedepend bison flex ncurses-devel gmp-devel mpfr-devel libmpc-devel gettext-devel texinfo rsync readline-devel`
@@ -81,6 +82,7 @@ CC=gcc-12 CXX=g++-12 gmake all SHELL=$(brew --prefix)/bin/bash
 ```
 export PATH=$(brew --prefix bison)/bin:$PATH
 ```
+* This version of gcc supports building binaries optimised for the various Motorola 68K series CPUs from the 68000 to the 68060 and also features some optimisations for the Vampire/Apollo 68080.
 
 ### macOS on M1
 Native builds on M1 Macs are now directly supported.
@@ -152,14 +154,14 @@ sudo usermod -a -G users username
 After adding the user to the group, you may have to logout and login again to apply the changes to your user.
 
 ## Building
-Simply run `make all`. Also add -j to speedup the build.
+In most cases you can simply run `sudo make all`. You can use `-j` to speed up the build, adjusting the value of `-j` to the number of cores you wish to use for the build process.
 
 ```
 make clean
 make drop-prefix
-time make all -j3
+time make all -j4
 ```
-takes roughly 10 minutes on my laptop running ubuntu. takes forever running cygwin on windows^^.
+The above commands take roughly 10 minutes on my laptop running Ubuntu yet the same commands take forever running cygwin on Windows.
 
 ## Kickstart 1.3
 
@@ -170,6 +172,16 @@ m68k-amigaos-gcc test.cpp -mcrt=nix13
 ```
 
 The include files for 1.3 - which are picked up by the compiler if `-mcrt=nix13` is used - can be found at `<PREFIX>/m68k-amigaos/ndk13-include` i.E. `/opt/amiga/m68k-amigaos/ndk13-include`
+
+## Libraries/Runtimes
+
+You can select one of the various runtimes. My favorite is `libnix` which is selected by specifying `-noixmeul` or `-mcrt=nix20`. Always specify this as the last parameter and only once. These are the available runtimes:
+
+* nothing specifed: newlib based libraries for Kickstart 2.0+
+* `-noixemul` or `-mcrt=nix20`: the libnix libraries for Kickstart 2.0+
+* `-mcrt=nix13`: the libnix libraries for Kickstart 1.3
+* `-mcrt=clib2`: the clib2 libraries.
+* `-mcrt=ixemul`: the ixemul libraries for Kickstart 2.0+, requires an installed `ixemul.library`
 
 ## Checking gcc
 
@@ -220,5 +232,39 @@ make branch mod=binutils branch=devel1
 ```
 The default branches and repositories are in the file **default-repos**, the local state is managed in the file **.repos**.
 
-Note that the gcc default branch is now `amiga6` and there is also an `amiga10` branch.
+Note that the gcc default branch is now `amiga6` and there is also an `amiga13.1` branch. To switch gcc to a specific branch use
+```
+make branch branch=amiga13.1 mod=gcc
+```
+If you start from scratch, switch gcc as soon as possible, e.g.:
+```
+sudo mkdir -p /opt/amiga13
+sudo chown $USER /opt/amiga13
+git clone https://github.com/bebbo/amiga-gcc
+cd amiga-gcc
+export PREFIX=/opt/amiga13
+make branch branch=amiga13.1 mod=gcc
+make all -j20
+```
 
+### Notable branches
+* `amiga6`: The default branch providing gcc-6.5.0b with a lot of hacks^^
+* `amiga13.1': gcc-13.1.0  supports register parameters
+* `amiga13.2': gcc-13.2.0  supports register parameters
+* `68080regs`: gcc-6.5.0b supporting the B0-B7/E0-E7 AMMX registers of the Apollo 68080 (experimental)
+ 
+
+## Fortran support
+m68k-amigaos-gfortran is available now too. To build it add `ADDLANG=fortran`:
+```
+make all -j20 ADDLANG=fortran
+```
+
+The example from https://gcc.gnu.org/wiki/GFortranGettingStarted does work, you have to link using gcc:
+```
+> m68k-amigaos-gfortran -Os fprog.f90 -c
+> m68k-amigaos-gcc -Os -noixemul sub.c -c
+> m68k-amigaos-gcc fprog.o sub.o  -o fprog -lgfortran -noixemul -lm
+> vamos fprog
+abcd 5 4711 4712.000000 13 14
+```
