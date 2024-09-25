@@ -111,7 +111,7 @@ def buildManifest(DOCKER_ROOT, DOCKERIMAGE, DOCKERTAG, DOCKERFILE, PLATFORMS, BU
 				sh("docker manifest push ${DOCKER_ROOT}/${DOCKERIMAGE}:${tag}");
 			}
 		}
-		discordSend description: "Build successful: ${fixed_job_name} #${env.BUILD_NUMBER} Target: ${DOCKER_ROOT}/${DOCKERIMAGE}:${tag} successful!", customUsername: "AmigaDev", customAvatarUrl: "https://avatars.githubusercontent.com/u/34406884?s=400&u=770fb7263ff469e25bb120eb2c0e44a16beda385&v=4", footer: "AmigaDev CI/CD", link: env.BUILD_URL, result: currentBuild.currentResult, title: "[${split_job_name[0]}] Build Successful: ${fixed_job_name} #${env.BUILD_NUMBER}", webhookURL: env.AMIGADEV_WEBHOOK
+		//discordSend description: "Build successful: ${fixed_job_name} #${env.BUILD_NUMBER} Target: ${DOCKER_ROOT}/${DOCKERIMAGE}:${tag} successful!", customUsername: "AmigaDev", customAvatarUrl: "https://avatars.githubusercontent.com/u/34406884?s=400&u=770fb7263ff469e25bb120eb2c0e44a16beda385&v=4", footer: "AmigaDev CI/CD", link: env.BUILD_URL, result: currentBuild.currentResult, title: "[${split_job_name[0]}] Build Successful: ${fixed_job_name} #${env.BUILD_NUMBER}", webhookURL: env.AMIGADEV_WEBHOOK
 		def branches = [:]
 
 		BUILD_NEXT.each { v ->
