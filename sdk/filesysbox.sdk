@@ -1,0 +1,26 @@
+Short: A set of C macro/defines to make amiga development easier.
+Version: 54.6
+Url: git://github.com/salass00/filesysbox:V54.6
+
+include
+include/sys
+include/sys/statvfs.h
+include/fd
+include/fd/filesysbox_lib.fd
+include/pragmas
+include/pragmas/filesysbox_pragmas.h
+include/proto
+include/proto/filesysbox.h
+include/clib
+include/clib/filesysbox_protos.h
+include/inline
+include/inline/filesysbox.h
+include/libraries
+include/libraries/filesysbox.h
+include/defines
+include/defines/filesysbox.h
+stdargs : include/clib/filesysbox_protos.h
+fd2sfd : filesysbox_lib.fd clib/filesysbox_protos.h
+sfdc : filesysbox_lib.sfd cybergfx cybergraphics
+stubs : filesysbox_lib.sfd
+

@@ -9,7 +9,10 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
     rm -rf /var/lib/apt/lists/* && \
     make NDK=3.9 update PREFIX=/opt/${PATHPREFIX} && \
     make -j $(nproc) NDK=3.9 all PREFIX=/opt/${PATHPREFIX} && \
+    make -j $(nproc) NDK=3.9 sdk=filesysbox PREFIX=/opt/${PATHPREFIX} && \
+    make -j $(nproc) NDK=3.9 sdk=sdi PREFIX=/opt/${PATHPREFIX} && \
     make -j $(nproc) NDK=3.9 sdk=ahi PREFIX=/opt/${PATHPREFIX} && \
+    make -j $(nproc) NDK=3.9 sdk=mhi PREFIX=/opt/${PATHPREFIX} && \
     make -j $(nproc) NDK=3.9 sdk=camd PREFIX=/opt/${PATHPREFIX} && \
     make -j $(nproc) NDK=3.9 sdk=cgx PREFIX=/opt/${PATHPREFIX} && \
     make -j $(nproc) NDK=3.9 sdk=guigfx PREFIX=/opt/${PATHPREFIX} && \

@@ -17,13 +17,17 @@ case $1 in
 				if [ "${a[1]}" == "git" ]; then
 					if [ ! -e "projects/$file" ]; then
 						pushd projects
-						git clone https:${a[2]} || (rm -rf $file; exit 1)
+						BRANCH=""
+						if [ "${a[3]}" != "" ]; then
+							BRANCH="--branch ${a[3]} --single-branch"
+						fi
+						git clone ${BRANCH} https:${a[2]} || (rm -rf $file; exit 1)
 						popd;
 					fi
 					pushd projects/$file
 					git pull
 					popd
-					rsync projects/$file/* build/$2/
+					rsync -r projects/$file/* build/$2/
 				else
 					if [ ! -e "download/$file" ]; then
 						echo wget ${a[1]}:${a[2]} -O download/$file

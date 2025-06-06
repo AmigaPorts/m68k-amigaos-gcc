@@ -179,10 +179,10 @@ help:
 # =================================================
 # all
 # =================================================
-.PHONY: all gcc gdb gprof binutils fd2sfd fd2pragma ira sfdc vasm libnix ixemul libgcc clib2 libdebug libpthread ndk ndk13 min
-all: gcc binutils gdb gprof fd2sfd fd2pragma ira sfdc vasm libnix ixemul libgcc clib2 libdebug libpthread ndk ndk13 libSDL12
+.PHONY: all gcc gdb gprof binutils fd2sfd fd2pragma ira sfdc vasm libnix ixemul libgcc clib2 libdebug libpthread ndk ndk13 min libnix4.library
+all: gcc binutils gdb gprof fd2sfd fd2pragma ira sfdc vasm libnix ixemul libgcc clib2 libdebug libpthread ndk ndk13 libSDL12 libnix4.library
 
-min: binutils gcc gprof libnix libgcc
+min: binutils gcc gprof libnix libgcc libnix4.library
 
 # =================================================
 # clean
@@ -435,7 +435,6 @@ $(BUILD)/binutils/_gdb: $(BUILD)/binutils/_done
 	$(L0)"install binutils gdb"$(L1)$(MAKE) -C $(BUILD)/binutils install-gas install-binutils install-ld $(INSTALL_GDB) $(L2)
 	@echo "done" >$@
 
-	
 # =================================================
 # gprof
 # =================================================
@@ -457,7 +456,7 @@ $(BUILD)/binutils/gprof/Makefile: $(PROJECTS)/binutils/configure $(BUILD)/binuti
 # =================================================
 CONFIG_GCC = --prefix=$(PREFIX) --target=$(TARGET) --enable-languages=c,c++,objc,$(ADDLANG) --enable-version-specific-runtime-libs --disable-libssp --disable-nls \
 	--with-headers=$(PROJECTS)/newlib-cygwin/newlib/libc/sys/amigaos/include/ --disable-shared --enable-threads=$(THREADS) \
-	--with-stage1-ldflags="-dynamic-libgcc -dynamic-libstdc++" --with-boot-ldflags="-dynamic-libgcc -dynamic-libstdc++"	
+	--with-stage1-ldflags="-dynamic-libgcc -dynamic-libstdc++" --with-boot-ldflags="-dynamic-libgcc -dynamic-libstdc++"
 
 # FreeBSD, OSX : libs added by the command brew install gmp mpfr libmpc
 ifeq (Darwin, $(findstring Darwin, $(UNAME_S)))
@@ -738,7 +737,7 @@ $(BUILD)/ndk-include_ndk0: $(PROJECTS)/$(NDK_FOLDER_NAME).info $(NDK_INCLUDE) $(
 	$(L0)"STDARGing ndk"$(L1) for i in $$(find $(PREFIX)/$(TARGET)/ndk-include/clib/*protos.h -type f); do \
 		echo $$i; \
 		LC_CTYPE=C $(SED) -i.bak -E 's/([a-zA-Z0-9 _]*)([[:blank:]]+|\*)([a-zA-Z0-9_]+)\(/\1\2 __stdargs \3(/g' $$i; \
-		rm $$i.bak; done $(L2)	
+		rm $$i.bak; done $(L2)
 	@rsync -a --no-group $(PROJECTS)/$(NDK_FOLDER_NAME_I)/* $(PREFIX)/$(TARGET)/ndk-include
 	@mkdir -p $(PREFIX)/$(TARGET)/ndk/lib/fd
 	@mkdir -p $(PREFIX)/$(TARGET)/ndk/lib/sfd
@@ -833,7 +832,7 @@ $(BUILD)/ndk-include_ndk13: $(BUILD)/ndk-include_ndk $(BUILD)/fd2sfd/_done $(BUI
 	$(L0)"STDARGing ndk13"$(L1) for i in $$(find $(PREFIX)/$(TARGET)/ndk13-include/clib/*protos.h -type f); do \
 	echo $$i; \
 	LC_CTYPE=C $(SED) -i.bak -E 's/([a-zA-Z0-9 _]*)([[:blank:]]+|\*)([a-zA-Z0-9_]+)\(/\1\2 __stdargs \3(/g' $$i; \
-	rm $$i.bak; done $(L2)	
+	rm $$i.bak; done $(L2)
 	@echo "done" >$@
 
 # =================================================
@@ -859,12 +858,12 @@ LIBBAMIGA := $(PREFIX)/$(TARGET)/lib/libb/libamiga.a
 libamiga: $(LIBAMIGA) $(LIBBAMIGA)
 	@echo "built $(LIBAMIGA) and $(LIBBAMIGA)"
 
-$(LIBAMIGA): 
+$(LIBAMIGA):
 	@mkdir -p $(@D)
 	#@cp $(PROJECTS)/$(NDK_FOLDER_NAME_LIBS)/amiga.lib $@
 	@cp lib/libamiga.a $@
 
-$(LIBBAMIGA): 
+$(LIBBAMIGA):
 	@mkdir -p $(@D)
 	@cp lib/libb/libamiga.a $@
 
@@ -877,6 +876,7 @@ LIBNIX_SRC = $(shell find 2>/dev/null $(PROJECTS)/libnix -not \( -path $(PROJECT
 libnix: $(BUILD)/libnix/_done
 
 $(BUILD)/libnix/_done: $(BUILD)/newlib/_done $(BUILD)/ndk-include_ndk $(BUILD)/ndk-include_ndk13 $(BUILD)/_netinclude $(BUILD)/binutils/_done $(BUILD)/gcc/_done $(PROJECTS)/libnix/Makefile.gcc6 $(LIBAMIGA) $(LIBNIX_SRC)
+#	@rsync -a --no-group --delete sys-include/ $(PREFIX)/$(TARGET)/sys-include
 	@mkdir -p $(PREFIX)/$(TARGET)/libnix/lib/libnix
 	@mkdir -p $(BUILD)/libnix
 	@mkdir -p $(PREFIX)/lib/gcc/$(TARGET)/$(GCC_VERSION)
@@ -901,6 +901,14 @@ $(BUILD)/gcc/_libgcc_done: $(BUILD)/libnix/_done $(BUILD)/libpthread/_done $(LIB
 	$(L0)"make libgcc"$(L1) $(MAKE) -C $(BUILD)/gcc all-target $(L2)
 	$(L0)"install libgcc"$(L1) $(MAKE) -C $(BUILD)/gcc install-target $(L2)
 	@echo "done" >$@
+
+# =================================================
+# libnix4.library
+# =================================================
+libnix4.library: $(BUILD)/libnix/libb/libnix4.library
+$(BUILD)/libnix/libb/libnix4.library: $(BUILD)/gcc/_libgcc_done $(BUILD)/libnix/_done
+	$(L0)"make libnix4.library"$(L1) CFLAGS="$(CFLAGS_FOR_TARGET)" \
+	$(MAKE) -C $(BUILD)/libnix -f $(PROJECTS)/libnix/Makefile.gcc6 root=$(PROJECTS)/libnix libb/libnix4.library $(L2)
 
 # =================================================
 # clib2
@@ -1187,7 +1195,7 @@ $(BUILD)/$(ZLIB)/_done: $(PREFIX)/lib/libz.a
 	@echo "done" >$@
 
 $(PREFIX)/lib/libz.a: $(BUILD)/$(ZLIB)/libz.a
-	@rsync -a --no-group $(PROJECTS)/$(ZLIB)/zlib.h $(PREFIX)/include/ 
+	@rsync -a --no-group $(PROJECTS)/$(ZLIB)/zlib.h $(PREFIX)/include/
 	@rsync -a --no-group $(BUILD)/$(ZLIB)/zconf.h $(PREFIX)/include/
 	$(call INSTALL_MULTILIBS,$(ZLIB),libz.a)
 	@touch $@
@@ -1206,7 +1214,6 @@ $(PROJECTS)/$(ZLIB)/configure: $(DOWNLOAD)/$(ZLIB).tar.xz
 
 $(DOWNLOAD)/$(ZLIB).tar.xz:
 	$(call get-file,zlib,https://zlib.net/$(ZLIB).tar.xz,$(ZLIB).tar.xz)
-	
 
 # =================================================
 # libpng
@@ -1224,8 +1231,8 @@ $(BUILD)/$(LIBPNG)/_done: $(PREFIX)/lib/libpng.a
 	@echo "done" >$@
 
 $(PREFIX)/lib/libpng.a: $(BUILD)/$(LIBPNG)/libpng.a
-	@rsync -a --no-group $(PROJECTS)/$(LIBPNG)/png.h $(PREFIX)/include/ 
-	@rsync -a --no-group $(PROJECTS)/$(LIBPNG)/pngconf.h $(PREFIX)/include/ 
+	@rsync -a --no-group $(PROJECTS)/$(LIBPNG)/png.h $(PREFIX)/include/
+	@rsync -a --no-group $(PROJECTS)/$(LIBPNG)/pngconf.h $(PREFIX)/include/
 	@rsync -a --no-group $(BUILD)/$(LIBPNG)/pnglibconf.h $(PREFIX)/include/
 	@$(call COPY_MULTILIBS,$(LIBPNG),.libs/libpng16.a,libpng.a)
 	$(call INSTALL_MULTILIBS,$(LIBPNG),libpng.a)
@@ -1262,8 +1269,8 @@ $(BUILD)/$(LIBFREETYPE)/_done: $(PREFIX)/lib/libfreetype.a
 	@echo "done" >$@
 
 $(PREFIX)/lib/libfreetype.a: $(BUILD)/$(LIBFREETYPE)/libfreetype.a
-	@rsync -a --no-group $(PROJECTS)/$(LIBFREETYPE)/include/ft2build.h $(PREFIX)/include/ 
-	@rsync -a --no-group $(PROJECTS)/$(LIBFREETYPE)/include/freetype $(PREFIX)/include/ 
+	@rsync -a --no-group $(PROJECTS)/$(LIBFREETYPE)/include/ft2build.h $(PREFIX)/include/
+	@rsync -a --no-group $(PROJECTS)/$(LIBFREETYPE)/include/freetype $(PREFIX)/include/
 	@$(call COPY_MULTILIBS,$(LIBFREETYPE),.libs/libfreetype.a,libfreetype.a)
 	$(call INSTALL_MULTILIBS,$(LIBFREETYPE),libfreetype.a)
 	@touch $@
@@ -1310,7 +1317,7 @@ $(BUILD)/libSDL12/_done: $(BUILD)/libSDL12/Makefile
 	@echo '#include "SDL/SDL_audio.h"' >$(PREFIX)/include/SDL_audio.h
 	@echo '#include "SDL/SDL_version.h"' >$(PREFIX)/include/SDL_version.h
 	@echo -e 'while test $$# -gt 0; do\n  case "$$1" in\n   --cflags)\n      echo -I$(PREFIX)/include/SDL\n      ;;\n  esac\n  shift\ndone' > $(PREFIX)/bin/sdl-config
-	@chmod 0777 $(PREFIX)/bin/sdl-config	
+	@chmod 0777 $(PREFIX)/bin/sdl-config
 	@echo "done" >$@
 
 $(BUILD)/libSDL12/Makefile: $(BUILD)/libnix/_done $(PROJECTS)/libSDL12/Makefile $(shell find 2>/dev/null $(PROJECTS)/libSDL12 -not \( -path $(PROJECTS)/libSDL12/.git -prune \) -type f)
