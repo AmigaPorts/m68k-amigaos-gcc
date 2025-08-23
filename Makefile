@@ -1451,6 +1451,8 @@ $(DOWNLOAD)/$(LIBSDLTTF).tar.gz:
 # $(PROJECTS)/AmiSSL-SDK/configure:
 #	@cd $(PROJECTS) &&	git clone -b $(ixemul_BRANCH) $(ixemul_URL)
 
+AMISSL=AmiSSL-v5-SDK
+
 .PHONY: amissl
 amissl:	$(PREFIX)/$(TARGET)/AmiSSL-SDK/Developer/lib/amisslstubs.a
 
@@ -1460,7 +1462,7 @@ $(PREFIX)/$(TARGET)/AmiSSL-SDK/Developer/lib/amisslstubs.a: $(BUILD)/AmiSSL-SDK/
 
 $(BUILD)/AmiSSL-SDK/Developer/lib/amisslstubs.a: $(DOWNLOAD)/AmiSSL-SDK.lha
 	@mkdir -p $(BUILD)/AmiSSL-SDK
-	$(L0)"unpacking AmiSSL-SDK.lha"$(L1) cd $(BUILD)/AmiSSL-SDK && lha xf $(DOWNLOAD)/AmiSSL-SDK.lha $(L2)
+	$(L0)"unpacking ${AmiSSL-v5-SDK}.lha"$(L1) cd $(BUILD)/AmiSSL-SDK && lha xf $(DOWNLOAD)/${AmiSSL-v5-SDK}.lha $(L2)
 
 $(DOWNLOAD)/AmiSSL-SDK.lha:
-	$(call get-file,AmiSSL-SDK.lha,https://aminet.net/util/libs/AmiSSL-v5-SDK.lha)
+	$(call get-file,AmiSSL-SDK,https://aminet.net/util/libs/${AmiSSL-v5-SDK}.lha)
