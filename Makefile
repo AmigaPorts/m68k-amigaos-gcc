@@ -1460,10 +1460,10 @@ $(PREFIX)/$(TARGET)/AmiSSL-SDK/Developer/lib/amisslstubs.a: $(BUILD)/AmiSSL-SDK/
 	@mkdir -p $(PREFIX)/$(TARGET)/AmiSSL-SDK
 	$(L0)"installing AmiSSL-SDK"$(L1) rsync -a --no-group $(BUILD)/AmiSSL-SDK/* $(PREFIX)/$(TARGET)/AmiSSL-SDK/ $(L2)
 
-$(BUILD)/AmiSSL-SDK/Developer/lib/amisslstubs.a: $(DOWNLOAD)/${AmiSSL}.lha
+$(BUILD)/AmiSSL-SDK/Developer/lib/amisslstubs.a: $(DOWNLOAD)/${AMISSL}.lha
 	@mkdir -p $(BUILD)/AmiSSL-SDK
-	$(L0)"unpacking ${AmiSSL}.lha"$(L1) cd $(BUILD)/AmiSSL-SDK && lha xf $(DOWNLOAD)/${AmiSSL}.lha $(L2)
+	$(L0)"unpacking ${AMISSL}.lha"$(L1) cd $(BUILD)/AmiSSL-SDK && lha xf $(DOWNLOAD)/${AMISSL}.lha $(L2)
 
-$(DOWNLOAD)/${AmiSSL}.lha:
-	$(L0)"downloading https://aminet.net/util/libs/${AmiSSL}.lha"
-	$(call get-file,AmiSSL-SDK,https://aminet.net/util/libs/${AmiSSL}.lha)
+$(DOWNLOAD)/${AMISSL}.lha:
+	$(L0)"downloading https://aminet.net/util/libs/${AMISSL}.lha"
+	$(call get-file,AmiSSL-SDK,https://aminet.net/util/libs/${AMISSL}.lha)
