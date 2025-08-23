@@ -1463,4 +1463,4 @@ $(BUILD)/AmiSSL-SDK/Developer/lib/amisslstubs.a: $(DOWNLOAD)/AmiSSL-SDK.lha
 	$(L0)"unpacking AmiSSL-SDK.lha"$(L1) cd $(BUILD)/AmiSSL-SDK && lha xf $(DOWNLOAD)/AmiSSL-SDK.lha $(L2)
 
 $(DOWNLOAD)/AmiSSL-SDK.lha:
-	$(call get-file,AmiSSL-SDK,https://aminet.net/util/libs/AmiSSL-v5-SDK.lha)
+	$(call get-file,AmiSSL-SDK.lha,https://aminet.net/util/libs/AmiSSL-v5-SDK.lha)
