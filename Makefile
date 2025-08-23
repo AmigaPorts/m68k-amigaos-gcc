@@ -1460,7 +1460,7 @@ $(PREFIX)/$(TARGET)/AmiSSL-SDK/Developer/lib/amisslstubs.a: $(BUILD)/AmiSSL-SDK/
 	@mkdir -p $(PREFIX)/$(TARGET)/AmiSSL-SDK
 	$(L0)"installing AmiSSL-SDK"$(L1) rsync -a --no-group $(BUILD)/AmiSSL-SDK/* $(PREFIX)/$(TARGET)/AmiSSL-SDK/ $(L2)
 
-$(BUILD)/AmiSSL-SDK/Developer/lib/amisslstubs.a: $(DOWNLOAD)/AmiSSL-SDK.lha
+$(BUILD)/AmiSSL-SDK/Developer/lib/amisslstubs.a: $(DOWNLOAD)/${AmiSSL-v5-SDK}.lha
 	@mkdir -p $(BUILD)/AmiSSL-SDK
 	$(L0)"unpacking ${AmiSSL-v5-SDK}.lha"$(L1) cd $(BUILD)/AmiSSL-SDK && lha xf $(DOWNLOAD)/${AmiSSL-v5-SDK}.lha $(L2)
 
