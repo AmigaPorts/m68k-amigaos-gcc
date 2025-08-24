@@ -1454,11 +1454,11 @@ $(DOWNLOAD)/$(LIBSDLTTF).tar.gz:
 AMISSL=AmiSSL-v5-SDK
 
 .PHONY: amissl
-amissl:	$(PREFIX)/$(TARGET)/AmiSSL-SDK/Developer/lib/amisslstubs.a
+amissl:	$(PREFIX)/$(TARGET)/AmiSSL/lib/amisslstubs.a
 
-$(PREFIX)/$(TARGET)/AmiSSL-SDK/AmiSSL/Developer/lib/amisslstubs.a: $(BUILD)/AmiSSL-SDK/Developer/lib/amisslstubs.a
-	@mkdir -p $(PREFIX)/$(TARGET)/AmiSSL-SDK
-	$(L0)"installing AmiSSL-SDK"$(L1) rsync -a --no-group $(BUILD)/AmiSSL-SDK/AmiSSL/* $(PREFIX)/$(TARGET)/AmiSSL-SDK/ $(L2)
+$(PREFIX)/$(TARGET)/AmiSSL/lib/amisslstubs.a: $(BUILD)/AmiSSL-SDK/AmiSSL/Developer/lib/amisslstubs.a
+	@mkdir -p $(PREFIX)/$(TARGET)/amissl
+	$(L0)"installing AmiSSL-SDK"$(L1) rsync -a --no-group $(BUILD)/AmiSSL-SDK/AmiSSL/Developer/* $(PREFIX)/$(TARGET)/AmiSSL/ $(L2)
 
 $(BUILD)/AmiSSL-SDK/AmiSSL/Developer/lib/amisslstubs.a: $(DOWNLOAD)/${AMISSL}.lha
 	@mkdir -p $(BUILD)/AmiSSL-SDK
