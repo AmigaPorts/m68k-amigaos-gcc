@@ -1466,4 +1466,4 @@ $(BUILD)/AmiSSL-SDK/Developer/lib/amisslstubs.a: $(DOWNLOAD)/${AMISSL}.lha
 
 $(DOWNLOAD)/${AMISSL}.lha:
 	@echo "downloading https://aminet.net/util/libs/${AMISSL}.lha"
-	$(call get-file,${AMISSL},https://aminet.net/util/libs/${AMISSL}.lha)
+	$(call get-file,${AMISSL},https://aminet.net/util/libs/${AMISSL}.lha,${AMISSL}.lha)
