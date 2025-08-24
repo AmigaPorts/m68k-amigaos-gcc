@@ -1456,11 +1456,11 @@ AMISSL=AmiSSL-v5-SDK
 .PHONY: amissl
 amissl:	$(PREFIX)/$(TARGET)/AmiSSL-SDK/Developer/lib/amisslstubs.a
 
-$(PREFIX)/$(TARGET)/AmiSSL-SDK/Developer/lib/amisslstubs.a: $(BUILD)/AmiSSL-SDK/Developer/lib/amisslstubs.a
+$(PREFIX)/$(TARGET)/AmiSSL-SDK/AmiSSL/Developer/lib/amisslstubs.a: $(BUILD)/AmiSSL-SDK/Developer/lib/amisslstubs.a
 	@mkdir -p $(PREFIX)/$(TARGET)/AmiSSL-SDK
-	$(L0)"installing AmiSSL-SDK"$(L1) rsync -a --no-group $(BUILD)/AmiSSL-SDK/* $(PREFIX)/$(TARGET)/AmiSSL-SDK/ $(L2)
+	$(L0)"installing AmiSSL-SDK"$(L1) rsync -a --no-group $(BUILD)/AmiSSL-SDK/AmiSSL/* $(PREFIX)/$(TARGET)/AmiSSL-SDK/ $(L2)
 
-$(BUILD)/AmiSSL-SDK/Developer/lib/amisslstubs.a: $(DOWNLOAD)/${AMISSL}.lha
+$(BUILD)/AmiSSL-SDK/AmiSSL/Developer/lib/amisslstubs.a: $(DOWNLOAD)/${AMISSL}.lha
 	@mkdir -p $(BUILD)/AmiSSL-SDK
 	$(L0)"unpacking ${AMISSL}.lha"$(L1) cd $(BUILD)/AmiSSL-SDK && lha xf $(DOWNLOAD)/${AMISSL}.lha $(L2)
 
