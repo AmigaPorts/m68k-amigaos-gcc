@@ -180,7 +180,7 @@ help:
 # all
 # =================================================
 .PHONY: all gcc gdb gprof binutils fd2sfd fd2pragma ira sfdc vasm libnix ixemul libgcc clib2 libdebug libpthread ndk ndk13 min libnix4.library
-all: gcc binutils gdb gprof fd2sfd fd2pragma ira sfdc vasm libnix ixemul libgcc clib2 libdebug libpthread ndk ndk13 libSDL12 libnix4.library
+all: gcc binutils gdb gprof fd2sfd fd2pragma sfdc vasm libnix libgcc libpthread ndk ndk13 libSDL12 libnix4.library
 
 min: binutils gcc gprof libnix libgcc libnix4.library
 
@@ -279,7 +279,7 @@ drop-prefix:
 # =================================================
 
 .PHONY: update update-gcc update-binutils update-fd2sfd update-fd2pragma update-ira update-sfdc update-vasm update-vbcc update-vlink update-libnix update-ixemul update-clib2 update-libdebug update-libSDL12 update-libpthread update-ndk update-newlib update-netinclude
-update: update-gcc update-binutils update-fd2sfd update-fd2pragma update-ira update-sfdc update-vasm update-vbcc update-vlink update-libnix update-ixemul update-clib2 update-libdebug update-libSDL12 update-libpthread update-ndk update-newlib update-netinclude
+update: update-gcc update-binutils update-fd2sfd update-fd2pragma update-sfdc update-vasm update-vbcc update-vlink update-libnix update-ixemul update-clib2 update-libdebug update-libSDL12 update-libpthread update-ndk update-newlib update-netinclude
 	+$(MAKE) -B $(DOWNLOAD)/vbcc_target_m68k-amigaos.lha
 	+$(MAKE) -B $(DOWNLOAD)/vbcc_target_m68k-kick13.lha
 	+$(MAKE) -B $(DOWNLOAD)/$(NDK_ARC_NAME).lha
