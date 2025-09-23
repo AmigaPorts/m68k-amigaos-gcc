@@ -158,9 +158,9 @@ extern char **__tzname;
 #define _timezone (*__timezone)
 #define _daylight (*__daylight)
 
-#define _tzname (*__tzname)
+#define _tzname (__tzname)
 #ifndef tzname
-#define tzname (*__tzname)
+#define tzname (__tzname)
 #endif
 
 #ifdef __cplusplus
