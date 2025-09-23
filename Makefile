@@ -279,7 +279,7 @@ drop-prefix:
 # =================================================
 
 .PHONY: update update-gcc update-binutils update-fd2sfd update-fd2pragma update-ira update-sfdc update-vasm update-vbcc update-vlink update-libnix update-ixemul update-clib2 update-libdebug update-libSDL12 update-libpthread update-ndk update-newlib update-netinclude
-update: update-gcc update-binutils update-fd2sfd update-fd2pragma update-sfdc update-vasm update-vbcc update-vlink update-libnix update-ixemul update-clib2 update-libdebug update-libSDL12 update-libpthread update-ndk update-newlib update-netinclude
+update: update-gcc update-binutils update-fd2sfd update-fd2pragma update-sfdc update-libnix update-libdebug update-libSDL12 update-libpthread update-ndk update-newlib update-netinclude
 	+$(MAKE) -B $(DOWNLOAD)/vbcc_target_m68k-amigaos.lha
 	+$(MAKE) -B $(DOWNLOAD)/vbcc_target_m68k-kick13.lha
 	+$(MAKE) -B $(DOWNLOAD)/$(NDK_ARC_NAME).lha
