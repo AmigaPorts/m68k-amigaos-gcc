@@ -27,6 +27,7 @@ case $1 in
 					pushd projects/$file
 					git pull
 					popd
+					mkdir -p build/$2/
 					rsync -r projects/$file/* build/$2/
 				else
 					if [ ! -e "download/$file" ]; then
