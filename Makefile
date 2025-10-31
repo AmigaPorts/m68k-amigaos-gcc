@@ -160,7 +160,7 @@ help:
 	@echo "make info					print prefix and other flags"
 	@echo "make all 					build and install all"
 	@echo "make min 					build and install the minimal to use gcc"
-	@echo "make <target>					builds a target: binutils, gcc, gprof, fd2sfd, fd2pragma, ira, sfdc, vasm, vbcc, vlink, libnix, ixemul, libgcc, clib2, libdebug, libSDL12, libpthread, ndk, ndk13"
+	@echo "make <target>					builds a target: binutils, gcc, gprof, fd2sfd, fd2pragma, ira, sfdc, vasm, vbcc, vlink, libnix, ixemul, libgcc, clib2, libdebug, libpthread, ndk, ndk13"
 	@echo "make clean					remove the build folder"
 	@echo "make clean-<target>				remove the target's build folder"
 	@echo "make drop-prefix				remove all content from the prefix folder"
@@ -180,7 +180,7 @@ help:
 # all
 # =================================================
 .PHONY: all gcc gdb gprof binutils fd2sfd fd2pragma ira sfdc vasm libnix ixemul libgcc clib2 libdebug libpthread ndk ndk13 min libnix4.library
-all: gcc binutils gdb gprof fd2sfd fd2pragma ira sfdc vasm libnix ixemul libgcc clib2 libdebug libpthread ndk ndk13 libSDL12 libnix4.library
+all: gcc binutils gdb gprof fd2sfd fd2pragma ira sfdc vasm libnix ixemul libgcc clib2 libdebug libpthread ndk ndk13 libnix4.library
 
 min: binutils gcc gprof libnix libgcc libnix4.library
 
@@ -193,7 +193,7 @@ clean: clean-gmp clean-mpc clean-mpfr
 endif
 
 .PHONY: drop-prefix clean clean-gcc clean-binutils clean-fd2sfd clean-fd2pragma clean-ira clean-sfdc clean-vasm clean-vbcc clean-vlink clean-libnix clean-ixemul clean-libgcc clean-clib2 clean-libdebug clean-libpthread clean-newlib clean-ndk
-clean: clean-gcc clean-binutils clean-fd2sfd clean-fd2pragma clean-ira clean-sfdc clean-vasm clean-vbcc clean-vlink clean-libnix clean-ixemul clean-clib2 clean-libdebug clean-libpthread clean-newlib clean-ndk clean-gmp clean-mpc clean-mpfr clean-libSDL12
+clean: clean-gcc clean-binutils clean-fd2sfd clean-fd2pragma clean-ira clean-sfdc clean-vasm clean-vbcc clean-vlink clean-libnix clean-ixemul clean-clib2 clean-libdebug clean-libpthread clean-newlib clean-ndk clean-gmp clean-mpc clean-mpfr
 	rm -rf $(BUILD)
 	rm -rf *.log
 	mkdir -p $(BUILD)
@@ -278,8 +278,8 @@ drop-prefix:
 # update all projects
 # =================================================
 
-.PHONY: update update-gcc update-binutils update-fd2sfd update-fd2pragma update-ira update-sfdc update-vasm update-vbcc update-vlink update-libnix update-ixemul update-clib2 update-libdebug update-libSDL12 update-libpthread update-ndk update-newlib update-netinclude
-update: update-gcc update-binutils update-fd2sfd update-fd2pragma update-ira update-sfdc update-vasm update-vbcc update-vlink update-libnix update-ixemul update-clib2 update-libdebug update-libSDL12 update-libpthread update-ndk update-newlib update-netinclude
+.PHONY: update update-gcc update-binutils update-fd2sfd update-fd2pragma update-ira update-sfdc update-vasm update-vbcc update-vlink update-libnix update-ixemul update-clib2 update-libdebug update-libpthread update-ndk update-newlib update-netinclude
+update: update-gcc update-binutils update-fd2sfd update-fd2pragma update-ira update-sfdc update-vasm update-vbcc update-vlink update-libnix update-ixemul update-clib2 update-libdebug update-libpthread update-ndk update-newlib update-netinclude
 	+$(MAKE) -B $(DOWNLOAD)/vbcc_target_m68k-amigaos.lha
 	+$(MAKE) -B $(DOWNLOAD)/vbcc_target_m68k-kick13.lha
 	+$(MAKE) -B $(DOWNLOAD)/$(NDK_ARC_NAME).lha
@@ -287,8 +287,6 @@ update: update-gcc update-binutils update-fd2sfd update-fd2pragma update-ira upd
 	+$(MAKE) -B $(DOWNLOAD)/$(ZLIB).tar.xz
 	+$(MAKE) -B $(DOWNLOAD)/$(LIBPNG).tar.xz
 	+$(MAKE) -B $(DOWNLOAD)/$(LIBFREETYPE).tar.xz
-	+$(MAKE) -B $(DOWNLOAD)/$(LIBSDLMIXER).tar.gz
-	+$(MAKE) -B $(DOWNLOAD)/$(LIBSDLTTF).tar.gz
 
 update-gcc: $(PROJECTS)/gcc/configure
 	@cd $(PROJECTS)/gcc && git pull || (export DEPTH=16; while true; do echo "trying depth=$$DEPTH"; git pull --depth $$DEPTH && break; export DEPTH=$$(($$DEPTH+$$DEPTH));done)
@@ -328,9 +326,6 @@ update-clib2: $(PROJECTS)/clib2/LICENSE
 
 update-libdebug: $(PROJECTS)/libdebug/configure
 	@cd $(PROJECTS)/libdebug && git pull
-
-update-libSDL12: $(PROJECTS)/libSDL12/Makefile
-	@cd $(PROJECTS)/libSDL12 && git pull
 
 update-libpthread: $(PROJECTS)/aros-stuff/pthreads/Makefile
 	@cd $(PROJECTS)/aros-stuff && git pull
@@ -1289,129 +1284,3 @@ $(PROJECTS)/$(LIBFREETYPE)/configure: $(DOWNLOAD)/$(LIBFREETYPE).tar.xz $(BUILD)
 
 $(DOWNLOAD)/$(LIBFREETYPE).tar.xz:
 	$(call get-file,$(LIBFREETYPE),https://download.savannah.gnu.org/releases/freetype/$(LIBFREETYPE).tar.xz,$(LIBFREETYPE).tar.xz)
-
-# =================================================
-# libsdl this is 68030 only ...
-# =================================================
-LIBSDL12=libSDL12
-CONFIG_LIBSDL12 := PREFX=$(PREFIX) PREF=$(PREFIX)
-
-.PHONY: libSDL12 clean-libSDL12
-clean-libSDL12:
-	rm -rf $(BUILD)/$(LIBSDL12)
-
-
-libSDL12: $(BUILD)/libSDL12/_done
-
-$(BUILD)/libSDL12/_done: $(BUILD)/libSDL12/Makefile
-	$(MAKE) sdk=ahi
-	$(MAKE) sdk=cgx
-	$(L0)"make libSDL12"$(L1) cd $(BUILD)/libSDL12 && CFLAGS="$(CFLAGS_FOR_TARGET)" $(MAKE) -f Makefile $(CONFIG_LIBSDL12) $(L2)
-	$(L0)"install libSDL12"$(L1) cp $(BUILD)/libSDL12/libSDL.a $(PREFIX)/lib/ $(L2)
-	@mkdir -p $(PREFIX)/include/GL
-	@mkdir -p $(PREFIX)/include/SDL
-	@rsync -a --no-group $(BUILD)/libSDL12/include/GL/*.i $(PREFIX)/include/GL/
-	@rsync -a --no-group $(BUILD)/libSDL12/include/GL/*.h $(PREFIX)/include/GL/
-	@rsync -a --no-group $(BUILD)/libSDL12/include/SDL/*.h $(PREFIX)/include/SDL/
-	@echo '#include "SDL/SDL.h"' >$(PREFIX)/include/SDL.h
-	@echo '#include "SDL/SDL_audio.h"' >$(PREFIX)/include/SDL_audio.h
-	@echo '#include "SDL/SDL_version.h"' >$(PREFIX)/include/SDL_version.h
-	@echo -e 'while test $$# -gt 0; do\n  case "$$1" in\n   --cflags)\n      echo -I$(PREFIX)/include/SDL\n      ;;\n  esac\n  shift\ndone' > $(PREFIX)/bin/sdl-config
-	@chmod 0777 $(PREFIX)/bin/sdl-config
-	@echo "done" >$@
-
-$(BUILD)/libSDL12/Makefile: $(BUILD)/libnix/_done $(PROJECTS)/libSDL12/Makefile $(shell find 2>/dev/null $(PROJECTS)/libSDL12 -not \( -path $(PROJECTS)/libSDL12/.git -prune \) -type f)
-	@mkdir -p $(BUILD)/libSDL12
-	@rsync -a --no-group $(PROJECTS)/libSDL12/* $(BUILD)/libSDL12
-	@touch $(BUILD)/libSDL12/Makefile
-
-$(PROJECTS)/libSDL12/Makefile:
-	@cd $(PROJECTS) &&      git clone -b $(libSDL12_BRANCH) --depth 4 $(libSDL12_URL)
-
-# =================================================
-# libSDLmixer
-# =================================================
-LIBSDLMIXER=SDL_mixer-SDL-1.2
-
-# 1=module name
-MULTICC_SDLMIXER = $(L0)"compiling $1"$(L1) $(foreach T,$(subst MODNAME,$1,$(MULTI)), cd $(BUILD)/$(word 1,$(subst :, ,${T})) && \
-	$(TARGET)-gcc -c $$(grep "CFLAGS  =" Makefile | cut -d "=" -f 2 | sed -e 's|srcdir|$(PROJECTS)/${T}|g') $$(grep "EXTRA_CFLAGS =" Makefile | cut -d "=" -f 2) \
-	-I $(PREFIX)/include/SDL \
-	$(PROJECTS)/$1/*.c && \
-	$(TARGET)-ar rcs $2 *.o \
-	;) $(L2)
-
-.PHONY: libsdlmixer clean-libsdlmixer
-
-clean-libsdlmixer:
-	rm -rf $(BUILD)/$(LIBSDLMIXER)
-
-libsdlmixer: $(BUILD)/$(LIBSDLMIXER)/_done
-
-$(BUILD)/$(LIBSDLMIXER)/_done: $(PREFIX)/lib/libSDL_mixer.a
-	@echo "done" >$@
-
-$(PREFIX)/lib/libSDL_mixer.a: $(BUILD)/$(LIBSDLMIXER)/libSDL_mixer.a
-	@mkdir -p $(PREFIX)/include/SDL
-	@rsync -a --no-group $(PROJECTS)/$(LIBSDLMIXER)/SDL_mixer.h $(PREFIX)/include/SDL
-	$(call INSTALL_MULTILIBS,$(LIBSDLMIXER),libSDL_mixer.a)
-	@touch $@
-
-$(BUILD)/$(LIBSDLMIXER)/libSDL_mixer.a: $(BUILD)/$(LIBSDLMIXER)/Makefile
-	+$(call MULTICC_SDLMIXER,$(LIBSDLMIXER),libSDL_mixer.a)
-	@touch $@
-
-$(BUILD)/$(LIBSDLMIXER)/Makefile: $(PROJECTS)/$(LIBSDLMIXER)/configure
-	$(call MULTICONFIGURE,$(LIBSDLMIXER),libSDL_mixer.a,--host=$(TARGET),--disable-shared,--enable-static,--prefix=$(PREFIX))
-	@touch $@
-
-$(PROJECTS)/$(LIBSDLMIXER)/configure: $(DOWNLOAD)/$(LIBSDLMIXER).tar.gz $(BUILD)/libSDL12/_done $(BUILD)/libnix/_done
-	tar -C $(PROJECTS) -xf $(DOWNLOAD)/$(LIBSDLMIXER).tar.gz
-	@touch $@
-
-$(DOWNLOAD)/$(LIBSDLMIXER).tar.gz:
-	$(call get-file,$(LIBSDLMIXER),https://github.com/SDL-mirror/SDL_mixer/archive/SDL-1.2.tar.gz,$(LIBSDLMIXER).tar.gz)
-
-# =================================================
-# libSDLttf
-# =================================================
-LIBSDLTTF=SDL_ttf-SDL-1.2
-
-# 1=module name
-MULTICC_SDLTTF = $(L0)"compiling $1"$(L1) $(foreach T,$(subst MODNAME,$1,$(MULTI)), cd $(BUILD)/$(word 1,$(subst :, ,${T})) && \
-	$(TARGET)-gcc -c $$(grep "CFLAGS  =" Makefile | cut -d "=" -f 2 | sed -e 's|srcdir|$(PROJECTS)/${T}|g') $$(grep "EXTRA_CFLAGS =" Makefile | cut -d "=" -f 2) \
-	-I $(PREFIX)/include/SDL \
-	$(PROJECTS)/$1/*.c && \
-	$(TARGET)-ar rcs $2 *.o \
-	;) $(L2)
-
-.PHONY: libsdlttf clean-libsdlttf
-
-clean-libsdlttf:
-	rm -rf $(BUILD)/$(LIBSDLTTF)
-
-libsdlttf: $(BUILD)/$(LIBSDLTTF)/_done
-
-$(BUILD)/$(LIBSDLTTF)/_done: $(PREFIX)/lib/libSDL_ttf.a
-	@echo "done" >$@
-
-$(PREFIX)/lib/libSDL_ttf.a: $(BUILD)/$(LIBSDLTTF)/libSDL_ttf.a
-	@mkdir -p $(PREFIX)/include/SDL
-	@rsync -a --no-group $(PROJECTS)/$(LIBSDLTTF)/SDL_ttf.h $(PREFIX)/include/SDL
-	$(call INSTALL_MULTILIBS,$(LIBSDLTTF),libSDL_ttf.a)
-	@touch $@
-
-$(BUILD)/$(LIBSDLTTF)/libSDL_ttf.a: $(BUILD)/$(LIBSDLTTF)/Makefile
-	+$(call MULTICC_SDLTTF,$(LIBSDLTTF),libSDL_ttf.a)
-	@touch $@
-
-$(BUILD)/$(LIBSDLTTF)/Makefile: $(PROJECTS)/$(LIBSDLTTF)/configure
-	$(call MULTICONFIGURE,$(LIBSDLTTF),libSDL_ttf.a,--host=$(TARGET),--disable-shared,--enable-static,--prefix=$(PREFIX))
-	@touch $@
-
-$(PROJECTS)/$(LIBSDLTTF)/configure: $(DOWNLOAD)/$(LIBSDLTTF).tar.gz $(BUILD)/libSDL12/_done $(BUILD)/libnix/_done
-	tar -C $(PROJECTS) -xf $(DOWNLOAD)/$(LIBSDLTTF).tar.gz
-	@touch $@
-
-$(DOWNLOAD)/$(LIBSDLTTF).tar.gz:
-	$(call get-file,$(LIBSDLTTF),https://github.com/SDL-mirror/SDL_ttf/archive/SDL-1.2.tar.gz,$(LIBSDLTTF).tar.gz)

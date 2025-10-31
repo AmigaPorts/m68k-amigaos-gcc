@@ -42,13 +42,19 @@ Various AmigaOS-specific patches have been applied to this version of gcc. None 
 
 ## Prerequisites
 ### Centos
-`sudo yum install wget gcc gcc-c++ python git perl-Pod-Simple gperf patch autoconf automake make makedepend bison flex ncurses-devel gmp-devel mpfr-devel libmpc-devel gettext-devel texinfo rsync readline-devel`
+```
+sudo yum install wget gcc gcc-c++ python git perl-Pod-Simple gperf patch autoconf automake make makedepend bison flex ncurses-devel gmp-devel mpfr-devel libmpc-devel gettext-devel texinfo rsync readline-devel
+```
 
 ### Fedora
-`sudo dnf install wget gcc gcc-c++ python git perl-Pod-Simple gperf patch autoconf automake make makedepend bison flex ncurses-devel gmp-devel mpfr-devel libmpc-devel gettext-devel texinfo rsync readline-devel which`
+```
+sudo dnf install wget gcc gcc-c++ python git perl-Pod-Simple gperf patch autoconf automake make makedepend bison flex ncurses-devel gmp-devel mpfr-devel libmpc-devel gettext-devel texinfo rsync readline-devel which
+```
 
 ### Ubuntu, Debian
-`sudo apt install make wget git gcc g++ lhasa libgmp-dev libmpfr-dev libmpc-dev flex bison gettext texinfo ncurses-dev autoconf rsync libreadline-dev`
+```
+sudo apt install make wget git gcc g++ lhasa libgmp-dev libmpfr-dev libmpc-dev flex bison gettext texinfo ncurses-dev autoconf rsync libreadline-dev
+```
 
 If building with a normal user, the `PREFIX` directory must be writable (default is `/opt/amiga`). You can add the user to an appropriate group. 
 
@@ -247,11 +253,10 @@ make branch branch=amiga13.1 mod=gcc
 make all -j20
 ```
 
-### Notable branches
+### Notable branches of gcc
 * `amiga6`: The default branch providing gcc-6.5.0b with a lot of hacks^^
-* `amiga13.1': gcc-13.1.0  supports register parameters
-* `amiga13.2': gcc-13.2.0  supports register parameters
-* `amiga13.3': gcc-13.3.0  supports register parameters
+* `amiga13.3`: gcc-13.3.0  supports register parameters
+* `amiga15.2`: gcc-15.2.0  supports register parameters
 * `68080regs`: gcc-6.5.0b supporting the B0-B7/E0-E7 AMMX registers of the Apollo 68080 (experimental)
  
 

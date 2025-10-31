@@ -1,6 +1,6 @@
 Short: A set of C macro/defines to make amiga development easier.
-Version: 54.6
-Url: git://github.com/salass00/filesysbox:V54.6
+Version: 54.7
+Url: git://github.com/salass00/filesysbox:V54.7
 
 include
 include/sys
