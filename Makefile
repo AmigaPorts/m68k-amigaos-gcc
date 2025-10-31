@@ -179,10 +179,10 @@ help:
 # =================================================
 # all
 # =================================================
-.PHONY: all gcc gdb gprof binutils fd2sfd fd2pragma ira sfdc vasm libnix ixemul libgcc clib2 libdebug libpthread ndk ndk13 min libnix4.library
-all: gcc binutils gdb gprof fd2sfd fd2pragma ira sfdc vasm libnix ixemul libgcc clib2 libdebug libpthread ndk ndk13 libnix4.library
+.PHONY: all gcc gdb gprof binutils fd2sfd fd2pragma ira sfdc vasm libnix ixemul libgcc clib2 libdebug libpthread ndk ndk13 min
+all: gcc binutils gdb gprof fd2sfd fd2pragma ira sfdc vasm libnix ixemul libgcc clib2 libdebug libpthread ndk ndk13
 
-min: binutils gcc gprof libnix libgcc libnix4.library
+min: binutils gcc gprof libnix libgcc
 
 # =================================================
 # clean
@@ -450,7 +450,7 @@ $(BUILD)/binutils/gprof/Makefile: $(PROJECTS)/binutils/configure $(BUILD)/binuti
 # gcc
 # =================================================
 CONFIG_GCC = --prefix=$(PREFIX) --target=$(TARGET) --enable-languages=c,c++,objc,$(ADDLANG) --enable-version-specific-runtime-libs --disable-libssp --disable-nls \
-	--with-headers=$(PROJECTS)/newlib-cygwin/newlib/libc/sys/amigaos/include/ --disable-shared --enable-threads=$(THREADS) \
+	--with-headers=$(PROJECTS)/newlib-cygwin/newlib/libc/sys/amigaos/include/ --disable-shared --disable-werror --enable-threads=$(THREADS) \
 	--with-stage1-ldflags="-dynamic-libgcc -dynamic-libstdc++" --with-boot-ldflags="-dynamic-libgcc -dynamic-libstdc++"
 
 # FreeBSD, OSX : libs added by the command brew install gmp mpfr libmpc
@@ -896,14 +896,6 @@ $(BUILD)/gcc/_libgcc_done: $(BUILD)/libnix/_done $(BUILD)/libpthread/_done $(LIB
 	$(L0)"make libgcc"$(L1) $(MAKE) -C $(BUILD)/gcc all-target $(L2)
 	$(L0)"install libgcc"$(L1) $(MAKE) -C $(BUILD)/gcc install-target $(L2)
 	@echo "done" >$@
-
-# =================================================
-# libnix4.library
-# =================================================
-libnix4.library: $(BUILD)/libnix/libb/libnix4.library
-$(BUILD)/libnix/libb/libnix4.library: $(BUILD)/gcc/_libgcc_done $(BUILD)/libnix/_done
-	$(L0)"make libnix4.library"$(L1) CFLAGS="$(CFLAGS_FOR_TARGET)" \
-	$(MAKE) -C $(BUILD)/libnix -f $(PROJECTS)/libnix/Makefile.gcc6 root=$(PROJECTS)/libnix libb/libnix4.library $(L2)
 
 # =================================================
 # clib2
