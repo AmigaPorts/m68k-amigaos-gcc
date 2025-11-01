@@ -51,9 +51,9 @@ NDK_FOLDER_NAME_FD   := NDK3.2/FD
 NDK_FOLDER_NAME_SFD  := NDK3.2/SFD
 NDK_FOLDER_NAME_LIBS := NDK3.2/lib
 else
-NDK_URL         := http://hp.alinea-computer.de/AmigaOS/NDK39.lha
-NDK_ARC_NAME    := NDK3.9
-NDK_FOLDER_NAME := NDK_3.9/Include
+NDK_URL              := http://hp.alinea-computer.de/AmigaOS/NDK39.lha
+NDK_ARC_NAME         := NDK3.9
+NDK_FOLDER_NAME      := NDK_3.9/Include
 NDK_FOLDER_NAME_H    := NDK_3.9/Include/include_h
 NDK_FOLDER_NAME_I    := NDK_3.9/Include/include_i
 NDK_FOLDER_NAME_FD   := NDK_3.9/Include/fd
