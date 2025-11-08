@@ -180,10 +180,10 @@ help:
 # =================================================
 # all
 # =================================================
-.PHONY: all gcc gdb gprof binutils fd2sfd fd2pragma ira sfdc vasm libnix ixemul libgcc clib2 libdebug libpthread ndk ndk13 min libnix4.library
-all: gcc binutils gdb gprof fd2sfd fd2pragma ira sfdc vasm libnix ixemul libgcc clib2 libdebug libpthread ndk ndk13 libnix4.library
+.PHONY: all gcc gdb gprof binutils fd2sfd fd2pragma ira sfdc vasm libnix ixemul libgcc clib2 libdebug libpthread ndk ndk13 min
+all: gcc binutils gdb gprof fd2sfd fd2pragma ira sfdc vasm libnix ixemul libgcc clib2 libdebug libpthread ndk ndk13
 
-min: binutils gcc gprof libnix libgcc libnix4.library
+min: binutils gcc gprof libnix libgcc
 
 # =================================================
 # clean
@@ -502,7 +502,7 @@ $(PROJECTS)/gcc/configure:
 # =================================================
 # fd2sfd
 # =================================================
-CONFIG_FD2SFD := --prefix=$(PREFIX) --target=$(TARGET) --host=$(HOST) --build=$(BUILD)
+CONFIG_FD2SFD := --prefix=$(PREFIX) --target=$(TARGET) --host=$(HOST)
 
 fd2sfd: $(BUILD)/fd2sfd/_done
 
@@ -565,7 +565,7 @@ $(PROJECTS)/ira/Makefile:
 # =================================================
 # sfdc
 # =================================================
-CONFIG_SFDC := --prefix=$(PREFIX) --target=$(TARGET) --host=$(HOST) --build=$(BUILD)
+CONFIG_SFDC := --prefix=$(PREFIX) --target=$(TARGET) --host=$(HOST)
 
 sfdc: $(BUILD)/sfdc/_done
 
@@ -899,14 +899,6 @@ $(BUILD)/gcc/_libgcc_done: $(BUILD)/libnix/_done $(BUILD)/libpthread/_done $(LIB
 	@echo "done" >$@
 
 # =================================================
-# libnix4.library
-# =================================================
-libnix4.library: $(BUILD)/libnix/libb/libnix4.library
-$(BUILD)/libnix/libb/libnix4.library: $(BUILD)/gcc/_libgcc_done $(BUILD)/libnix/_done
-	$(L0)"make libnix4.library"$(L1) CFLAGS="$(CFLAGS_FOR_TARGET)" \
-	$(MAKE) -C $(BUILD)/libnix -f $(PROJECTS)/libnix/Makefile.gcc6 root=$(PROJECTS)/libnix libb/libnix4.library $(L2)
-
-# =================================================
 # clib2
 # =================================================
 
@@ -928,7 +920,7 @@ $(PROJECTS)/clib2/LICENSE:
 # =================================================
 # libdebug
 # =================================================
-CONFIG_LIBDEBUG := --prefix=$(PREFIX) --target=$(TARGET) --host=$(HOST) --host=$(TARGET)
+CONFIG_LIBDEBUG := --prefix=$(PREFIX) --target=$(TARGET) --host=$(TARGET)
 
 libdebug: $(BUILD)/libdebug/_done
 
