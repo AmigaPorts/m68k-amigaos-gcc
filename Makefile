@@ -13,6 +13,7 @@ $(eval SHELL = $(shell which bash 2>/dev/null) )
 PREFIX ?= /opt/amiga
 export PATH := $(PREFIX)/bin:$(PATH)
 
+HOST ?= x86_64-linux-gnu
 TARGET ?= m68k-amigaos
 
 UNAME_S := $(shell uname -s)
@@ -367,7 +368,7 @@ update-mpfr:
 # =================================================
 # binutils
 # =================================================
-CONFIG_BINUTILS =--prefix=$(PREFIX) --target=$(TARGET) --disable-werror --enable-tui --disable-nls
+CONFIG_BINUTILS =--prefix=$(PREFIX) --target=$(TARGET) --host=$(HOST) --disable-werror --enable-tui --disable-nls --disable-doc
 
 ifneq (m68k-elf,$(TARGET))
 CONFIG_BINUTILS += --disable-plugins
@@ -433,7 +434,7 @@ $(BUILD)/binutils/_gdb: $(BUILD)/binutils/_done
 # =================================================
 # gprof
 # =================================================
-CONFIG_GRPOF := --prefix=$(PREFIX) --target=$(TARGET) --disable-werror
+CONFIG_GRPOF := --prefix=$(PREFIX) --target=$(TARGET) --host=$(HOST) --disable-werror
 
 gprof: $(BUILD)/binutils/_gprof
 
@@ -449,7 +450,7 @@ $(BUILD)/binutils/gprof/Makefile: $(PROJECTS)/binutils/configure $(BUILD)/binuti
 # =================================================
 # gcc
 # =================================================
-CONFIG_GCC = --prefix=$(PREFIX) --target=$(TARGET) --enable-languages=c,c++,objc,$(ADDLANG) --enable-version-specific-runtime-libs --disable-libssp --disable-nls \
+CONFIG_GCC = --prefix=$(PREFIX) --target=$(TARGET) --host=$(HOST) --enable-languages=c,c++,objc,$(ADDLANG) --enable-version-specific-runtime-libs --disable-libssp --disable-nls \
 	--with-headers=$(PROJECTS)/newlib-cygwin/newlib/libc/sys/amigaos/include/ --disable-shared --enable-threads=$(THREADS) \
 	--with-stage1-ldflags="-dynamic-libgcc -dynamic-libstdc++" --with-boot-ldflags="-dynamic-libgcc -dynamic-libstdc++"
 
@@ -501,7 +502,7 @@ $(PROJECTS)/gcc/configure:
 # =================================================
 # fd2sfd
 # =================================================
-CONFIG_FD2SFD := --prefix=$(PREFIX) --target=$(TARGET)
+CONFIG_FD2SFD := --prefix=$(PREFIX) --target=$(TARGET) --host=$(HOST) --build=$(BUILD)
 
 fd2sfd: $(BUILD)/fd2sfd/_done
 
@@ -564,7 +565,7 @@ $(PROJECTS)/ira/Makefile:
 # =================================================
 # sfdc
 # =================================================
-CONFIG_SFDC := --prefix=$(PREFIX) --target=$(TARGET)
+CONFIG_SFDC := --prefix=$(PREFIX) --target=$(TARGET) --host=$(HOST) --build=$(BUILD)
 
 sfdc: $(BUILD)/sfdc/_done
 
@@ -927,7 +928,7 @@ $(PROJECTS)/clib2/LICENSE:
 # =================================================
 # libdebug
 # =================================================
-CONFIG_LIBDEBUG := --prefix=$(PREFIX) --target=$(TARGET) --host=$(TARGET)
+CONFIG_LIBDEBUG := --prefix=$(PREFIX) --target=$(TARGET) --host=$(HOST) --host=$(TARGET)
 
 libdebug: $(BUILD)/libdebug/_done
 
