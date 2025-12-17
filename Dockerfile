@@ -8,25 +8,25 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
     apt install -y lhasa && \
     rm -rf /var/lib/apt/lists/* && \
     echo "HOST_ARCH: ${HOST_ARCH}" && \
-    make HOST=${HOST_ARCH} NDK=3.9 update PREFIX=/opt/m68k-amigaos && \
-    make HOST=${HOST_ARCH} -j $(nproc) NDK=3.9 all PREFIX=/opt/m68k-amigaos && \
-    make HOST=${HOST_ARCH} -j $(nproc) NDK=3.9 sdk=filesysbox PREFIX=/opt/m68k-amigaos && \
-    make HOST=${HOST_ARCH} -j $(nproc) NDK=3.9 sdk=sdi PREFIX=/opt/m68k-amigaos && \
-    make HOST=${HOST_ARCH} -j $(nproc) NDK=3.9 sdk=ahi PREFIX=/opt/m68k-amigaos && \
-    make HOST=${HOST_ARCH} -j $(nproc) NDK=3.9 sdk=mhi PREFIX=/opt/m68k-amigaos && \
-    make HOST=${HOST_ARCH} -j $(nproc) NDK=3.9 sdk=camd PREFIX=/opt/m68k-amigaos && \
-    make HOST=${HOST_ARCH} -j $(nproc) NDK=3.9 sdk=cgx PREFIX=/opt/m68k-amigaos && \
-    make HOST=${HOST_ARCH} -j $(nproc) NDK=3.9 sdk=guigfx PREFIX=/opt/m68k-amigaos && \
-    make HOST=${HOST_ARCH} -j $(nproc) NDK=3.9 sdk=mui PREFIX=/opt/m68k-amigaos && \
-    make HOST=${HOST_ARCH} -j $(nproc) NDK=3.9 sdk=p96 PREFIX=/opt/m68k-amigaos && \
-    make HOST=${HOST_ARCH} -j $(nproc) NDK=3.9 sdk=mcc_betterstring PREFIX=/opt/m68k-amigaos && \
-    make HOST=${HOST_ARCH} -j $(nproc) NDK=3.9 sdk=mcc_guigfx PREFIX=/opt/m68k-amigaos && \
-    make HOST=${HOST_ARCH} -j $(nproc) NDK=3.9 sdk=mcc_nlist PREFIX=/opt/m68k-amigaos && \
-    make HOST=${HOST_ARCH} -j $(nproc) NDK=3.9 sdk=mcc_texteditor PREFIX=/opt/m68k-amigaos && \
-    make HOST=${HOST_ARCH} -j $(nproc) NDK=3.9 sdk=mcc_thebar PREFIX=/opt/m68k-amigaos && \
-    make HOST=${HOST_ARCH} -j $(nproc) NDK=3.9 sdk=render PREFIX=/opt/m68k-amigaos && \
-    make HOST=${HOST_ARCH} -j $(nproc) NDK=3.9 sdk=warp3d PREFIX=/opt/m68k-amigaos && \
-    make HOST=${HOST_ARCH} -j $(nproc) NDK=3.9 all-sdk PREFIX=/opt/m68k-amigaos && \
+    make HOST=${HOST_ARCH} update PREFIX=/opt/m68k-amigaos && \
+    make HOST=${HOST_ARCH} -j $(nproc) all PREFIX=/opt/m68k-amigaos && \
+    make HOST=${HOST_ARCH} -j $(nproc) sdk=filesysbox PREFIX=/opt/m68k-amigaos && \
+    make HOST=${HOST_ARCH} -j $(nproc) sdk=sdi PREFIX=/opt/m68k-amigaos && \
+    make HOST=${HOST_ARCH} -j $(nproc) sdk=ahi PREFIX=/opt/m68k-amigaos && \
+    make HOST=${HOST_ARCH} -j $(nproc) sdk=mhi PREFIX=/opt/m68k-amigaos && \
+    make HOST=${HOST_ARCH} -j $(nproc) sdk=camd PREFIX=/opt/m68k-amigaos && \
+    make HOST=${HOST_ARCH} -j $(nproc) sdk=cgx PREFIX=/opt/m68k-amigaos && \
+    make HOST=${HOST_ARCH} -j $(nproc) sdk=guigfx PREFIX=/opt/m68k-amigaos && \
+    make HOST=${HOST_ARCH} -j $(nproc) sdk=mui PREFIX=/opt/m68k-amigaos && \
+    make HOST=${HOST_ARCH} -j $(nproc) sdk=p96 PREFIX=/opt/m68k-amigaos && \
+    make HOST=${HOST_ARCH} -j $(nproc) sdk=mcc_betterstring PREFIX=/opt/m68k-amigaos && \
+    make HOST=${HOST_ARCH} -j $(nproc) sdk=mcc_guigfx PREFIX=/opt/m68k-amigaos && \
+    make HOST=${HOST_ARCH} -j $(nproc) sdk=mcc_nlist PREFIX=/opt/m68k-amigaos && \
+    make HOST=${HOST_ARCH} -j $(nproc) sdk=mcc_texteditor PREFIX=/opt/m68k-amigaos && \
+    make HOST=${HOST_ARCH} -j $(nproc) sdk=mcc_thebar PREFIX=/opt/m68k-amigaos && \
+    make HOST=${HOST_ARCH} -j $(nproc) sdk=render PREFIX=/opt/m68k-amigaos && \
+    make HOST=${HOST_ARCH} -j $(nproc) sdk=warp3d PREFIX=/opt/m68k-amigaos && \
+    make HOST=${HOST_ARCH} -j $(nproc) all-sdk PREFIX=/opt/m68k-amigaos && \
     wget https://raw.githubusercontent.com/aros-development-team/AROS/master/compiler/include/devices/newstyle.h -O newstyle.h && \
     wget https://raw.githubusercontent.com/aros-development-team/AROS/master/compiler/include/devices/sana2.h -O sana2.h && \
     wget https://raw.githubusercontent.com/aros-development-team/AROS/master/compiler/include/devices/sana2specialstats.h -O sana2specialstats.h && \
