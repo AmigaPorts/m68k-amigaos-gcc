@@ -117,8 +117,8 @@ same as normal ubuntu
 
 ## Howto Clone and Download All You Need
 ```
-git clone https://github.com/bebbo/amiga-gcc
-cd amiga-gcc
+git clone https://github.com/AmigaPorts/m68k-amigaos-gcc
+cd m68k-amigaos-gcc
 make update
 ```
 
