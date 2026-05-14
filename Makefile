@@ -1071,8 +1071,10 @@ endif
 .PHONY: check
 check:
 	@ln -sf $(PREFIX)/$(TARGET)/libnix $(BUILD)/gcc/$(TARGET)/libnix
-	$(MAKE) -C $(BUILD)/gcc check-gcc-c "RUNTESTFLAGS=--target_board=$(board) execute.exp=* SIM=vamos" | grep '# of\|PASS\|FAIL\|===\|Running\|Using' 
-
+	LC_ALL=C LANG=C \
+	$(MAKE) -C $(BUILD)/gcc check-gcc-c \
+	  "RUNTESTFLAGS=--target_board=$(board) execute.exp=* SIM=vamos" \
+	| grep '# of\|PASS\|FAIL\|===\|Running\|Using'
 
 # =================================================
 # info
