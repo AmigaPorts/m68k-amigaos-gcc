@@ -86,10 +86,6 @@ struct tm;
 typedef _mbstate_t mbstate_t;
 #endif /* _MBSTATE_T */
 
-#ifndef __stdargs
-#define __stdargs
-#endif
-
 __stdargs wint_t	btowc (int);
 __stdargs int	wctob (wint_t);
 __stdargs size_t	mbrlen (const char *__restrict, size_t, mbstate_t *__restrict);

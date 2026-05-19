@@ -67,10 +67,6 @@ struct lconv
   char int_p_sign_posn;
 };
 
-#ifndef __stdargs
-#define __stdargs
-#endif
-
 struct _reent;
 __stdargs char *_setlocale_r (struct _reent *, int, const char *);
 __stdargs struct lconv *_localeconv_r (struct _reent *);

@@ -52,42 +52,42 @@ enum {
 #endif
 
 __BEGIN_DECLS
-__stdargs void	call_once(once_flag *, void (*)(void));
-__stdargs int	cnd_broadcast(cnd_t *);
-__stdargs void	cnd_destroy(cnd_t *);
-__stdargs int	cnd_init(cnd_t *);
-__stdargs int	cnd_signal(cnd_t *);
-__stdargs int	cnd_timedwait(cnd_t *__restrict, mtx_t *__restrict __mtx,
+void	call_once(once_flag *, void (*)(void));
+int	cnd_broadcast(cnd_t *);
+void	cnd_destroy(cnd_t *);
+int	cnd_init(cnd_t *);
+int	cnd_signal(cnd_t *);
+int	cnd_timedwait(cnd_t *__restrict, mtx_t *__restrict __mtx,
     const struct timespec *__restrict)
     __requires_exclusive(*__mtx);
-__stdargs int	cnd_wait(cnd_t *, mtx_t *__mtx)
+int	cnd_wait(cnd_t *, mtx_t *__mtx)
     __requires_exclusive(*__mtx);
-__stdargs void	mtx_destroy(mtx_t *__mtx)
+void	mtx_destroy(mtx_t *__mtx)
     __requires_unlocked(*__mtx);
-__stdargs int	mtx_init(mtx_t *__mtx, int)
+int	mtx_init(mtx_t *__mtx, int)
     __requires_unlocked(*__mtx);
-__stdargs int	mtx_lock(mtx_t *__mtx)
+int	mtx_lock(mtx_t *__mtx)
     __locks_exclusive(*__mtx);
-__stdargs int	mtx_timedlock(mtx_t *__restrict __mtx,
+int	mtx_timedlock(mtx_t *__restrict __mtx,
     const struct timespec *__restrict)
     __trylocks_exclusive(thrd_success, *__mtx);
-__stdargs int	mtx_trylock(mtx_t *__mtx)
+int	mtx_trylock(mtx_t *__mtx)
     __trylocks_exclusive(thrd_success, *__mtx);
-__stdargs int	mtx_unlock(mtx_t *__mtx)
+int	mtx_unlock(mtx_t *__mtx)
     __unlocks(*__mtx);
-__stdargs int	thrd_create(thrd_t *, thrd_start_t, void *);
-__stdargs thrd_t	thrd_current(void);
-__stdargs int	thrd_detach(thrd_t);
-__stdargs int	thrd_equal(thrd_t, thrd_t);
+int	thrd_create(thrd_t *, thrd_start_t, void *);
+thrd_t	thrd_current(void);
+int	thrd_detach(thrd_t);
+int	thrd_equal(thrd_t, thrd_t);
 _Noreturn void
 	thrd_exit(int);
-__stdargs int	thrd_join(thrd_t, int *);
-__stdargs int	thrd_sleep(const struct timespec *, struct timespec *);
-__stdargs void	thrd_yield(void);
-__stdargs int	tss_create(tss_t *, tss_dtor_t);
-__stdargs void	tss_delete(tss_t);
+int	thrd_join(thrd_t, int *);
+int	thrd_sleep(const struct timespec *, struct timespec *);
+void	thrd_yield(void);
+int	tss_create(tss_t *, tss_dtor_t);
+void	tss_delete(tss_t);
 void *	tss_get(tss_t);
-__stdargs int	tss_set(tss_t, void *);
+int	tss_set(tss_t, void *);
 __END_DECLS
 
 #endif /* !_THREADS_H_ */

@@ -27,10 +27,6 @@ typedef int wctype_t;
 typedef int wctrans_t;
 #endif
 
-#ifndef __stdargs
-#define __stdargs
-#endif
-
 __stdargs int	iswalpha (wint_t);
 __stdargs int	iswalnum (wint_t);
 #if __ISO_C_VISIBLE >= 1999
