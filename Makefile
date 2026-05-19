@@ -848,25 +848,30 @@ $(BUILD)/_netinclude: $(PROJECTS)/amiga-netinclude/README.md $(BUILD)/ndk-includ
 	@echo "done" >$@
 
 $(PROJECTS)/amiga-netinclude/README.md:
-	@cd $(PROJECTS) &&	git clone -b $(amiga-netinclude_BRANCH) --depth 4 $(amiga-netinclude_URL)
+	@cd $(PROJECTS) && git clone -b $(amiga-netinclude_BRANCH) --depth 4 $(amiga-netinclude_URL)
 
 # =================================================
-# libamiga
+# local-lib – kopiert alle .a, .o und ldscripts/
 # =================================================
-LIBAMIGA := $(PREFIX)/$(TARGET)/lib/libamiga.a
-LIBBAMIGA := $(PREFIX)/$(TARGET)/lib/libb/libamiga.a
 
-libamiga: $(LIBAMIGA) $(LIBBAMIGA)
-	@echo "built $(LIBAMIGA) and $(LIBBAMIGA)"
+# Alle lokalen .a und .o Dateien finden
+LOCAL_LIBS := $(shell find lib -type f \( -name '*.a' -o -name '*.o' \))
 
-$(LIBAMIGA): 
+# Zielpfade erzeugen: lib/foo/bar.a → $(PREFIX)/$(TARGET)/lib/foo/bar.a
+LIBAMIGA := $(patsubst lib/%, $(PREFIX)/$(TARGET)/lib/%, $(LOCAL_LIBS))
+
+# Alle Dateien im ldscripts/ Verzeichnis
+LOCAL_LDS := $(shell find lib/ldscripts -type f)
+LDS_TARGET := $(patsubst lib/%, $(PREFIX)/$(TARGET)/lib/%, $(LOCAL_LDS))
+
+.PHONY: libamiga
+libamiga: $(LIBAMIGA) $(LDS_TARGET)
+	@echo "Copied $(words $(LIBAMIGA)) libraries and $(words $(LDS_TARGET)) ldscripts into $(PREFIX)/$(TARGET)/lib"
+
+# Pattern rule: jede einzelne Datei kopieren
+$(PREFIX)/$(TARGET)/lib/%: lib/%
 	@mkdir -p $(@D)
-	#@cp $(PROJECTS)/$(NDK_FOLDER_NAME_LIBS)/amiga.lib $@
-	@cp lib/libamiga.a $@
-
-$(LIBBAMIGA): 
-	@mkdir -p $(@D)
-	@cp lib/libb/libamiga.a $@
+	@cp $< $@
 
 # =================================================
 # libnix
@@ -876,7 +881,7 @@ LIBNIX_SRC = $(shell find 2>/dev/null $(PROJECTS)/libnix -not \( -path $(PROJECT
 
 libnix: $(BUILD)/libnix/_done
 
-$(BUILD)/libnix/_done: $(BUILD)/newlib/_done $(BUILD)/ndk-include_ndk $(BUILD)/ndk-include_ndk13 $(BUILD)/_netinclude $(BUILD)/binutils/_done $(BUILD)/gcc/_done $(PROJECTS)/libnix/Makefile.gcc6 $(LIBAMIGA) $(LIBNIX_SRC)
+$(BUILD)/libnix/_done: libamiga $(BUILD)/ndk-include_ndk $(BUILD)/ndk-include_ndk13 $(BUILD)/_netinclude $(BUILD)/binutils/_done $(BUILD)/gcc/_done $(PROJECTS)/libnix/Makefile.gcc6 $(LIBAMIGA) $(LIBNIX_SRC)
 #	@rsync -a --no-group --delete sys-include/ $(PREFIX)/$(TARGET)/sys-include
 	@mkdir -p $(PREFIX)/$(TARGET)/libnix/lib/libnix
 	@mkdir -p $(BUILD)/libnix
