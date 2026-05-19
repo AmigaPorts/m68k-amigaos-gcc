@@ -309,13 +309,11 @@ __stdargs int clock_getenable_attr (clockid_t clock_id, int *attr);
 
 #endif /* _POSIX_CPUTIME or _POSIX_THREAD_CPUTIME */
 
-#if !__BSD_VISIBLE
 #ifndef timeradd
 void timeradd(struct timeval *a, struct timeval *b, struct timeval *res);
 #endif
 #ifndef timersub
 void timersub(struct timeval *a, struct timeval *b, struct timeval *res);
-#endif
 #endif
 
 #ifdef __cplusplus

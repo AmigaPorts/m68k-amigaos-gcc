@@ -866,6 +866,8 @@ LDS_TARGET := $(patsubst lib/%, $(PREFIX)/$(TARGET)/lib/%, $(LOCAL_LDS))
 
 .PHONY: libamiga
 libamiga: $(LIBAMIGA) $(LDS_TARGET)
+	@rsync -ar --delete --no-group sys-include/* $(PREFIX)/$(TARGET)/sys-include
+	@echo "synced sys-include into $(PREFIX)/$(TARGET)/sys-include"
 	@echo "Copied $(words $(LIBAMIGA)) libraries and $(words $(LDS_TARGET)) ldscripts into $(PREFIX)/$(TARGET)/lib"
 
 # Pattern rule: jede einzelne Datei kopieren
@@ -882,7 +884,6 @@ LIBNIX_SRC = $(shell find 2>/dev/null $(PROJECTS)/libnix -not \( -path $(PROJECT
 libnix: $(BUILD)/libnix/_done
 
 $(BUILD)/libnix/_done: libamiga $(BUILD)/ndk-include_ndk $(BUILD)/ndk-include_ndk13 $(BUILD)/_netinclude $(BUILD)/binutils/_done $(BUILD)/gcc/_done $(PROJECTS)/libnix/Makefile.gcc6 $(LIBAMIGA) $(LIBNIX_SRC)
-#	@rsync -a --no-group --delete sys-include/ $(PREFIX)/$(TARGET)/sys-include
 	@mkdir -p $(PREFIX)/$(TARGET)/libnix/lib/libnix
 	@mkdir -p $(BUILD)/libnix
 	@mkdir -p $(PREFIX)/lib/gcc/$(TARGET)/$(GCC_VERSION)
@@ -992,8 +993,6 @@ $(BUILD)/newlib/_done: $(BUILD)/newlib/newlib/libc.a
 	@echo "done" >$@
 
 $(BUILD)/newlib/newlib/libc.a: $(BUILD)/newlib/newlib/Makefile $(NEWLIB_FILES)
-	@rsync -a --no-group $(PROJECTS)/newlib-cygwin/newlib/libc/include/ $(PREFIX)/$(TARGET)/sys-include
-	@rsync -a --no-group $(PROJECTS)/newlib-cygwin/newlib/libc/sys/amigaos/include/stabs.h $(PREFIX)/$(TARGET)/sys-include
 	$(L0)"make newlib"$(L1) $(MAKE) -C $(BUILD)/newlib/newlib $(L2)
 	$(L0)"install newlib"$(L1) $(MAKE) -C $(BUILD)/newlib/newlib install $(L2)
 	@for x in $$(find $(PREFIX)/$(TARGET)/lib/* -name libm.a); do ln -sf $$x $${x%*m.a}__m__.a; done
