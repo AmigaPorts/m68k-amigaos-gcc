@@ -1,5 +1,5 @@
 amiga-netinclude   https://franke.ms/git/bebbo/amiga-netinclude	master
-binutils           https://franke.ms/git/bebbo/binutils-gdb		amiga
+binutils           https://franke.ms/git/bebbo/binutils-gdb		amiga-2.46
 clib2              https://github.com/adtools/clib2				master
 fd2pragma          https://github.com/adtools/fd2pragma			master
 fd2sfd             https://franke.ms/git/bebbo/fd2sfd			master
