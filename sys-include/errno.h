@@ -1,20 +1,11 @@
-#ifndef _ERRNO_H
-#define _ERRNO_H
+#ifndef __ERRNO_H__
+#define __ERRNO_H__
 
-#ifdef __cplusplus
-extern "C" {
-#endif /* __cplusplus */
-
-#ifdef __posix_threads__
-extern int __thread errno;
-#else
-extern int errno;
+#ifndef __error_t_defined
+typedef int error_t;
+#define __error_t_defined 1
 #endif
 
 #include <sys/errno.h>
 
-#ifdef __cplusplus
-}
-#endif /* __cplusplus */
-
-#endif /* _ERRNO_H */
+#endif /* !__ERRNO_H__ */

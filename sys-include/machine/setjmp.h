@@ -96,7 +96,7 @@ _BEGIN_STD_C
 /* Intel MCU jmp_buf only covers callee-saved registers. */
 #  define _JBLEN	6
 # else
-#  include "setjmp-dj.h"
+#  include "../../../amigaoself/include/machine/setjmp-dj.h"
 # endif
 #endif
 

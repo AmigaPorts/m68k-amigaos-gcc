@@ -1,0 +1,10 @@
+Short: GadToools layout toolkit
+Version: 47.2
+Url: https://aminet.net/dev/gui/gtlayout.lha
+
+Include/clib/gtlayout_protos.h
+Include/fd/gtlayout_lib.fd
+Include/fd/gtlayout_lib.sfd = gtlayout.sfd
+Include/libraries/gtlayout.h
+Include/pragmas/gtlayout_pragmas.h
+sfdc : gtlayout.sfd

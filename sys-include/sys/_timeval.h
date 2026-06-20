@@ -49,7 +49,6 @@ typedef	_TIME_T_	time_t;
 /*
  * Structure returned by gettimeofday(2) system call, and used in other calls.
  */
-#if __STDC_VERSION__ >= 199901L
 struct timeval {
     union {
         time_t          tv_sec;         /* seconds */
@@ -60,14 +59,6 @@ struct timeval {
         suseconds_t     tv_micro;
     };
 };
-#else
-struct timeval {
-        time_t          tv_sec;         /* seconds */
-        suseconds_t     tv_usec;        /* and microseconds */
-};
-#define tv_secs tv_sec
-#define tv_micro tv_usec
-#endif
 
 #if __BSD_VISIBLE
 #ifndef _KERNEL			/* NetBSD/OpenBSD compatible interfaces */

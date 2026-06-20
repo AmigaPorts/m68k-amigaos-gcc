@@ -10,12 +10,23 @@ Currently, these tools are built:
 * gcc with libs for C/C++/ObjC
 * fd2sfd
 * fd2pragma
-* ira
 * sfdc
 * vbcc
 * vlink
 * libnix
-* ixemul (not really, but the headers are used)
+
+# Branches
+## Notable branches of gcc
+* `amiga6`: The default branch providing gcc-6.5.0b with a lot of hacks^^
+* `amiga10.4`: gcc-10.4.0  supports register parameters
+* `amiga13.4`: gcc-13.4.0  supports register parameters
+* `amiga15.2`: gcc-15.2.0  supports register parameters
+* `amiga16.1`: gcc-16.1.0  supports register parameters
+* `68080regs`: gcc-6.5.0b supporting the B0-B7/E0-E7 AMMX registers of the Apollo 68080 (experimental)
+ 
+## Notable branches of binutils
+* `amiga-2.38`: binutils 2.38 with amigaos support and stabs debugging
+* `amiga-2.46`: binutils 2.38 with amigaos support and dwarf2 debugging.
 
 # COPYRIGHTS
 * amiga-netinclude: 'Roadshow' -- Amiga TCP/IP stack, Copyright © 2001-2016 by Olaf Barthel. Freely Distributable.
@@ -251,14 +262,7 @@ cd amiga-gcc
 export PREFIX=/opt/amiga13
 make branch branch=amiga13.1 mod=gcc
 make all -j20
-```
-
-### Notable branches of gcc
-* `amiga6`: The default branch providing gcc-6.5.0b with a lot of hacks^^
-* `amiga13.3`: gcc-13.3.0  supports register parameters
-* `amiga15.2`: gcc-15.2.0  supports register parameters
-* `68080regs`: gcc-6.5.0b supporting the B0-B7/E0-E7 AMMX registers of the Apollo 68080 (experimental)
- 
+``` 
 
 ## Fortran support
 m68k-amigaos-gfortran is available now too. To build it add `ADDLANG=fortran`:

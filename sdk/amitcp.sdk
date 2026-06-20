@@ -1,0 +1,9 @@
+Short: SDK for the AmiTCP/IP protocol stack
+Version: 4.3
+Url: https://www.aminet.net/comm/tcp/AmiTCP-SDK-4.3.lha
+
+AmiTCP-SDK-4.3/netinclude/devices/netinfo.h
+AmiTCP-SDK-4.3/netinclude/devices/sana2.h
+AmiTCP-SDK-4.3/netinclude/devices/sana2.i
+AmiTCP-SDK-4.3/netinclude/devices/sana2specialstats.h
+AmiTCP-SDK-4.3/netinclude/devices/sana2specialstats.i

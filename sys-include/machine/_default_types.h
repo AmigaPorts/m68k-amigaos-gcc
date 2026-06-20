@@ -5,7 +5,6 @@
 #ifndef _MACHINE__DEFAULT_TYPES_H
 #define _MACHINE__DEFAULT_TYPES_H
 
-#include <_ansi.h>
 #include <sys/features.h>
 
 /*
@@ -34,24 +33,9 @@
 #define __have_long32 1
 #endif
 
-_BEGIN_STD_C
-
-#ifndef __INT8_TYPE__
-#define __INT8_TYPE__ char
+#ifdef __cplusplus
+extern "C" {
 #endif
-
-#ifndef __INT16_TYPE__
-#define __INT16_TYPE__ short
-#endif
-
-#ifndef __INT32_TYPE__
-#define __INT32_TYPE__ long int
-#endif
-
-#ifndef __INT64_TYPE__
-#define __INT64_TYPE__ long long int
-#endif
-
 
 #ifdef __INT8_TYPE__
 typedef __INT8_TYPE__ __int8_t;
@@ -259,6 +243,8 @@ typedef unsigned long __uintptr_t;
 
 #undef __EXP
 
-_END_STD_C
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _MACHINE__DEFAULT_TYPES_H */

@@ -36,10 +36,6 @@ extern "C" {
 # endif /* !__ASSERT_FUNC */
 #endif /* !NDEBUG */
 
-#ifndef __stdargs
-#define __stdargs
-#endif
-
 __stdargs void __assert (const char *, int, const char *)
 	    _ATTRIBUTE ((__noreturn__));
 __stdargs void __assert_func (const char *, int, const char *, const char *)

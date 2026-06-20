@@ -17,10 +17,6 @@
 
 #ifndef _SYS_TYPES_H
 
-#ifndef __stdargs
-#define __stdargs
-#endif
-
 #include <_ansi.h>
 #include <sys/cdefs.h>
 #include <machine/_types.h>
@@ -242,6 +238,27 @@ typedef	__int64_t	sbintime_t;
 #include <sys/features.h>
 #include <sys/_pthreadtypes.h>
 #include <machine/types.h>
+
+static inline unsigned int dev_major (unsigned long int dev)
+{
+	return ((dev >> 16) & 0xffff);
+}
+
+static inline unsigned int dev_minor (unsigned long int dev)
+{
+	return (dev & 0xffff);
+}
+
+static inline unsigned long int dev_makedev (unsigned int major, unsigned int minor)
+{
+	return (minor & 0xffff) | ((major & 0xffff) << 16);
+}
+
+/* Access the functions with their traditional names. */
+# define major(dev)			dev_major(dev)
+# define minor(dev)			dev_minor(dev)
+# define makedev(maj, min)	dev_makedev(maj, min)
+
 
 #endif  /* !__need_inttypes */
 

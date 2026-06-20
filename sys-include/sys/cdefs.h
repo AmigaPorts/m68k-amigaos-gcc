@@ -687,8 +687,6 @@
  * once clang is fixed: https://bugs.llvm.org/show_bug.cgi?id=34319 */
 #define	__lockable		__lock_annotate(lockable)
 
-#if __STDC_VERSION__ >= 199901L
-
 /* Function acquires an exclusive or shared lock. */
 #define	__locks_exclusive(...) \
 	__lock_annotate(exclusive_lock_function(__VA_ARGS__))
@@ -717,8 +715,6 @@
 	__lock_annotate(shared_locks_required(__VA_ARGS__))
 #define	__requires_unlocked(...) \
 	__lock_annotate(locks_excluded(__VA_ARGS__))
-
-#endif
 
 /* Function should not be analyzed. */
 #define	__no_lock_analysis	__lock_annotate(no_thread_safety_analysis)

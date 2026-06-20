@@ -82,10 +82,6 @@ _BEGIN_STD_C
 
 /* Reentrant ANSI C functions.  */
 
-#ifndef __stdargs
-#define __stdargs
-#endif
-
 #ifndef __math_68881
 extern __stdargs double atan (double);
 extern __stdargs double cos (double);

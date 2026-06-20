@@ -501,7 +501,7 @@ $(PROJECTS)/gcc/configure:
 # =================================================
 # fd2sfd
 # =================================================
-CONFIG_FD2SFD := --prefix=$(PREFIX) --target=$(TARGET)
+CONFIG_FD2SFD := --prefix=$(PREFIX) --target=m68k-amigaos
 
 fd2sfd: $(BUILD)/fd2sfd/_done
 
@@ -842,25 +842,32 @@ $(BUILD)/_netinclude: $(PROJECTS)/amiga-netinclude/README.md $(BUILD)/ndk-includ
 	@echo "done" >$@
 
 $(PROJECTS)/amiga-netinclude/README.md:
-	@cd $(PROJECTS) &&	git clone -b $(amiga-netinclude_BRANCH) --depth 4 $(amiga-netinclude_URL)
+	@cd $(PROJECTS) && git clone -b $(amiga-netinclude_BRANCH) --depth 4 $(amiga-netinclude_URL)
 
 # =================================================
-# libamiga
+# local-lib – kopiert alle .a, .o und ldscripts/
 # =================================================
-LIBAMIGA := $(PREFIX)/$(TARGET)/lib/libamiga.a
-LIBBAMIGA := $(PREFIX)/$(TARGET)/lib/libb/libamiga.a
 
-libamiga: $(LIBAMIGA) $(LIBBAMIGA)
-	@echo "built $(LIBAMIGA) and $(LIBBAMIGA)"
+# Alle lokalen .a und .o Dateien finden
+LOCAL_LIBS := $(shell find lib -type f \( -name '*.a' -o -name '*.o' \))
 
-$(LIBAMIGA):
+# Zielpfade erzeugen: lib/foo/bar.a → $(PREFIX)/$(TARGET)/lib/foo/bar.a
+LIBAMIGA := $(patsubst lib/%, $(PREFIX)/$(TARGET)/lib/%, $(LOCAL_LIBS))
+
+# Alle Dateien im ldscripts/ Verzeichnis
+LOCAL_LDS := $(shell find lib/ldscripts -type f)
+LDS_TARGET := $(patsubst lib/%, $(PREFIX)/$(TARGET)/lib/%, $(LOCAL_LDS))
+
+.PHONY: libamiga
+libamiga: $(LIBAMIGA) $(LDS_TARGET)
+	@rsync -ar --delete --no-group sys-include/* $(PREFIX)/$(TARGET)/sys-include
+	@echo "synced sys-include into $(PREFIX)/$(TARGET)/sys-include"
+	@echo "Copied $(words $(LIBAMIGA)) libraries and $(words $(LDS_TARGET)) ldscripts into $(PREFIX)/$(TARGET)/lib"
+
+# Pattern rule: jede einzelne Datei kopieren
+$(PREFIX)/$(TARGET)/lib/%: lib/%
 	@mkdir -p $(@D)
-	#@cp $(PROJECTS)/$(NDK_FOLDER_NAME_LIBS)/amiga.lib $@
-	@cp lib/libamiga.a $@
-
-$(LIBBAMIGA):
-	@mkdir -p $(@D)
-	@cp lib/libb/libamiga.a $@
+	@cp $< $@
 
 # =================================================
 # libnix
@@ -870,14 +877,13 @@ LIBNIX_SRC = $(shell find 2>/dev/null $(PROJECTS)/libnix -not \( -path $(PROJECT
 
 libnix: $(BUILD)/libnix/_done
 
-$(BUILD)/libnix/_done: $(BUILD)/newlib/_done $(BUILD)/ndk-include_ndk $(BUILD)/ndk-include_ndk13 $(BUILD)/_netinclude $(BUILD)/binutils/_done $(BUILD)/gcc/_done $(PROJECTS)/libnix/Makefile.gcc6 $(LIBAMIGA) $(LIBNIX_SRC)
-#	@rsync -a --no-group --delete sys-include/ $(PREFIX)/$(TARGET)/sys-include
+$(BUILD)/libnix/_done: libamiga $(BUILD)/ndk-include_ndk $(BUILD)/ndk-include_ndk13 $(BUILD)/_netinclude $(BUILD)/binutils/_done $(BUILD)/gcc/_done $(PROJECTS)/libnix/Makefile.gcc6 $(LIBAMIGA) $(LIBNIX_SRC)
 	@mkdir -p $(PREFIX)/$(TARGET)/libnix/lib/libnix
 	@mkdir -p $(BUILD)/libnix
 	@mkdir -p $(PREFIX)/lib/gcc/$(TARGET)/$(GCC_VERSION)
 	@if [ ! -e $(PREFIX)/lib/gcc/$(TARGET)/$(GCC_VERSION)/libgcc.a ]; then $(PREFIX)/bin/$(TARGET)-ar rcs $(PREFIX)/lib/gcc/$(TARGET)/$(GCC_VERSION)/libgcc.a; fi
-	$(L0)"make libnix"$(L1) CFLAGS="$(CFLAGS_FOR_TARGET)" $(MAKE) -C $(BUILD)/libnix -f $(PROJECTS)/libnix/Makefile.gcc6 root=$(PROJECTS)/libnix all $(L2)
-	$(L0)"install libnix"$(L1) $(MAKE) -C $(BUILD)/libnix -f $(PROJECTS)/libnix/Makefile.gcc6 root=$(PROJECTS)/libnix install $(L2)
+	$(L0)"make libnix"$(L1) CFLAGS="$(CFLAGS_FOR_TARGET)" $(MAKE) -C $(BUILD)/libnix -f $(PROJECTS)/libnix/Makefile.gcc6 target=$(TARGET) root=$(PROJECTS)/libnix all $(L2)
+	$(L0)"install libnix"$(L1) $(MAKE) -C $(BUILD)/libnix -f $(PROJECTS)/libnix/Makefile.gcc6 root=$(PROJECTS)/libnix target=$(TARGET) install $(L2)
 	@rsync --delete -a --no-group $(PROJECTS)/libnix/sources/headers/* $(PREFIX)/$(TARGET)/libnix/include/
 	@echo "done" >$@
 
@@ -981,8 +987,6 @@ $(BUILD)/newlib/_done: $(BUILD)/newlib/newlib/libc.a
 	@echo "done" >$@
 
 $(BUILD)/newlib/newlib/libc.a: $(BUILD)/newlib/newlib/Makefile $(NEWLIB_FILES)
-	@rsync -a --no-group $(PROJECTS)/newlib-cygwin/newlib/libc/include/ $(PREFIX)/$(TARGET)/sys-include
-	@rsync -a --no-group $(PROJECTS)/newlib-cygwin/newlib/libc/sys/amigaos/include/stabs.h $(PREFIX)/$(TARGET)/sys-include
 	$(L0)"make newlib"$(L1) $(MAKE) -C $(BUILD)/newlib/newlib $(L2)
 	$(L0)"install newlib"$(L1) $(MAKE) -C $(BUILD)/newlib/newlib install $(L2)
 	@for x in $$(find $(PREFIX)/$(TARGET)/lib/* -name libm.a); do ln -sf $$x $${x%*m.a}__m__.a; done
@@ -1065,8 +1069,10 @@ endif
 .PHONY: check
 check:
 	@ln -sf $(PREFIX)/$(TARGET)/libnix $(BUILD)/gcc/$(TARGET)/libnix
-	$(MAKE) -C $(BUILD)/gcc check-gcc-c "RUNTESTFLAGS=--target_board=$(board) execute.exp=* SIM=vamos" | grep '# of\|PASS\|FAIL\|===\|Running\|Using' 
-
+	LC_ALL=C LANG=C \
+	$(MAKE) -C $(BUILD)/gcc check-gcc-c \
+	  "RUNTESTFLAGS=--target_board=$(board) execute.exp=* SIM=vamos" \
+	| grep '# of\|PASS\|FAIL\|===\|Running\|Using'
 
 # =================================================
 # info

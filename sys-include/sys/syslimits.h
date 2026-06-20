@@ -37,7 +37,6 @@
 #ifndef _SYS_SYSLIMITS_H_
 #define _SYS_SYSLIMITS_H_
 
-#undef  ARG_MAX
 #define	ARG_MAX			65536	/* max bytes for an exec function */
 #ifndef CHILD_MAX
 #define	CHILD_MAX		   40	/* max simultaneous processes */
@@ -50,7 +49,6 @@
 #ifndef OPEN_MAX
 #define	OPEN_MAX		   64	/* max open files per process */
 #endif
-#undef  PATH_MAX
 #define	PATH_MAX		 1024	/* max bytes in pathname */
 #define	PIPE_BUF		  512	/* max bytes for atomic pipe writes */
 #define	IOV_MAX			 1024	/* max elements in i/o vector */

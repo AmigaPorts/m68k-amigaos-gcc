@@ -10,10 +10,6 @@
 
 _BEGIN_STD_C
 
-#ifndef __stdargs
-#define __stdargs
-#endif
-
 __stdargs int isalnum (int __c);
 __stdargs int isalpha (int __c);
 __stdargs int iscntrl (int __c);
@@ -70,12 +66,7 @@ extern __stdargs int toascii_l (int __c, locale_t __l);
 #define _X	0100
 #define	_B	0200
 
-#ifdef __HAVE_LOCALE_INFO__
-__stdargs const char *__locale_ctype_ptr (void);
-#else
-#define __locale_ctype_ptr()	_ctype_
-#endif
-
+const char *__locale_ctype_ptr (void);
 # define __CTYPE_PTR	(__locale_ctype_ptr ())
 
 #ifndef __cplusplus
@@ -86,16 +77,14 @@ __stdargs const char *__locale_ctype_ptr (void);
    the use of a raw index inside the sizeof triggers the gcc warning if
    __c was of type char, and sizeof masks side effects of the extra __c.
    Meanwhile, the real index to __CTYPE_PTR+1 must be cast to int,
-   since isalpha(0x100000001LL) must equal isalpha(1), rather than being
+   __stdargs since isalpha(0x100000001LL) must equal isalpha(1), rather than being
    an out-of-bounds reference on a 64-bit machine.  */
 #define __ctype_lookup(__c) ((__CTYPE_PTR+sizeof(""[__c]))[(int)(__c)])
 
 #define	isalpha(__c)	(__ctype_lookup(__c)&(_U|_L))
 #define	isupper(__c)	((__ctype_lookup(__c)&(_U|_L))==_U)
 #define	islower(__c)	((__ctype_lookup(__c)&(_U|_L))==_L)
-//#define	isdigit(__c)	(__ctype_lookup(__c)&_N)
-#define isdigit(x) ((unsigned)(x - '0') <= 9)
-
+#define	isdigit(__c)	(__ctype_lookup(__c)&_N)
 #define	isxdigit(__c)	(__ctype_lookup(__c)&(_X|_N))
 #define	isspace(__c)	(__ctype_lookup(__c)&_S)
 #define ispunct(__c)	(__ctype_lookup(__c)&_P)
@@ -111,11 +100,7 @@ __stdargs const char *__locale_ctype_ptr (void);
 #endif
 
 #if __POSIX_VISIBLE >= 200809
-#ifdef __HAVE_LOCALE_INFO__
-__stdargs const char *__locale_ctype_ptr_l (locale_t);
-#else
-#define __locale_ctype_ptr_l(l)	_ctype_
-#endif
+const char *__locale_ctype_ptr_l (locale_t);
 #define __ctype_lookup_l(__c,__l) ((__locale_ctype_ptr_l(__l)+sizeof(""[__c]))[(int)(__c)])
 
 #define	isalpha_l(__c,__l)	(__ctype_lookup_l(__c,__l)&(_U|_L))
@@ -177,7 +162,7 @@ __stdargs const char *__locale_ctype_ptr_l (locale_t);
 #endif /* !__cplusplus */
 
 /* For C++ backward-compatibility only.  */
-extern const char	*_ctype_;
+extern	__IMPORT const char	*_ctype_;
 
 _END_STD_C
 

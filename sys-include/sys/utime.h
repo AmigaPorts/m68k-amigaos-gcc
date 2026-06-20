@@ -15,8 +15,6 @@ struct utimbuf
   time_t modtime; 
 };
 
-__stdargs int utime(const char *filename, const struct utimbuf *times);
- 
 #ifdef __cplusplus
 };
 #endif

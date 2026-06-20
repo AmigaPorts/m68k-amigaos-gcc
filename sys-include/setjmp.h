@@ -11,10 +11,6 @@
 
 _BEGIN_STD_C
 
-#ifndef __stdargs
-#define __stdargs
-#endif
-
 #ifdef __GNUC__
 __stdargs void	longjmp (jmp_buf __jmpb, int __retval)
 			__attribute__ ((__noreturn__));
