@@ -1,0 +1,154 @@
+diff --git a/sources/nix/stdio/statvfs.c b/sources/nix/stdio/statvfs.c
+new file mode 100644
+index 00000000..af270421
+--- /dev/null
++++ b/sources/nix/stdio/statvfs.c
+@@ -0,0 +1,88 @@
++#include <errno.h>
++#include <string.h>
++#include <dos/dosextens.h>
++#include <proto/dos.h>
++#include <proto/exec.h>
++#include <sys/statvfs.h>
++
++extern void __seterrno(void);
++#ifdef IXPATHS
++extern char *__amigapath(const char *path);
++#endif
++
++static unsigned long
++positive_or_zero(LONG value)
++{
++	return value > 0 ? (unsigned long)value : 0;
++}
++
++static void
++fill_statvfs(struct statvfs *buf, const struct InfoData *info)
++{
++	unsigned long blocks = positive_or_zero(info->id_NumBlocks);
++	unsigned long used = positive_or_zero(info->id_NumBlocksUsed);
++	unsigned long block_size = positive_or_zero(info->id_BytesPerBlock);
++	unsigned long free_blocks;
++
++	if (used > blocks)
++		used = blocks;
++	if (block_size == 0)
++		block_size = 512;
++
++	free_blocks = blocks - used;
++
++	memset(buf, 0, sizeof(*buf));
++	buf->f_bsize = block_size;
++	buf->f_frsize = block_size;
++	buf->f_blocks = blocks;
++	buf->f_bfree = free_blocks;
++	buf->f_bavail = free_blocks;
++	buf->f_fsid = (unsigned long)info->id_DiskType;
++	if (info->id_DiskState == ID_WRITE_PROTECTED)
++		buf->f_flag |= ST_RDONLY;
++}
++
++int
++statvfs(const char *name, struct statvfs *buf)
++{
++	struct InfoData info;
++	APTR oldwin;
++	APTR *wptr;
++	BPTR lock;
++	int ret = -1;
++
++	if (name == NULL || buf == NULL)
++	{
++		errno = EFAULT;
++		return -1;
++	}
++
++#ifdef IXPATHS
++	if ((name = __amigapath(name)) == NULL)
++		return -1;
++#endif
++
++	/* Match stat(): avoid DOS requesters while probing the volume. */
++	wptr = &((struct Process *)FindTask(NULL))->pr_WindowPtr;
++	oldwin = *wptr;
++	*wptr = (APTR)ret;
++
++	lock = Lock((CONST_STRPTR)name, SHARED_LOCK);
++	if (lock != 0)
++	{
++		if (Info(lock, &info))
++		{
++			fill_statvfs(buf, &info);
++			ret = 0;
++		}
++		else
++			__seterrno();
++		UnLock(lock);
++	}
++	else
++		__seterrno();
++
++	*wptr = oldwin;
++
++	return ret;
++}
+diff --git a/sources/headers/sys/statvfs.h b/sources/headers/sys/statvfs.h
+new file mode 100644
+index 00000000..15498af6
+--- /dev/null
++++ b/sources/headers/sys/statvfs.h
+@@ -0,0 +1,42 @@
++#ifndef _SYS_STATVFS_H
++#define _SYS_STATVFS_H
++
++#include <sys/types.h>
++
++#ifdef __cplusplus
++extern "C" {
++#endif
++
++#if !defined(__AROS__) && !defined(_FSBLKCNT_T_DECLARED)
++typedef unsigned long fsblkcnt_t;
++typedef unsigned long fsfilcnt_t;
++#define _FSBLKCNT_T_DECLARED
++#endif
++
++struct statvfs
++{
++	unsigned long f_bsize;
++	unsigned long f_frsize;
++	fsblkcnt_t    f_blocks;
++	fsblkcnt_t    f_bfree;
++	fsblkcnt_t    f_bavail;
++
++	fsfilcnt_t    f_files;
++	fsfilcnt_t    f_ffree;
++	fsfilcnt_t    f_favail;
++
++	unsigned long f_fsid;
++	unsigned long f_flag;
++	unsigned long f_namemax;
++};
++
++#define ST_RDONLY         0x0001
++#define ST_NOSUID         0x0002
++#define ST_CASE_SENSITIVE 0x0004
++
++int statvfs(const char *path, struct statvfs *buf);
++
++#ifdef __cplusplus
++}
++#endif
++#endif /* _SYS_STATVFS_H */
+diff --git a/sources/nix13/Makefile.in b/sources/nix13/Makefile.in
+index 9f2cc573..c73e508c 100644
+--- a/sources/nix13/Makefile.in
++++ b/sources/nix13/Makefile.in
+@@ -39,6 +39,7 @@ OBJECTS2= \
+ 	nix/string/strcoll.o \
+ 	nix/string/strxfrm.o \
+ 	nix/time/strftime.o \
++	nix/stdio/statvfs.o \
+ 	nixmain/__nocommandline.o \
+ 	nix20/stdio/open.o 
+ 

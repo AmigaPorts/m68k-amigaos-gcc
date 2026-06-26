@@ -1,0 +1,10 @@
+diff --git a/sources/amiga/misc/ArgArray.c b/sources/amiga/misc/ArgArray.c
+index e6532db..8131dd7 100644
+--- a/sources/amiga/misc/ArgArray.c
++++ b/sources/amiga/misc/ArgArray.c
+@@ -55 +55 @@ STRPTR ArgString(UBYTE **tt, STRPTR entry, STRPTR defstr)
+-  if (!entry || !(str=FindToolType((STRPTR const *)tt,entry)))
++  if (!entry || !(str=FindToolType((CONST_STRPTR *)tt,entry)))
+@@ -64 +64 @@ LONG ArgInt(UBYTE **tt, STRPTR entry, long defval)
+-  if (entry && (str=FindToolType((STRPTR const *)tt,entry)))
++  if (entry && (str=FindToolType((CONST_STRPTR *)tt,entry)))

@@ -1,0 +1,130 @@
+diff --git a/Makefile.gcc6 b/Makefile.gcc6
+index 192f9561..46a1af5f 100644
+--- a/Makefile.gcc6
++++ b/Makefile.gcc6
+@@ -35,7 +35,7 @@ endif
+ # use nix13 or nix20
+ ifeq (,$(lc))
+ CC = $(target)-gcc
+-AR = $(target)-ar
++AR = $(target)-ar --target=amiga
+ AS = $(target)-as
+ 
+ VARIANTS_TO_BUILD = info lib libb libm020 libm020bb libm020bb32 libm881 libm020bb881 libm020bb32881
+diff --git a/sources/amiga/Makefile.in b/sources/amiga/Makefile.in
+index 5131b68c..492e4b8a 100644
+--- a/sources/amiga/Makefile.in
++++ b/sources/amiga/Makefile.in
+@@ -7,7 +7,7 @@ CC =		@CC@
+ CPP =		@CPP@
+ AS =		@AS@
+ 
+-AR =		@AR@
++AR =		@AR@ --target=amiga
+ RANLIB =	@RANLIB@
+ AWK =		@AWK@
+ 
+diff --git a/sources/math/Makefile.in b/sources/math/Makefile.in
+index a6fa3830..29887718 100644
+--- a/sources/math/Makefile.in
++++ b/sources/math/Makefile.in
+@@ -7,7 +7,7 @@ CC =		@CC@
+ CPP =		@CPP@
+ AS =		@AS@
+ 
+-AR =		@AR@
++AR =		@AR@ --target=amiga
+ RANLIB =	@RANLIB@
+ AWK =		@AWK@
+ 
+diff --git a/sources/nix/Makefile.in b/sources/nix/Makefile.in
+index 940e9cdf..bc22cfd7 100644
+--- a/sources/nix/Makefile.in
++++ b/sources/nix/Makefile.in
+@@ -7,7 +7,7 @@ CC =		@CC@
+ CPP =		@CPP@
+ AS =		@AS@
+ 
+-AR =		@AR@
++AR =		@AR@ --target=amiga
+ RANLIB =	@RANLIB@
+ AWK =		@AWK@
+ 
+diff --git a/sources/nix13/Makefile.in b/sources/nix13/Makefile.in
+index 9f2cc573..4a38a98c 100644
+--- a/sources/nix13/Makefile.in
++++ b/sources/nix13/Makefile.in
+@@ -7,7 +7,7 @@ CC =		@CC@
+ CPP =		@CPP@
+ AS =		@AS@
+ 
+-AR =		@AR@
++AR =		@AR@ --target=amiga
+ RANLIB =	@RANLIB@
+ AWK =		@AWK@
+ 
+diff --git a/sources/nix20/Makefile.in b/sources/nix20/Makefile.in
+index f74fd8e0..2875b6bb 100644
+--- a/sources/nix20/Makefile.in
++++ b/sources/nix20/Makefile.in
+@@ -7,7 +7,7 @@ CC =		@CC@
+ CPP =		@CPP@
+ AS =		@AS@
+ 
+-AR =		@AR@
++AR =		@AR@ --target=amiga
+ RANLIB =	@RANLIB@
+ AWK =		@AWK@
+ 
+diff --git a/sources/nixmain/Makefile.in b/sources/nixmain/Makefile.in
+index fcb4a300..a55795f2 100644
+--- a/sources/nixmain/Makefile.in
++++ b/sources/nixmain/Makefile.in
+@@ -6,7 +6,7 @@ CC =		@CC@
+ CPP =		@CPP@
+ AS =		@AS@
+ 
+-AR =		@AR@
++AR =		@AR@ --target=amiga
+ RANLIB =	@RANLIB@
+ AWK =		@AWK@
+ 
+diff --git a/sources/socket/Makefile.in b/sources/socket/Makefile.in
+index 0bbb6a1a..c450a265 100644
+--- a/sources/socket/Makefile.in
++++ b/sources/socket/Makefile.in
+@@ -7,7 +7,7 @@ CC =		@CC@
+ CPP =		@CPP@
+ AS =		@AS@
+ 
+-AR =		@AR@
++AR =		@AR@ --target=amiga
+ RANLIB =	@RANLIB@
+ AWK =		@AWK@
+ 
+diff --git a/sources/stack/Makefile.in b/sources/stack/Makefile.in
+index 74e5f257..44693cc3 100644
+--- a/sources/stack/Makefile.in
++++ b/sources/stack/Makefile.in
+@@ -7,7 +7,7 @@ CC =		@CC@
+ CPP =		@CPP@
+ AS =		@AS@
+ 
+-AR =		@AR@
++AR =		@AR@ --target=amiga
+ RANLIB =	@RANLIB@
+ AWK =		@AWK@
+ 
+diff --git a/sources/stubs/Makefile.in b/sources/stubs/Makefile.in
+index 9ed0a786..855a3214 100644
+--- a/sources/stubs/Makefile.in
++++ b/sources/stubs/Makefile.in
+@@ -7,7 +7,7 @@ CC =		@CC@
+ CPP =		@CPP@
+ AS =		@AS@
+ 
+-AR =		@AR@
++AR =		@AR@ --target=amiga
+ RANLIB =	@RANLIB@
+ AWK =		@AWK@
+ 

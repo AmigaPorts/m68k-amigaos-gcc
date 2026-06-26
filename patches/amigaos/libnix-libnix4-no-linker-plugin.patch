@@ -1,0 +1,13 @@
+diff --git a/Makefile.gcc6 b/Makefile.gcc6
+index a886fc65..fdcd2673 100644
+--- a/Makefile.gcc6
++++ b/Makefile.gcc6
+@@ -238,7 +238,7 @@ $(foreach sub,$(subdirs),$(eval $(call SUBDIR_template,$(sub))))
+ libb/libnix4.library:
+ 	cd libb && $(root)/preplib
+ 	cd libb && $(root)/mkstub libnix4 libnix.def $$(cat ofiles.txt | xargs)
+-	cd libb && $(CC) -shared -noixemul $$(cat ofiles.txt | xargs) \
++	cd libb && $(CC) -fno-use-linker-plugin -shared -noixemul $$(cat ofiles.txt | xargs) \
+ 	libnix4-support/export*.o \
+ 	-o libnix4.library \
+ 	-Wl,-ulibVersionMajor=$(MAJOR),-ulibVersionMinor=$(MINOR),-ulibName=libnix4 \

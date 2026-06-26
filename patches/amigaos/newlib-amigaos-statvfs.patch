@@ -1,0 +1,174 @@
+diff --git a/newlib/libc/sys/amigaos/Makefile.am b/newlib/libc/sys/amigaos/Makefile.am
+index 68644599c..7f0f6c216 100644
+--- a/newlib/libc/sys/amigaos/Makefile.am
++++ b/newlib/libc/sys/amigaos/Makefile.am
+@@ -19,7 +19,7 @@ isinf.c isnan.c \
+ isinf.c isnan.c \
+ cxxglue.c __dosbase.c __unorddf2.c __mathieeedoubbas.c \
+ abort.c basename.c dirname.c __nocommandline.c uname.c \
+-malloc.cpp clock.c
++malloc.cpp clock.c statvfs.c
+ 
+ #syscalls.c trap.S creat.c
+ lib_a_CCASFLAGS = $(AM_CCASFLAGS)
+diff --git a/newlib/libc/sys/amigaos/Makefile.in b/newlib/libc/sys/amigaos/Makefile.in
+index 2e3563d4d..2152dd62e 100644
+--- a/newlib/libc/sys/amigaos/Makefile.in
++++ b/newlib/libc/sys/amigaos/Makefile.in
+@@ -230,7 +230,7 @@ __cmpxf2.c  __divsi3.c  __extendsfdf2.c  __fixunsdfsi.c  __floatsisf.c   __muld
+ isinf.c isnan.c \
+ __dosbase.c __unorddf2.c __mathieeedoubbas.c cxxglue.c \
+ abort.c basename.c dirname.c __nocommandline.c uname.c \
+-malloc.cpp clock.c
++malloc.cpp clock.c statvfs.c
+ 
+ 
+ #syscalls.c trap.S creat.c
+diff --git a/newlib/libc/sys/amigaos/include/sys/statvfs.h b/newlib/libc/sys/amigaos/include/sys/statvfs.h
+new file mode 100644
+index 000000000..15498af66
+--- /dev/null
++++ b/newlib/libc/sys/amigaos/include/sys/statvfs.h
+@@ -0,0 +1,38 @@
++#ifndef _SYS_STATVFS_H
++#define _SYS_STATVFS_H
++
++#include <sys/types.h>
++
++#ifdef __cplusplus
++extern "C" {
++#endif
++
++#if !defined(__AROS__) && !defined(_FSBLKCNT_T_DECLARED)
++typedef unsigned long fsblkcnt_t;
++typedef unsigned long fsfilcnt_t;
++#define _FSBLKCNT_T_DECLARED
++#endif
++
++struct statvfs
++{
++	unsigned long f_bsize;
++	unsigned long f_frsize;
++	fsblkcnt_t    f_blocks;
++	fsblkcnt_t    f_bfree;
++	fsblkcnt_t    f_bavail;
++
++	fsfilcnt_t    f_files;
++	fsfilcnt_t    f_ffree;
++	fsfilcnt_t    f_favail;
++
++	unsigned long f_fsid;
++	unsigned long f_flag;
++	unsigned long f_namemax;
++};
++
++#define ST_RDONLY         0x0001
++#define ST_NOSUID         0x0002
++#define ST_CASE_SENSITIVE 0x0004
++
++int statvfs(const char *path, struct statvfs *buf);
++
++#ifdef __cplusplus
++}
++#endif
++#endif /* _SYS_STATVFS_H */
+diff --git a/newlib/libc/sys/amigaos/statvfs.c b/newlib/libc/sys/amigaos/statvfs.c
+new file mode 100644
+index 000000000..ee0e4767e
+--- /dev/null
++++ b/newlib/libc/sys/amigaos/statvfs.c
+@@ -0,0 +1,87 @@
++#include <errno.h>
++#include <string.h>
++#include <dos/dos.h>
++#include <proto/dos.h>
++#include <sys/statvfs.h>
++
++static unsigned long
++positive_or_zero(LONG value)
++{
++	return value > 0 ? (unsigned long)value : 0;
++}
++
++static void
++set_errno_from_ioerr(void)
++{
++	switch (IoErr())
++	{
++	case ERROR_NO_FREE_STORE:
++		errno = ENOMEM;
++		break;
++	case ERROR_DIR_NOT_FOUND:
++	case ERROR_OBJECT_NOT_FOUND:
++		errno = ENOENT;
++		break;
++	case ERROR_DEVICE_NOT_MOUNTED:
++	case ERROR_NO_DISK:
++		errno = ENXIO;
++		break;
++	case ERROR_DISK_WRITE_PROTECTED:
++		errno = EROFS;
++		break;
++	default:
++		errno = EIO;
++		break;
++	}
++}
++
++static void
++fill_statvfs(struct statvfs *buf, const struct InfoData *info)
++{
++	unsigned long blocks = positive_or_zero(info->id_NumBlocks);
++	unsigned long used = positive_or_zero(info->id_NumBlocksUsed);
++	unsigned long block_size = positive_or_zero(info->id_BytesPerBlock);
++	unsigned long free_blocks;
++
++	if (used > blocks)
++		used = blocks;
++	if (block_size == 0)
++		block_size = 512;
++
++	free_blocks = blocks - used;
++
++	memset(buf, 0, sizeof(*buf));
++	buf->f_bsize = block_size;
++	buf->f_frsize = block_size;
++	buf->f_blocks = blocks;
++	buf->f_bfree = free_blocks;
++	buf->f_bavail = free_blocks;
++	buf->f_fsid = (unsigned long)info->id_DiskType;
++	if (info->id_DiskState == ID_WRITE_PROTECTED)
++		buf->f_flag |= ST_RDONLY;
++}
++
++int
++statvfs(const char *path, struct statvfs *buf)
++{
++	struct InfoData info;
++	BPTR lock;
++	int ret = -1;
++
++	if (path == NULL || buf == NULL)
++	{
++		errno = EFAULT;
++		return -1;
++	}
++
++	lock = Lock((CONST_STRPTR)path, SHARED_LOCK);
++	if (lock == 0)
++	{
++		set_errno_from_ioerr();
++		return -1;
++	}
++
++	if (Info(lock, &info))
++	{
++		fill_statvfs(buf, &info);
++		ret = 0;
++	}
++	else
++		set_errno_from_ioerr();
++
++	UnLock(lock);
++	return ret;
++}
