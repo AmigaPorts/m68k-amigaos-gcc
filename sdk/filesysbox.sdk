@@ -1,6 +1,7 @@
 Short: A set of C macro/defines to make amiga development easier.
 Version: 54.7
 Url: git://github.com/salass00/filesysbox:V54.7
+patch1 : patches/amigaos/filesysbox-statvfs-prototype.patch
 
 include
 include/sys
@@ -23,4 +24,3 @@ stdargs : include/clib/filesysbox_protos.h
 fd2sfd : filesysbox_lib.fd clib/filesysbox_protos.h
 sfdc : filesysbox_lib.sfd cybergfx cybergraphics
 stubs : filesysbox_lib.sfd
-

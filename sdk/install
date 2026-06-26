@@ -153,6 +153,19 @@ case $1 in
 				echo applying patch $patch to build/$2
 				patch -N -p0 -r - -d build/$2 < $patch
 			;;
+			patch1)
+				patch=${a[1]}
+				if patch --forward --dry-run --batch -d build/$2 -p1 -i $patch >/dev/null 2>&1; then
+					echo applying patch $patch to build/$2
+					patch --forward --batch -d build/$2 -p1 -i $patch || exit 1
+				elif patch --reverse --dry-run --batch -d build/$2 -p1 -i $patch >/dev/null 2>&1; then
+					echo patch $patch already applied to build/$2
+				else
+					echo failed to apply patch $patch to build/$2
+					patch --forward --dry-run --batch -d build/$2 -p1 -i $patch
+					exit 1
+				fi
+			;;
 			*)
 				if [ "$line" != "" ]; then
 					if [ "${a[1]}" == "=" ]; then
