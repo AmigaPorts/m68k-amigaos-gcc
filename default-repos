@@ -1,9 +1,9 @@
 amiga-netinclude   https://github.com/AmigaPorts/amiga-netinclude	main
-binutils           https://github.com/AmigaPorts/binutils-gdb		amiga
+binutils           https://github.com/AmigaPorts/binutils-gdb		amiga-2.46
 clib2              https://github.com/AmigaPorts/clib2			master
 fd2pragma          https://github.com/AmigaPorts/fd2pragma		master
 fd2sfd             https://github.com/AmigaPorts/fd2sfd			master
-gcc                https://github.com/AmigaPorts/gcc			amiga15.2
+gcc                https://github.com/AmigaPorts/gcc			amiga16.1
 ira                https://github.com/AmigaPorts/ira			master
 ixemul             https://github.com/AmigaPorts/ixemul			master
 lha                https://github.com/AmigaPorts/lha			master
