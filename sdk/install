@@ -31,8 +31,20 @@ case $1 in
 					rsync -r projects/$file/* build/$2/
 				else
 					if [ ! -e "download/$file" ]; then
-						echo wget ${a[1]}:${a[2]} -O download/$file
-						wget ${a[1]}:${a[2]} -O download/$file || (rm download/$file; exit 1)
+						url=${a[1]}:${a[2]}
+						if command -v curl >/dev/null 2>&1; then
+							echo curl --fail --location "$url" --output "download/$file"
+							curl --fail --location "$url" --output "download/$file" || {
+								rm -f "download/$file"
+								exit 1
+							}
+						else
+							echo wget "$url" -O "download/$file"
+							wget "$url" -O "download/$file" || {
+								rm -f "download/$file"
+								exit 1
+							}
+						fi
 					fi
 					if [ ! -e "build/$2" ] || [ "$(ls -l build/$2)" == "total 0" ]; then
 						mkdir -p build/$2
@@ -152,6 +164,17 @@ case $1 in
 				patch=patches/$2/${a[1]}
 				echo applying patch $patch to build/$2
 				patch -N -p0 -r - -d build/$2 < $patch
+			;;
+			copy)
+				source_file=${a[1]}
+				destination_file=${a[2]}
+				if [ -z "$source_file" ] || [ -z "$destination_file" ]; then
+					echo "copy requires a source and destination"
+					exit 1
+				fi
+				mkdir -p "$3/$(dirname "$destination_file")"
+				echo cp "build/$2/$source_file" "$3/$destination_file"
+				cp "build/$2/$source_file" "$3/$destination_file" || exit 1
 			;;
 			*)
 				if [ "$line" != "" ]; then
