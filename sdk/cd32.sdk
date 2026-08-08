@@ -1,0 +1,8 @@
+Short: Commodore CD32 developer kit
+Version: 40.15
+Url: https://www.cd32-allianz.de/downloads/software/CD32_DeveloperKit.lha
+
+cd32_developerkit/CD32-Tools/mpegsup-1/fd/mpeg_lib.fd
+cd32_developerkit/CD32-Tools/mpegsup-1/include/clib/mpeg_protos.h
+cd32_developerkit/CD32-Tools/mpegsup-1/include/devices/mpeg.h
+cd32_developerkit/CD32-Tools/mpegsup-1/include/devices/mpeg.i
