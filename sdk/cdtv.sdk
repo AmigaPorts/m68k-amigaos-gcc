@@ -1,6 +1,8 @@
 Short: Commodore CDTV developer kit
 Version: 2.0
 Url: https://www.cd32-allianz.de/downloads/software/CDTV_DeveloperKit.lha
+FallbackUrl: http://www.cd32-allianz.de/downloads/software/CDTV_DeveloperKit.lha
+Sha256: 5497a8fefca8ade4a509f655eb4a4b3737b9652c16d8cdf934c76fe2dfbe0674
 
 copy : cdtv/cdtvtools-11/includes/BOOKMARK.H m68k-amigaos/include/devices/bookmark.h
 copy : cdtv/cdtvtools-11/includes/CDFS.H m68k-amigaos/include/devices/cdfs.h
