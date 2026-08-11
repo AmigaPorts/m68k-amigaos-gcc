@@ -1,0 +1,10 @@
+Short: Commodore CD32 developer kit
+Version: 40.15
+Url: https://www.cd32-allianz.de/downloads/software/CD32_DeveloperKit.lha
+FallbackUrl: http://www.cd32-allianz.de/downloads/software/CD32_DeveloperKit.lha
+Sha256: 05c53b907ab3ea5874cec9b79b45eb8d760d51b569421d9f556ac2b41124d318
+
+cd32_developerkit/CD32-Tools/mpegsup-1/fd/mpeg_lib.fd
+cd32_developerkit/CD32-Tools/mpegsup-1/include/clib/mpeg_protos.h
+cd32_developerkit/CD32-Tools/mpegsup-1/include/devices/mpeg.h
+cd32_developerkit/CD32-Tools/mpegsup-1/include/devices/mpeg.i

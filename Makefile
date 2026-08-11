@@ -56,7 +56,8 @@ define apply_amiga_patch
 endef
 
 ifneq ($(NDK),3.9)
-NDK_URL              := http://aminet.net/dev/misc/NDK3.2.lha
+NDK_URL              := https://aminet.net/dev/misc/NDK3.2.lha
+NDK_SHA256           := 96cabd4ad683dced632e147bf86dee0f50dcb1254386216c25c362916a6409bb
 NDK_ARC_NAME         := NDK3.2
 NDK_FOLDER_NAME      := NDK3.2
 NDK_FOLDER_NAME_H    := NDK3.2/Include_H
@@ -66,6 +67,7 @@ NDK_FOLDER_NAME_SFD  := NDK3.2/SFD
 NDK_FOLDER_NAME_LIBS := NDK3.2/lib
 else
 NDK_URL              := http://hp.alinea-computer.de/AmigaOS/NDK39.lha
+NDK_SHA256           :=
 NDK_ARC_NAME         := NDK3.9
 NDK_FOLDER_NAME      := NDK_3.9/Include
 NDK_FOLDER_NAME_H    := NDK_3.9/Include/include_h
@@ -137,22 +139,58 @@ endif
 # =================================================
 # download files
 # =================================================
+# get-file(label, url, archive name, optional SHA-256)
 define get-file
-$(L0)"downloading $(1)"$(L1) cd $(DOWNLOAD); \
-  mv $(3) $(3).bak; \
-  wget $(2) -O $(3).neu; \
-  if [ -s $(3).neu ]; then \
-    if [ "$$(cmp --silent $(3).neu $(3).bak); echo $$?" == 0 ]; then \
-      mv $(3).bak $(3); \
-      rm $(3).neu; \
-    else \
-      mv $(3).neu $(3); \
-      rm -f $(3).bak; \
-    fi \
-  else \
-    rm $(3).neu; \
+$(L0)"downloading $(1)"$(L1) cd "$(DOWNLOAD)" || exit 1; \
+  archive="$(3)"; \
+  archive_tmp="$${archive}.neu"; \
+  expected_sha256="$(4)"; \
+  rm -f "$$archive_tmp"; \
+  download_status=1; \
+  for download_attempt in 1 2 3 4; do \
+    if wget --timeout=10 --tries=1 "$(2)" -O "$$archive_tmp"; then \
+      download_status=0; \
+      break; \
+    fi; \
+    rm -f "$$archive_tmp"; \
+    if [ "$$download_attempt" -lt 4 ]; then \
+      echo "download attempt $$download_attempt/4 failed; retrying" >&2; \
+      sleep "$$download_attempt"; \
+    fi; \
+  done; \
+  if [ "$$download_status" -ne 0 ]; then \
+    echo "failed to download $(2)" >&2; \
+    exit 1; \
   fi; \
-  cd .. $(L2)
+  if [ ! -s "$$archive_tmp" ]; then \
+    echo "downloaded archive is empty: $$archive_tmp" >&2; \
+    rm -f "$$archive_tmp"; \
+    exit 1; \
+  fi; \
+  if [ -n "$$expected_sha256" ]; then \
+    if command -v sha256sum >/dev/null 2>&1; then \
+      actual_sha256=$$(sha256sum "$$archive_tmp"); \
+    elif command -v shasum >/dev/null 2>&1; then \
+      actual_sha256=$$(shasum -a 256 "$$archive_tmp"); \
+    else \
+      echo "cannot verify $$archive_tmp: sha256sum or shasum is required" >&2; \
+      rm -f "$$archive_tmp"; \
+      exit 1; \
+    fi; \
+    actual_sha256=$${actual_sha256%%[[:space:]]*}; \
+    if [ "$$actual_sha256" != "$$expected_sha256" ]; then \
+      echo "checksum mismatch for $$archive_tmp" >&2; \
+      echo "expected: $$expected_sha256" >&2; \
+      echo "actual:   $$actual_sha256" >&2; \
+      rm -f "$$archive_tmp"; \
+      exit 1; \
+    fi; \
+  fi; \
+  if [ -e "$$archive" ] && cmp --silent "$$archive_tmp" "$$archive"; then \
+    rm -f "$$archive_tmp"; \
+  else \
+    mv -f "$$archive_tmp" "$$archive"; \
+  fi $(L2)
 endef
 
 # =================================================
@@ -811,7 +849,7 @@ $(PROJECTS)/$(NDK_FOLDER_NAME).info: $(BUILD)/_lha_done $(DOWNLOAD)/$(NDK_ARC_NA
 	@touch $(PROJECTS)/$(NDK_FOLDER_NAME).info
 
 $(DOWNLOAD)/$(NDK_ARC_NAME).lha:
-	$(call get-file,$(NDK_ARC_NAME),$(NDK_URL),$(NDK_ARC_NAME).lha)
+	$(call get-file,$(NDK_ARC_NAME),$(NDK_URL),$(NDK_ARC_NAME).lha,$(NDK_SHA256))
 
 
 # =================================================

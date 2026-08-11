@@ -10,7 +10,7 @@
                 "arm64"
             ],
             "BuildIfSuccessful": [
-                "docker-amiga-gcc"
+                "AmigaDev/docker-amiga-gcc"
             ],
             "BuildParam": "m68k-amigaos"
         }

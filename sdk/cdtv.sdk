@@ -1,0 +1,15 @@
+Short: Commodore CDTV developer kit
+Version: 2.0
+Url: https://www.cd32-allianz.de/downloads/software/CDTV_DeveloperKit.lha
+FallbackUrl: http://www.cd32-allianz.de/downloads/software/CDTV_DeveloperKit.lha
+Sha256: 5497a8fefca8ade4a509f655eb4a4b3737b9652c16d8cdf934c76fe2dfbe0674
+
+copy : cdtv/cdtvtools-11/includes/BOOKMARK.H m68k-amigaos/include/devices/bookmark.h
+copy : cdtv/cdtvtools-11/includes/CDFS.H m68k-amigaos/include/devices/cdfs.h
+copy : cdtv/cdtvtools-11/includes/CDTV.H m68k-amigaos/include/devices/cdtv.h
+copy : cdtv/cdtvtools-11/includes/CDTV.H m68k-amigaos/include/cdtv/cdtv.h
+copy : cdtv/cdtvtools-11/includes/CDTVPREFS.H m68k-amigaos/include/devices/cdtvprefs.h
+copy : cdtv/cdtvtools-11/includes/JOYMOUSE.H m68k-amigaos/include/devices/joymouse.h
+copy : cdtv/cdtvtools-11/includes/KEYCLICK.H m68k-amigaos/include/devices/keyclick.h
+copy : cdtv/cdtvtools-11/includes/SCREENSAVER.H m68k-amigaos/include/devices/screensaver.h
+copy : cdtv/cdtvtools-20/includes/PLAYERPREFS.FD m68k-amigaos/lib/fd/playerprefs_lib.fd
