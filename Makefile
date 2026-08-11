@@ -19,7 +19,6 @@ UNAME_S := $(shell uname -s)
 BUILD := $(shell pwd)/build-$(UNAME_S)-$(TARGET)
 PROJECTS := $(shell pwd)/projects
 DOWNLOAD := $(shell pwd)/download
-AMIGA_PATCH_DIR := $(shell pwd)/patches/amigaos
 __BUILDDIR := $(shell mkdir -p $(BUILD))
 __PROJECTDIR := $(shell mkdir -p $(PROJECTS))
 __DOWNLOADDIR := $(shell mkdir -p $(DOWNLOAD))
@@ -41,19 +40,6 @@ get_url = $(shell grep $(1) .repos | $(SED) -e 's/[[:blank:]]\+/ /g' | cut -d' '
 get_branch = $(shell grep $(1) .repos | $(SED) -e 's/[[:blank:]]\+/ /g' | cut -d' ' -f3)
 $(foreach modu,$(modules),$(eval $(modu)_URL=$(call get_url,$(modu))))
 $(foreach modu,$(modules),$(eval $(modu)_BRANCH=$(call get_branch,$(modu))))
-
-define apply_amiga_patch
-	@if patch --forward --dry-run --batch -d $(1) -p1 -i $(2) >/dev/null 2>&1; then \
-		echo "applying $(2)"; \
-		patch --forward --batch -d $(1) -p1 -i $(2); \
-	elif patch --reverse --dry-run --batch -d $(1) -p1 -i $(2) >/dev/null 2>&1; then \
-		echo "already applied $(2)"; \
-	else \
-		echo "failed to apply $(2)" >&2; \
-		patch --forward --dry-run --batch -d $(1) -p1 -i $(2); \
-		exit 1; \
-	fi
-endef
 
 ifneq ($(NDK),3.9)
 NDK_URL              := https://aminet.net/dev/misc/NDK3.2.lha
@@ -369,8 +355,6 @@ update-vlink: $(PROJECTS)/vlink/Makefile
 
 update-libnix: $(PROJECTS)/libnix/Makefile.gcc6
 	@cd $(PROJECTS)/libnix && git pull
-	@rm -f $(PROJECTS)/libnix/.amigaos-patches-applied
-	+$(MAKE) $(PROJECTS)/libnix/.amigaos-patches-applied
 
 update-ixemul: $(PROJECTS)/ixemul/configure
 	@cd $(PROJECTS)/ixemul && git pull
@@ -389,8 +373,6 @@ update-ndk: $(DOWNLOAD)/$(NDK_ARC_NAME).lha
 
 update-newlib: $(PROJECTS)/newlib-cygwin/newlib/configure
 	@cd $(PROJECTS)/newlib-cygwin && git pull
-	@rm -f $(PROJECTS)/newlib-cygwin/.amigaos-patches-applied
-	+$(MAKE) $(PROJECTS)/newlib-cygwin/.amigaos-patches-applied
 
 update-netinclude: $(PROJECTS)/amiga-netinclude/README.md
 	@cd $(PROJECTS)/amiga-netinclude && git pull
@@ -920,17 +902,11 @@ $(LIBBAMIGA):
 # libnix
 # =================================================
 
-LIBNIX_PATCHES := \
-	$(AMIGA_PATCH_DIR)/libnix-findtooltype-const.patch \
-	$(AMIGA_PATCH_DIR)/libnix-amigaos-ar-target.patch \
-	$(AMIGA_PATCH_DIR)/libnix-libnix4-no-linker-plugin.patch \
-	$(AMIGA_PATCH_DIR)/libnix-amigaos-statvfs.patch
-
 LIBNIX_SRC = $(shell find 2>/dev/null $(PROJECTS)/libnix -not \( -path $(PROJECTS)/libnix/.git -prune \) -not \( -path $(PROJECTS)/libnix/sources/stubs/libbases -prune \) -not \( -path $(PROJECTS)/libnix/sources/stubs/libnames -prune \) -type f)
 
 libnix: $(BUILD)/libnix/_done
 
-$(BUILD)/libnix/_done: $(BUILD)/newlib/_done $(BUILD)/ndk-include_ndk $(BUILD)/ndk-include_ndk13 $(BUILD)/_netinclude $(BUILD)/binutils/_done $(BUILD)/gcc/_done $(PROJECTS)/libnix/.amigaos-patches-applied $(LIBAMIGA) $(LIBNIX_SRC)
+$(BUILD)/libnix/_done: $(BUILD)/newlib/_done $(BUILD)/ndk-include_ndk $(BUILD)/ndk-include_ndk13 $(BUILD)/_netinclude $(BUILD)/binutils/_done $(BUILD)/gcc/_done $(PROJECTS)/libnix/Makefile.gcc6 $(LIBAMIGA) $(LIBNIX_SRC)
 #	@rsync -a --no-group --delete sys-include/ $(PREFIX)/$(TARGET)/sys-include
 	@mkdir -p $(PREFIX)/$(TARGET)/libnix/lib/libnix
 	@mkdir -p $(BUILD)/libnix
@@ -943,13 +919,6 @@ $(BUILD)/libnix/_done: $(BUILD)/newlib/_done $(BUILD)/ndk-include_ndk $(BUILD)/n
 
 $(PROJECTS)/libnix/Makefile.gcc6:
 	@cd $(PROJECTS) &&	git clone -b $(libnix_BRANCH) --depth 4 $(libnix_URL)
-
-$(PROJECTS)/libnix/.amigaos-patches-applied: $(PROJECTS)/libnix/Makefile.gcc6 $(LIBNIX_PATCHES)
-	$(call apply_amiga_patch,$(PROJECTS)/libnix,$(AMIGA_PATCH_DIR)/libnix-findtooltype-const.patch)
-	$(call apply_amiga_patch,$(PROJECTS)/libnix,$(AMIGA_PATCH_DIR)/libnix-amigaos-ar-target.patch)
-	$(call apply_amiga_patch,$(PROJECTS)/libnix,$(AMIGA_PATCH_DIR)/libnix-libnix4-no-linker-plugin.patch)
-	$(call apply_amiga_patch,$(PROJECTS)/libnix,$(AMIGA_PATCH_DIR)/libnix-amigaos-statvfs.patch)
-	@touch $@
 
 # =================================================
 # gcc libs
@@ -1039,7 +1008,6 @@ $(PROJECTS)/aros-stuff/pthreads/Makefile:
 # newlib
 # =================================================
 NEWLIB_CONFIG := CC=$(TARGET)-gcc CXX=$(TARGET)-g++
-NEWLIB_PATCHES := $(AMIGA_PATCH_DIR)/newlib-amigaos-statvfs.patch
 NEWLIB_FILES = $(shell find 2>/dev/null $(PROJECTS)/newlib-cygwin/newlib -type f)
 
 .PHONY: newlib
@@ -1056,7 +1024,7 @@ $(BUILD)/newlib/newlib/libc.a: $(BUILD)/newlib/newlib/Makefile $(NEWLIB_FILES)
 	@for x in $$(find $(PREFIX)/$(TARGET)/lib/* -name libm.a); do ln -sf $$x $${x%*m.a}__m__.a; done
 	@touch $@
 
-$(BUILD)/newlib/newlib/Makefile: $(PROJECTS)/newlib-cygwin/.amigaos-patches-applied $(BUILD)/ndk-include_ndk $(BUILD)/gcc/_done
+$(BUILD)/newlib/newlib/Makefile: $(PROJECTS)/newlib-cygwin/newlib/configure $(BUILD)/ndk-include_ndk $(BUILD)/gcc/_done
 	@mkdir -p $(BUILD)/newlib/newlib
 	@if [ ! -f "$(BUILD)/newlib/newlib/Makefile" ]; then \
 	$(L00)"configure newlib"$(L1) cd $(BUILD)/newlib/newlib && $(NEWLIB_CONFIG) CFLAGS="$(CFLAGS_FOR_TARGET)" CC_FOR_BUILD="$(CC)" CXXFLAGS="$(CXXFLAGS_FOR_TARGET)" $(PROJECTS)/newlib-cygwin/newlib/configure --host=$(TARGET) --prefix=$(PREFIX) --enable-newlib-io-long-long --enable-newlib-io-c99-formats --enable-newlib-reent-small --enable-newlib-mb --enable-newlib-long-time_t $(L2) \
@@ -1064,10 +1032,6 @@ $(BUILD)/newlib/newlib/Makefile: $(PROJECTS)/newlib-cygwin/.amigaos-patches-appl
 
 $(PROJECTS)/newlib-cygwin/newlib/configure:
 	@cd $(PROJECTS) &&	git clone -b $(newlib-cygwin_BRANCH) --depth 4  $(newlib-cygwin_URL)
-
-$(PROJECTS)/newlib-cygwin/.amigaos-patches-applied: $(PROJECTS)/newlib-cygwin/newlib/configure $(NEWLIB_PATCHES)
-	$(call apply_amiga_patch,$(PROJECTS)/newlib-cygwin,$(AMIGA_PATCH_DIR)/newlib-amigaos-statvfs.patch)
-	@touch $@
 
 # =================================================
 # ixemul
