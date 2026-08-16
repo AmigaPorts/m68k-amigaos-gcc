@@ -1,0 +1,22 @@
+diff --git a/include/sys/statvfs.h b/include/sys/statvfs.h
+index dd1b540..cb0482f 100644
+--- a/include/sys/statvfs.h
++++ b/include/sys/statvfs.h
+@@ -1,6 +1,8 @@
+ #ifndef _SYS_STATVFS_H
+ #define _SYS_STATVFS_H
+ 
++#include <sys/types.h>
++
+ #ifdef __cplusplus
+ extern "C" {
+ #endif
+@@ -31,6 +33,8 @@ struct statvfs
+ #define ST_NOSUID         0x0002 /* Does not support the semantics of the ST_ISUID and ST_ISGID file mode bits. */
+ #define ST_CASE_SENSITIVE 0x0004 /* The file system is case sensitive. */
+ 
++int statvfs(const char *path, struct statvfs *buf);
++
+ #ifdef __cplusplus
+ }
+ #endif

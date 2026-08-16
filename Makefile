@@ -407,9 +407,7 @@ update-mpfr:
 # =================================================
 CONFIG_BINUTILS =--prefix=$(PREFIX) --target=$(TARGET) --disable-werror --enable-tui --disable-nls
 
-ifneq (m68k-elf,$(TARGET))
-CONFIG_BINUTILS += --disable-plugins
-endif
+CONFIG_BINUTILS += --enable-plugins
 
 # FreeBSD, OSX : libs added by the command brew install gmp
 ifeq (Darwin, $(findstring Darwin, $(UNAME_S)))
