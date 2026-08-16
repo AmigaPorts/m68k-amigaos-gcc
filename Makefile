@@ -322,7 +322,7 @@ update: update-gcc update-binutils update-fd2sfd update-fd2pragma update-ira upd
 	+$(MAKE) -B $(DOWNLOAD)/vbcc_target_m68k-kick13.lha
 	+$(MAKE) -B $(DOWNLOAD)/$(NDK_ARC_NAME).lha
 	+$(MAKE) -B $(DOWNLOAD)/ixemul-sdk.lha
-	+$(MAKE) -B $(DOWNLOAD)/$(ZLIB).tar.xz
+	+$(MAKE) -B $(DOWNLOAD)/$(ZLIB).tar.gz
 	+$(MAKE) -B $(DOWNLOAD)/$(LIBPNG).tar.xz
 	+$(MAKE) -B $(DOWNLOAD)/$(LIBFREETYPE).tar.xz
 
@@ -1215,7 +1215,7 @@ MULTICONFIGURE = $(L0)"configure $1"$(L1) $(foreach T,$(subst MODNAME,$1,$(MULTI
 # =================================================
 # zlib
 # =================================================
-ZLIB=zlib-1.3.2
+ZLIB=zlib-1.3.1
 
 .PHONY: zlib clean-zlib
 
@@ -1241,12 +1241,12 @@ $(BUILD)/$(ZLIB)/Makefile: $(PROJECTS)/$(ZLIB)/configure
 	$(call MULTICONFIGURE,$(ZLIB),libz.a,)
 	@touch $@
 
-$(PROJECTS)/$(ZLIB)/configure: $(DOWNLOAD)/$(ZLIB).tar.xz
-	tar -C $(PROJECTS) -xf $(DOWNLOAD)/$(ZLIB).tar.xz
+$(PROJECTS)/$(ZLIB)/configure: $(DOWNLOAD)/$(ZLIB).tar.gz
+	tar -C $(PROJECTS) -xf $(DOWNLOAD)/$(ZLIB).tar.gz
 	@touch $@
 
-$(DOWNLOAD)/$(ZLIB).tar.xz:
-	$(call get-file,zlib,https://zlib.net/$(ZLIB).tar.xz,$(ZLIB).tar.xz)
+$(DOWNLOAD)/$(ZLIB).tar.gz:
+	$(call get-file,zlib,https://zlib.net/fossils/$(ZLIB).tar.gz,$(ZLIB).tar.gz)
 
 # =================================================
 # libpng
