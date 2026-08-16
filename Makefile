@@ -1215,7 +1215,7 @@ MULTICONFIGURE = $(L0)"configure $1"$(L1) $(foreach T,$(subst MODNAME,$1,$(MULTI
 # =================================================
 # zlib
 # =================================================
-ZLIB=zlib-1.2.13
+ZLIB=zlib-1.3.2
 
 .PHONY: zlib clean-zlib
 
