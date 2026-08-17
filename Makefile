@@ -409,6 +409,10 @@ CONFIG_BINUTILS =--prefix=$(PREFIX) --target=$(TARGET) --disable-werror --enable
 
 CONFIG_BINUTILS += --enable-plugins
 
+# readelf's optional msgpack note decoding is useless here, and its
+# autodetection has produced readelf link failures on some hosts.
+CONFIG_BINUTILS += --without-msgpack
+
 # FreeBSD, OSX : libs added by the command brew install gmp
 ifeq (Darwin, $(findstring Darwin, $(UNAME_S)))
 	BREW_PREFIX := $$(brew --prefix)
@@ -972,7 +976,7 @@ $(BUILD)/libdebug/_done: $(BUILD)/libdebug/Makefile
 	@cp $(BUILD)/libdebug/libdebug.a $(PREFIX)/$(TARGET)/lib/
 	@echo "done" >$@
 
-$(BUILD)/libdebug/Makefile: $(BUILD)/libnix/_done $(PROJECTS)/libdebug/configure $(shell find 2>/dev/null $(PROJECTS)/libdebug -not \( -path $(PROJECTS)/libdebug/.git -prune \) -type f)
+$(BUILD)/libdebug/Makefile: $(BUILD)/gcc/_libgcc_done $(BUILD)/libnix/_done $(PROJECTS)/libdebug/configure $(shell find 2>/dev/null $(PROJECTS)/libdebug -not \( -path $(PROJECTS)/libdebug/.git -prune \) -type f)
 	@mkdir -p $(BUILD)/libdebug
 	$(L0)"configure libdebug"$(L1) cd $(BUILD)/libdebug && LD=$(TARGET)-ld CC=$(TARGET)-gcc CFLAGS="$(CFLAGS_FOR_TARGET)" $(PROJECTS)/libdebug/configure $(CONFIG_LIBDEBUG) $(L2)
 
@@ -1016,7 +1020,7 @@ newlib: $(BUILD)/newlib/_done
 $(BUILD)/newlib/_done: $(BUILD)/newlib/newlib/libc.a
 	@echo "done" >$@
 
-$(BUILD)/newlib/newlib/libc.a: $(BUILD)/newlib/newlib/Makefile $(NEWLIB_FILES)
+$(BUILD)/newlib/newlib/libc.a: $(BUILD)/newlib/newlib/Makefile $(BUILD)/binutils/_gdb $(NEWLIB_FILES)
 	@rsync -a --no-group $(PROJECTS)/newlib-cygwin/newlib/libc/include/ $(PREFIX)/$(TARGET)/sys-include
 	@rsync -a --no-group $(PROJECTS)/newlib-cygwin/newlib/libc/sys/amigaos/include/stabs.h $(PREFIX)/$(TARGET)/sys-include
 	$(L0)"make newlib"$(L1) $(MAKE) -C $(BUILD)/newlib/newlib $(L2)
@@ -1319,4 +1323,4 @@ $(PROJECTS)/$(LIBFREETYPE)/configure: $(DOWNLOAD)/$(LIBFREETYPE).tar.xz $(BUILD)
 	@touch $@
 
 $(DOWNLOAD)/$(LIBFREETYPE).tar.xz:
-	$(call get-file,$(LIBFREETYPE),https://download.savannah.gnu.org/releases/freetype/$(LIBFREETYPE).tar.xz,$(LIBFREETYPE).tar.xz)
+	$(call get-file,$(LIBFREETYPE),https://download-mirror.savannah.gnu.org/releases/freetype/$(LIBFREETYPE).tar.xz,$(LIBFREETYPE).tar.xz)
