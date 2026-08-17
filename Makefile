@@ -409,6 +409,10 @@ CONFIG_BINUTILS =--prefix=$(PREFIX) --target=$(TARGET) --disable-werror --enable
 
 CONFIG_BINUTILS += --enable-plugins
 
+# readelf's optional msgpack note decoding is useless here, and its
+# autodetection has produced readelf link failures on some hosts.
+CONFIG_BINUTILS += --without-msgpack
+
 # FreeBSD, OSX : libs added by the command brew install gmp
 ifeq (Darwin, $(findstring Darwin, $(UNAME_S)))
 	BREW_PREFIX := $$(brew --prefix)
