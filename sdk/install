@@ -278,7 +278,8 @@ case $1 in
 				patch -N -p0 -r - -d build/$2 < $patch
 			;;
 			patch1)
-				patch=${a[1]}
+				# absolute path: patch chdirs to the -d directory before opening -i
+				patch=$PWD/${a[1]}
 				if patch --forward --dry-run --batch -d build/$2 -p1 -i $patch >/dev/null 2>&1; then
 					echo applying patch $patch to build/$2
 					patch --forward --batch -d build/$2 -p1 -i $patch || exit 1
