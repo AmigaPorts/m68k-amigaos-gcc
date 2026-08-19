@@ -134,6 +134,7 @@ make <target>		      builds a target: binutils, gcc, fd2sfd, fd2pragma, ira, sfd
 make clean		        remove the build folder
 make clean-<target>	  remove the target's build folder
 make drop-prefix	    remove all content from the prefix folder, beware!
+make package		      tar up the prefix folder into m68k-amigaos-gcc-<version>-<os>-<arch>.tar.xz
 make update		        perform git pull for all targets
 make update-<target>	perform git pull for the given target
 ```
@@ -168,6 +169,12 @@ make drop-prefix
 time make all -j4
 ```
 The above commands take roughly 10 minutes on my laptop running Ubuntu yet the same commands take forever running cygwin on Windows.
+
+## Packaging
+`make package` tars up the PREFIX folder into `m68k-amigaos-gcc-<version>-<os>-<arch>.tar.xz`. Override the output path with `PACKAGE=`:
+```
+make package PREFIX=/opt/amiga PACKAGE=/tmp/toolchain.tar.xz
+```
 
 ## Kickstart 1.3
 
