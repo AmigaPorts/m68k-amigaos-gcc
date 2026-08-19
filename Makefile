@@ -923,6 +923,9 @@ $(BUILD)/libnix/_done: $(BUILD)/newlib/_done $(BUILD)/ndk-include_ndk $(BUILD)/n
 
 $(PROJECTS)/libnix/Makefile.gcc6:
 	@cd $(PROJECTS) &&	git clone -b $(libnix_BRANCH) --depth 4 $(libnix_URL)
+	for i in $$(find patches/libnix/ -type f); \
+	do if [[ "$$i" == *.diff ]] ; \
+		then j=$${i:8}; patch -N "$(PROJECTS)/$${j%.diff}" "$$i"; fi ; done
 
 # =================================================
 # gcc libs

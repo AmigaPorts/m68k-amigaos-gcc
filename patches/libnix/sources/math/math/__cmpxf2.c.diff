@@ -1,0 +1,19 @@
+--- a/sources/math/math/__cmpxf2.c
++++ b/sources/math/math/__cmpxf2.c
+@@ -105,6 +105,9 @@ union long_double_long
+     } l;
+ };
+ 
++/* gcc 15 and newer ship this in libgcc (xfpgnulib), where it would
++   collide with our copy at link time. */
++#if !defined(__GNUC__) || __GNUC__ < 15
+ /* convert long double to double */
+ double
+ __truncxfdf2 (long double ld)
+@@ -136,6 +139,7 @@ __truncxfdf2 (long double ld)
+   /*printf ("xfdf out: %g\n", dl.d);*/
+   return dl.d;
+ }
++#endif /* !defined(__GNUC__) || __GNUC__ < 15 */
+ 
+ extern int __cmpdf2 (double x1, double x2);
