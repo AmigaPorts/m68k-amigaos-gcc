@@ -193,6 +193,9 @@ case $1 in
 				rm $3/m68k-amigaos/include/proto/$name.h.bak
 				mkdir -p $3/m68k-amigaos/include/inline/
 				$3/bin/sfdc --mode=macros --target=m68k-gcc-amigaos --output=$3/m68k-amigaos/include/inline/$name.h $3/m68k-amigaos/lib/sfd/$sfd || exit 1
+				# sfdc derives the proto include from the SFD basename, which
+				# need not match the proto/<name>.h generated above - fix it up
+				sed -i -e "s|#include <proto/.*\.h>|#include <proto/$name.h>|" $3/m68k-amigaos/include/inline/$name.h
 				$3/bin/sfdc --mode=macros --target=m68kvbcc-amigaos --output=$3/m68k-amigaos/include/inline/${name}_protos.h $3/m68k-amigaos/lib/sfd/$sfd || exit 1
 				mkdir -p $3/m68k-amigaos/include/lvo/
 				$3/bin/sfdc --mode=lvo --target=m68k-amigaos --output=$3/m68k-amigaos/include/lvo/$name.i $3/m68k-amigaos/lib/sfd/$sfd || exit 1
