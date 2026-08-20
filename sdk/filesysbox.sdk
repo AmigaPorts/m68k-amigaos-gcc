@@ -5,8 +5,8 @@ Url: git://github.com/salass00/filesysbox:V54.10
 include
 include/sys
 include/sys/statvfs.h
-include/fd
-include/fd/filesysbox_lib.fd
+fd
+fd/filesysbox_lib.fd
 include/pragmas
 include/pragmas/filesysbox_pragmas.h
 include/proto
