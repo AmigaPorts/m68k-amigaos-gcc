@@ -52,6 +52,10 @@ jobs:
       - name: Install SDKs
         run: make -j4 all-sdk NDK=$NDK PREFIX=$PREFIX MAKEINFO=true
 
+      # vbcc/vlink/vasm plus the vbcc target archives and vc.config
+      - name: Build vbcc toolchain
+        run: make -j $(nproc) vbcc vlink NDK=$NDK PREFIX=$PREFIX MAKEINFO=true
+
       - name: Package
         run: make package PREFIX=$PREFIX
 
