@@ -14,10 +14,13 @@ on:
       amitools_git:
         description: pip source for amitools (vamos)
         default: git+https://github.com/AmigaPorts/amitools.git
+      runner:
+        description: runner label (e.g. papert for self-hosted)
+        default: ubuntu-24.04
 
 jobs:
   build:
-    runs-on: ubuntu-24.04
+    runs-on: ${{ inputs.runner || 'ubuntu-24.04' }}
     timeout-minutes: 300
     env:
       NDK: "3.2"
