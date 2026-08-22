@@ -36,8 +36,8 @@ endif
 # get git urls and branches from .repos file
 $(shell  [ ! -f .repos ] && cp default-repos .repos)
 modules := $(shell cat .repos | $(SED) -e 's/[[:blank:]]\+/ /g' | cut -d' ' -f1)
-get_url = $(shell grep $(1) .repos | $(SED) -e 's/[[:blank:]]\+/ /g' | cut -d' ' -f2)
-get_branch = $(shell grep $(1) .repos | $(SED) -e 's/[[:blank:]]\+/ /g' | cut -d' ' -f3)
+get_url = $(shell grep '^$(1)[[:blank:]]' .repos | $(SED) -e 's/[[:blank:]]\+/ /g' | cut -d' ' -f2)
+get_branch = $(shell grep '^$(1)[[:blank:]]' .repos | $(SED) -e 's/[[:blank:]]\+/ /g' | cut -d' ' -f3)
 $(foreach modu,$(modules),$(eval $(modu)_URL=$(call get_url,$(modu))))
 $(foreach modu,$(modules),$(eval $(modu)_BRANCH=$(call get_branch,$(modu))))
 
@@ -1087,8 +1087,8 @@ $(SDKS): libnix lha
 .PHONY: update-repos
 update-repos:
 	@for i in $(modules); do \
-		url=$$(grep $$i .repos | sed -e 's/[[:blank:]]\+/ /g' | cut -d' ' -f2); \
-		bra=$$(grep $$i .repos | sed -e 's/[[:blank:]]\+/ /g' | cut -d' ' -f3); \
+		url=$$(grep "^$$i[[:blank:]]" .repos | sed -e 's/[[:blank:]]\+/ /g' | cut -d' ' -f2); \
+		bra=$$(grep "^$$i[[:blank:]]" .repos | sed -e 's/[[:blank:]]\+/ /g' | cut -d' ' -f3); \
 		bra=$${bra/$$'\n'} ;\
 		bra=$${bra/$$'\r'} ;\
 		if [ -e projects/$$i ]; then \
@@ -1176,11 +1176,11 @@ v:
 
 # change version to the given branch
 branch:
-	@if [ "" != "$(branch)" ] && [ "1" == "$$(grep -c $(mod) .repos)" ]; then \
+	@if [ "" != "$(branch)" ] && [ "1" == "$$(grep -c '^$(mod)[[:blank:]]' .repos)" ]; then \
 		echo $(mod) $(branch) ; \
-	    url=$$(grep $(mod) .repos | sed -e 's/[[:blank:]]\+/ /g' | cut -d' ' -f2); \
+	    url=$$(grep '^$(mod)[[:blank:]]' .repos | sed -e 's/[[:blank:]]\+/ /g' | cut -d' ' -f2); \
 	    mv .repos .repos.bak; \
-	    grep -v $(mod) .repos.bak > .repos; \
+	    grep -v '^$(mod)[[:blank:]]' .repos.bak > .repos; \
 	    echo "$(mod) $$url $(branch)" >> .repos; \
 	    if [ -d  projects/$(mod) ]; then \
 	      pushd projects/$(mod); \
