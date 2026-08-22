@@ -1,0 +1,126 @@
+name: Bootstrap toolchain
+
+on:
+  workflow_dispatch:
+    inputs:
+      gcc_branch:
+        description: gcc branch to build
+        default: amiga16.2
+        required: true
+      run_testsuite:
+        description: run the gcc testsuite under vamos
+        type: boolean
+        default: false
+      amitools_git:
+        description: pip source for amitools (vamos)
+        default: git+https://github.com/AmigaPorts/amitools.git
+      runner:
+        description: runner label (e.g. papert for self-hosted)
+        default: ubuntu-24.04
+
+jobs:
+  build:
+    runs-on: ${{ inputs.runner || 'ubuntu-24.04' }}
+    timeout-minutes: 300
+    env:
+      NDK: "3.2"
+      # aminet.net picks a random mirror per download, some broken or
+      # slow; pin one that is fast and healthy from the CI runners
+      AMINET_MIRROR: http://nl.aminet.net
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            autoconf automake bison build-essential ca-certificates flex \
+            gettext git libgmp-dev libmpfr-dev libmpc-dev libncurses-dev \
+            rsync wget xz-utils
+
+      # skip if present: self-hosted runners keep state between runs
+      - name: Build and install lha
+        run: |
+          command -v lha >/dev/null && exit 0
+          rm -rf /tmp/lha
+          git clone --depth 1 https://github.com/jca02266/lha.git /tmp/lha
+          cd /tmp/lha
+          autoreconf -vfi
+          ./configure
+          make -j $(nproc)
+          sudo make install
+
+      - name: Select gcc branch
+        run: make branch branch=${{ inputs.gcc_branch }} mod=gcc
+
+      - name: Fetch sources
+        run: make update NDK=$NDK
+
+      - name: Set versioned prefix
+        run: echo "PREFIX=$HOME/m68k-amigaos-gcc-$(cat projects/gcc/gcc/BASE-VER)" >> $GITHUB_ENV
+
+      - name: Build toolchain
+        run: |
+          mkdir -p $PREFIX
+          make -j $(nproc) all NDK=$NDK PREFIX=$PREFIX MAKEINFO=true
+
+      # modest -j: downloads are network bound, and more jobs just garble the log
+      - name: Install SDKs
+        run: make -j4 all-sdk NDK=$NDK PREFIX=$PREFIX MAKEINFO=true
+
+      # vbcc/vlink/vasm plus the vbcc target archives and vc.config
+      - name: Build vbcc toolchain
+        run: make -j $(nproc) vbcc vlink NDK=$NDK PREFIX=$PREFIX MAKEINFO=true
+
+      - name: Package
+        run: make package PREFIX=$PREFIX
+
+      - name: Upload toolchain tarball
+        uses: actions/upload-artifact@v7
+        with:
+          name: m68k-amigaos-gcc-${{ inputs.gcc_branch }}-linux-x86_64
+          path: m68k-amigaos-gcc-*-Linux-x86_64.tar.xz
+          compression-level: 0
+          if-no-files-found: error
+
+      - name: Upload build logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: build-logs
+          path: log/
+          if-no-files-found: ignore
+
+      - name: Install testsuite dependencies
+        if: inputs.run_testsuite
+        run: |
+          sudo apt-get install -y --no-install-recommends dejagnu python3-dev python3-venv
+          python3 -m venv $HOME/amitools-venv
+          $HOME/amitools-venv/bin/pip install "amitools[vamos] @ ${{ inputs.amitools_git }}"
+
+      - name: Run the gcc testsuite
+        if: inputs.run_testsuite
+        run: |
+          echo "lappend boards_dir \"$PWD/baseboards\"" > dejagnu-site.exp
+          env DEJAGNU=$PWD/dejagnu-site.exp PATH="$HOME/amitools-venv/bin:$PATH" \
+            make -j $(nproc) check MAKEINFO=true PREFIX=$PREFIX
+
+      - name: Testsuite summary
+        if: always() && inputs.run_testsuite
+        run: |
+          sum=$(ls build-*/gcc/gcc/testsuite/gcc/gcc.sum) || exit 0
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          grep -A6 "=== gcc Summary ===" "$sum" >> $GITHUB_STEP_SUMMARY
+          echo >> $GITHUB_STEP_SUMMARY
+          grep "^FAIL\|^ERROR" "$sum" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload testsuite results
+        if: always() && inputs.run_testsuite
+        uses: actions/upload-artifact@v7
+        with:
+          name: testsuite-results
+          path: |
+            build-*/gcc/gcc/testsuite/gcc/gcc.sum
+            build-*/gcc/gcc/testsuite/gcc/gcc.log
+          if-no-files-found: ignore

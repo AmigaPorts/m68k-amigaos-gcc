@@ -131,10 +131,14 @@ $(L0)"downloading $(1)"$(L1) cd "$(DOWNLOAD)" || exit 1; \
   archive="$(3)"; \
   archive_tmp="$${archive}.neu"; \
   expected_sha256="$(4)"; \
+  url="$(2)"; \
+  if [ -n "$$AMINET_MIRROR" ]; then \
+    url=$$(printf '%s' "$$url" | sed -E "s|^https?://(www\.)?aminet\.net|$$AMINET_MIRROR|"); \
+  fi; \
   rm -f "$$archive_tmp"; \
   download_status=1; \
   for download_attempt in 1 2 3 4; do \
-    if wget --timeout=10 --tries=1 "$(2)" -O "$$archive_tmp"; then \
+    if wget --timeout=10 --tries=1 "$$url" -O "$$archive_tmp"; then \
       download_status=0; \
       break; \
     fi; \
@@ -145,7 +149,7 @@ $(L0)"downloading $(1)"$(L1) cd "$(DOWNLOAD)" || exit 1; \
     fi; \
   done; \
   if [ "$$download_status" -ne 0 ]; then \
-    echo "failed to download $(2)" >&2; \
+    echo "failed to download $$url" >&2; \
     exit 1; \
   fi; \
   if [ ! -s "$$archive_tmp" ]; then \
@@ -202,6 +206,7 @@ help:
 	@echo "make clean					remove the build folder"
 	@echo "make clean-<target>				remove the target's build folder"
 	@echo "make drop-prefix				remove all content from the prefix folder"
+	@echo "make package					tar up the prefix folder into m68k-amigaos-gcc-<version>-<os>-<arch>.tar.xz"
 	@echo "make update					perform git pull for all targets"
 	@echo "make update-<target>				perform git pull for the given target"
 	@echo "make sdk=<sdk>					install the sdk <sdk>"
@@ -311,6 +316,13 @@ drop-prefix:
 	rm -rf $(PREFIX)/man
 	rm -rf $(PREFIX)/share
 	@mkdir -p $(PREFIX)/bin
+
+# package the toolchain prefix into a tarball
+PACKAGE ?= m68k-amigaos-gcc-$(GCC_VERSION)-$(UNAME_S)-$(shell uname -m).tar.xz
+.PHONY: package
+package:
+	@test -n "$(GCC_VERSION)" || { echo "GCC_VERSION is empty - run make update first"; exit 1; }
+	XZ_OPT=-T0 tar -C $(dir $(abspath $(PREFIX))) -cJf $(PACKAGE) $(notdir $(abspath $(PREFIX)))
 
 # =================================================
 # update all projects
@@ -709,23 +721,29 @@ $(BUILD)/_lha_done:
 .PHONY: vbcc-target
 vbcc-target: $(BUILD)/vbcc_target_$(TARGET)/_done $(BUILD)/vbcc_target_m68k-kick13/_done
 
-$(BUILD)/vbcc_target_m68k-kick13/_done: $(BUILD)/vbcc_target_m68k-kick13.info patches/vc.config $(BUILD)/vasm/_done
+$(BUILD)/vbcc_target_m68k-kick13/_done: $(BUILD)/vbcc_target_m68k-kick13.info patches/vbcc/kick13.config $(BUILD)/vasm/_done
 	@mkdir -p $(PREFIX)/m68k-kick13/vbcc/include
 	$(L0)"copying vbcc headers"$(L1) rsync --no-group $(BUILD)/vbcc_target_m68k-kick13/targets/m68k-kick13/include/* $(PREFIX)/m68k-kick13/vbcc/include $(L2)
 	@mkdir -p $(PREFIX)/m68k-kick13/vbcc/lib
 	$(L0)"copying vbcc headers"$(L1) rsync --no-group $(BUILD)/vbcc_target_m68k-kick13/targets/m68k-kick13/lib/* $(PREFIX)/m68k-kick13/vbcc/lib $(L2)
-	@echo "done" >$@
-	$(L0)"creating vbcc kick13 config"$(L1) $(SED) -e "s|PREFIX|$(PREFIX)|g" patches/kick13.config >$(BUILD)/vasm/kick13.config ;\
+	@mkdir -p $(PREFIX)/bin
+	$(L0)"creating vbcc kick13 config"$(L1) $(SED) -e "s|PREFIX|$(PREFIX)|g" patches/vbcc/kick13.config >$(BUILD)/vasm/kick13.config ;\
 	install $(BUILD)/vasm/kick13.config $(PREFIX)/bin/ $(L2)
+	@echo "done" >$@
 
-$(BUILD)/vbcc_target_m68k-amigaos/_done: $(BUILD)/vbcc_target_m68k-amigaos.info $(BUILD)/vasm/_done
+$(BUILD)/vbcc_target_m68k-amigaos/_done: $(BUILD)/vbcc_target_m68k-amigaos.info $(wildcard patches/vbcc/*.config) $(BUILD)/vasm/_done
 	@mkdir -p $(PREFIX)/m68k-amigaos/vbcc/include
 	$(L0)"copying vbcc headers"$(L1) rsync --no-group $(BUILD)/vbcc_target_m68k-amigaos/targets/m68k-amigaos/include/* $(PREFIX)/m68k-amigaos/vbcc/include $(L2)
 	@mkdir -p $(PREFIX)/m68k-amigaos/vbcc/lib
 	$(L0)"copying vbcc headers"$(L1) rsync --no-group $(BUILD)/vbcc_target_m68k-amigaos/targets/m68k-amigaos/lib/* $(PREFIX)/m68k-amigaos/vbcc/lib $(L2)
-	@echo "done" >$@
-	$(L0)"creating vbcc config"$(L1) $(SED) -e "s|PREFIX|$(PREFIX)|g" patches/vc.config >$(BUILD)/vasm/vc.config ;\
+	@mkdir -p $(PREFIX)/bin
+	$(L0)"creating vbcc config"$(L1) $(SED) -e "s|PREFIX|$(PREFIX)|g" patches/vbcc/vc.config >$(BUILD)/vasm/vc.config ;\
 	install $(BUILD)/vasm/vc.config $(PREFIX)/bin/ $(L2)
+	$(L0)"creating vbcc aos68k configs"$(L1) for c in aos68k aos68km aos68kr; do \
+		$(SED) -e "s|PREFIX|$(PREFIX)|g" patches/vbcc/$$c.config >$(BUILD)/vasm/$$c && \
+		install $(BUILD)/vasm/$$c $(PREFIX)/bin/ || exit 1; \
+	done $(L2)
+	@echo "done" >$@
 
 
 $(BUILD)/vbcc_target_m68k-kick13.info: $(DOWNLOAD)/vbcc_target_m68k-kick13.lha $(BUILD)/_lha_done
