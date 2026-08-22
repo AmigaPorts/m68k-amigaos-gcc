@@ -102,6 +102,8 @@ jobs:
           sum=$(ls build-*/gcc/gcc/testsuite/gcc/gcc.sum) || exit 0
           echo '```' >> $GITHUB_STEP_SUMMARY
           grep -A6 "=== gcc Summary ===" "$sum" >> $GITHUB_STEP_SUMMARY
+          echo >> $GITHUB_STEP_SUMMARY
+          grep "^FAIL\|^ERROR" "$sum" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
 
       - name: Upload testsuite results
