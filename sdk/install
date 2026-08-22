@@ -54,6 +54,13 @@ sdk_fetch_archive()
 	local sdk_archive_url=$1
 	local sdk_archive_tmp=$2
 
+	# aminet.net redirects each download to a random mirror, some of
+	# which are broken or slow; allow pinning a known-good one
+	if [ -n "$AMINET_MIRROR" ]; then
+		sdk_archive_url=$(printf '%s' "$sdk_archive_url" | \
+			sed -E "s|^https?://(www\.)?aminet\.net|$AMINET_MIRROR|")
+	fi
+
 	rm -f "$sdk_archive_tmp"
 	if command -v curl >/dev/null 2>&1; then
 		echo curl --fail --location --connect-timeout 10 --retry 3 \
