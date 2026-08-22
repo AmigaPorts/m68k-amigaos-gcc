@@ -202,6 +202,7 @@ help:
 	@echo "make clean					remove the build folder"
 	@echo "make clean-<target>				remove the target's build folder"
 	@echo "make drop-prefix				remove all content from the prefix folder"
+	@echo "make package					tar up the prefix folder into m68k-amigaos-gcc-<version>-<os>-<arch>.tar.xz"
 	@echo "make update					perform git pull for all targets"
 	@echo "make update-<target>				perform git pull for the given target"
 	@echo "make sdk=<sdk>					install the sdk <sdk>"
@@ -311,6 +312,13 @@ drop-prefix:
 	rm -rf $(PREFIX)/man
 	rm -rf $(PREFIX)/share
 	@mkdir -p $(PREFIX)/bin
+
+# package the toolchain prefix into a tarball
+PACKAGE ?= m68k-amigaos-gcc-$(GCC_VERSION)-$(UNAME_S)-$(shell uname -m).tar.xz
+.PHONY: package
+package:
+	@test -n "$(GCC_VERSION)" || { echo "GCC_VERSION is empty - run make update first"; exit 1; }
+	XZ_OPT=-T0 tar -C $(dir $(abspath $(PREFIX))) -cJf $(PACKAGE) $(notdir $(abspath $(PREFIX)))
 
 # =================================================
 # update all projects
