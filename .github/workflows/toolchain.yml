@@ -46,7 +46,7 @@ jobs:
           git clone --depth 1 https://github.com/jca02266/lha.git /tmp/lha
           cd /tmp/lha
           autoreconf -vfi
-          ./configure --prefix=/usr
+          ./configure
           make -j $(nproc)
           sudo make install
 
