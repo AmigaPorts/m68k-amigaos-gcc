@@ -1,0 +1,18 @@
+Short: P96 graphics card driver development files
+Version: 3.6.1
+Url: https://aminet.net/dev/misc/P96CardDevelop.lha
+Sha256: 91352742f88cc9b3aeaaf0cd1f84cb2eade705acfa6365e3a37dd571d8b8f786
+
+copy : Picasso96Develop/PrivateInclude/boardinfo.h m68k-amigaos/include/boardinfo.h
+copy : Picasso96Develop/PrivateInclude/boardinfo.i m68k-amigaos/include/boardinfo.i
+copy : Picasso96Develop/PrivateInclude/settings.h m68k-amigaos/include/settings.h
+copy : Picasso96Develop/PrivateInclude/settings.i m68k-amigaos/include/settings.i
+copy : Picasso96Develop/PrivateInclude/macros.i m68k-amigaos/include/macros.i
+Picasso96Develop/PrivateInclude/clib/Picasso96_card_protos.h
+Picasso96Develop/PrivateInclude/clib/Picasso96_chip_protos.h
+Picasso96Develop/PrivateInclude/inline/Picasso96_chip.h
+Picasso96Develop/PrivateInclude/pragma/Picasso96_chip_lib.h
+Picasso96Develop/PrivateInclude/pragmas/Picasso96_card_pragmas.h
+Picasso96Develop/PrivateInclude/pragmas/Picasso96_chip_pragmas.h
+Picasso96Develop/PrivateInclude/proto/Picasso96_card.h
+Picasso96Develop/PrivateInclude/proto/Picasso96_chip.h

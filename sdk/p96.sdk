@@ -1,6 +1,7 @@
-Short: Picasso96 retargetable graphics system
-Version: 2.3
-Url: http://wiki.icomp.de/w/images/e/e9/Develop.lha
+Short: P96 retargetable graphics system
+Version: 3.6.1
+Url: https://aminet.net/dev/misc/P96Develop.lha
+Sha256: 53d3413653afc58a9b12e8c31b66a8fa096edf3c3de18937f4aa8effd98b4d2b
 
 Picasso96Develop/Include/libraries/Picasso96.i
 Picasso96Develop/Include/libraries/Picasso96.h
