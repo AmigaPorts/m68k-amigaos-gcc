@@ -24,6 +24,9 @@ jobs:
     timeout-minutes: 300
     env:
       NDK: "3.2"
+      # aminet.net picks a random mirror per download, some broken or
+      # slow; pin one that is fast and healthy from the CI runners
+      AMINET_MIRROR: http://nl.aminet.net
     steps:
       - uses: actions/checkout@v7
 
@@ -35,8 +38,11 @@ jobs:
             gettext git libgmp-dev libmpfr-dev libmpc-dev libncurses-dev \
             rsync wget xz-utils
 
+      # skip if present: self-hosted runners keep state between runs
       - name: Build and install lha
         run: |
+          command -v lha >/dev/null && exit 0
+          rm -rf /tmp/lha
           git clone --depth 1 https://github.com/jca02266/lha.git /tmp/lha
           cd /tmp/lha
           autoreconf -vfi
