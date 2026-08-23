@@ -425,10 +425,10 @@ CONFIG_BINUTILS += --enable-plugins
 # autodetection has produced readelf link failures on some hosts.
 CONFIG_BINUTILS += --without-msgpack
 
-# FreeBSD, OSX : libs added by the command brew install gmp
+# FreeBSD, OSX : libs added by the command brew install gmp mpfr
 ifeq (Darwin, $(findstring Darwin, $(UNAME_S)))
 	BREW_PREFIX := $$(brew --prefix)
-	CONFIG_BINUTILS += --with-libgmp-prefix=$(BREW_PREFIX)
+	CONFIG_BINUTILS += --with-gmp=$(BREW_PREFIX) --with-mpfr=$(BREW_PREFIX)
 endif
 
 ifeq (FreeBSD, $(findstring FreeBSD, $(UNAME_S)))

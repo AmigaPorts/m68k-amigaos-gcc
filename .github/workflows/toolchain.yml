@@ -55,16 +55,19 @@ jobs:
             gettext git libgmp-dev libmpfr-dev libmpc-dev libncurses-dev \
             rsync wget xz-utils
 
-      # bison and make are keg-only or shadowed by Apple's old versions,
-      # so put the brew ones on PATH for the following steps
+      # Apple ships old or BSD versions of most build tools; put the brew
+      # GNU ones first on PATH under their plain names (gnubin) so the
+      # build machinery does not need BSD workarounds
       - name: Install build dependencies (macOS)
         if: runner.os == 'macOS'
         run: |
-          brew install autoconf automake bison flex gettext gmp mpfr \
-            libmpc gnu-sed make wget xz
+          brew install autoconf automake bison coreutils flex gettext \
+            gmp gnu-sed gnu-tar grep make mpfr libmpc wget xz
           echo "$(brew --prefix bison)/bin" >> $GITHUB_PATH
           echo "$(brew --prefix flex)/bin" >> $GITHUB_PATH
-          echo "$(brew --prefix make)/libexec/gnubin" >> $GITHUB_PATH
+          for pkg in coreutils gnu-sed gnu-tar grep make; do
+            echo "$(brew --prefix $pkg)/libexec/gnubin" >> $GITHUB_PATH
+          done
 
       - name: Set build parallelism
         run: echo "NPROC=$(nproc 2>/dev/null || sysctl -n hw.ncpu)" >> $GITHUB_ENV
