@@ -1,6 +1,8 @@
-# amiga-gcc
+# m68k-amigaos-gcc
 
-The GNU C Compiler with binutils and other useful tools for cross compiling software for the Commodore Amiga.
+The GNU C Compiler with binutils and other useful tools for cross
+compiling software for AmigaOS. This is the AmigaPorts continuation of
+bebbo's amiga-gcc; fixes flow both ways.
 
 This is a Makefile based approach to building the amigaos-toolchain, aiming to reduce its build time.
 
@@ -12,10 +14,23 @@ Currently, these tools are built:
 * fd2pragma
 * ira
 * sfdc
+* vasm
 * vbcc
 * vlink
 * libnix
-* ixemul (not really, but the headers are used)
+* newlib
+* clib2
+
+# Branches
+## Notable branches of gcc
+* `amiga6`: The default branch providing gcc-6.5.0b with a lot of hacks^^
+* `amiga10.4`: gcc-10.4.0  supports register parameters
+* `amiga13.4`: gcc-13.4.0  supports register parameters
+* `amiga15.2`: gcc-15.2.0  supports register parameters
+* `amiga16.2`: gcc-16.2.0  the current development branch, built and tested by CI
+
+## Notable branches of binutils
+* `amiga-2.46`: binutils 2.46 with amigaos support and dwarf2 debugging (the default)
 
 # COPYRIGHTS
 * amiga-netinclude: 'Roadshow' -- Amiga TCP/IP stack, Copyright © 2001-2016 by Olaf Barthel. Freely Distributable.
@@ -41,11 +56,6 @@ There are also libraries (SDKs) which can be downloaded and installed. These lib
 Various AmigaOS-specific patches have been applied to this version of gcc. None if these changes modify the original copyright in any way. All other changes are published under the terms of the GNU GENERAL PUBLIC LICENSE V2.
 
 ## Prerequisites
-### Centos
-```
-sudo yum install wget gcc gcc-c++ python git perl-Pod-Simple gperf patch autoconf automake make makedepend bison flex ncurses-devel gmp-devel mpfr-devel libmpc-devel gettext-devel texinfo rsync readline-devel
-```
-
 ### Fedora
 ```
 sudo dnf install wget gcc gcc-c++ python git perl-Pod-Simple gperf patch autoconf automake make makedepend bison flex ncurses-devel gmp-devel mpfr-devel libmpc-devel gettext-devel texinfo rsync readline-devel which
@@ -104,8 +114,6 @@ apt-cyg install gcc-core gcc-g++ python git perl-Pod-Simple gperf patch automake
 
 ### Windows with msys2
 
-Precompiled suite with installer: http://franke.ms/download/setup-amiga-gcc.exe
-
 ```
 pacman -S git base-devel gcc flex gmp-devel mpc-devel mpfr-devel ncurses-devel rsync autoconf automake
 ```
@@ -122,6 +130,12 @@ cd m68k-amigaos-gcc
 make update
 ```
 
+To build the current gcc 16.2 instead of the default gcc 6.5.0b,
+switch the gcc module before building:
+```
+make branch branch=amiga16.2 mod=gcc
+```
+
 ## Overview
 ```
 make help
@@ -135,6 +149,7 @@ make clean		        remove the build folder
 make clean-<target>	  remove the target's build folder
 make drop-prefix	    remove all content from the prefix folder, beware!
 make package		      tar up the prefix folder into m68k-amigaos-gcc-<version>-<os>-<arch>.tar.xz
+make check		        run the gcc testsuite against the built toolchain, using vamos as simulator
 make update		        perform git pull for all targets
 make update-<target>	perform git pull for the given target
 ```
@@ -161,20 +176,32 @@ sudo usermod -a -G users username
 After adding the user to the group, you may have to logout and login again to apply the changes to your user.
 
 ## Building
-In most cases you can simply run `sudo make all`. You can use `-j` to speed up the build, adjusting the value of `-j` to the number of cores you wish to use for the build process.
+Once the `PREFIX` directory is writable, run `make all`. You can use
+`-j` to speed up the build, adjusting the value of `-j` to the number
+of cores you wish to use for the build process.
 
 ```
 make clean
 make drop-prefix
-time make all -j4
+time make all -j$(nproc)
 ```
-The above commands take roughly 10 minutes on my laptop running Ubuntu yet the same commands take forever running cygwin on Windows.
+A full bootstrap takes roughly 10 to 30 minutes on current Linux
+hardware, dominated by serial configure and multilib phases.
 
 ## Packaging
 `make package` tars up the PREFIX folder into `m68k-amigaos-gcc-<version>-<os>-<arch>.tar.xz`. Override the output path with `PACKAGE=`:
 ```
 make package PREFIX=/opt/amiga PACKAGE=/tmp/toolchain.tar.xz
 ```
+
+## Continuous integration and releases
+The GitHub Actions workflow in `.github/workflows/toolchain.yml`
+bootstraps the toolchain from scratch, optionally runs the gcc
+testsuite under vamos, and uploads the packaged tarball as a build
+artifact. It can be dispatched manually against any gcc branch.
+
+Pushing a tag matching `v*` additionally publishes the tarball as a
+GitHub release, with the gcc testsuite as a release gate.
 
 ## Kickstart 1.3
 
@@ -188,7 +215,7 @@ The include files for 1.3 - which are picked up by the compiler if `-mcrt=nix13`
 
 ## Libraries/Runtimes
 
-You can select one of the various runtimes. My favorite is `libnix` which is selected by specifying `-noixmeul` or `-mcrt=nix20`. Always specify this as the last parameter and only once. These are the available runtimes:
+You can select one of the various runtimes. My favorite is `libnix` which is selected by specifying `-noixemul` or `-mcrt=nix20`. Always specify this as the last parameter and only once. These are the available runtimes:
 
 * nothing specifed: newlib based libraries for Kickstart 2.0+
 * `-noixemul` or `-mcrt=nix20`: the libnix libraries for Kickstart 2.0+
@@ -198,30 +225,30 @@ You can select one of the various runtimes. My favorite is `libnix` which is sel
 
 ## Checking gcc
 
-To check the built version you may consider to run the gcc dejagnu tests. This does not cover everything but it's a start.
-The tests are using my improved version of VAMOS (downstream of https://github.com/cnvogelg/amitools) to emulate the Amiga,
-and right now not all improvements went back into the upstream.
+To check the built toolchain, run the gcc dejagnu execution tests.
+This does not cover everything but it's a start. The tests run each
+compiled testcase under vamos (from
+https://github.com/AmigaPorts/amitools) to emulate the AmigaOS APIs,
+so `vamos` must be on the PATH.
 
-### Debian / Ubuntu
+Install dejagnu (`sudo apt install dejagnu` on Debian/Ubuntu,
+`brew install dejagnu` on macOS) and amitools, in a venv to keep it
+out of the system Python:
 ```
-sudo apt install dejagnu
-sudo cp baseboards/* /usr/share/dejagnu/baseboards
-pip install -U git+https://github.com/bebbo/amitools.git  
-make check
+python3 -m venv .venv
+.venv/bin/pip install "amitools[vamos] @ git+https://github.com/AmigaPorts/amitools.git"
 ```
 
-### macOS
+Then point dejagnu at the board description in this repo and run the
+suite:
 ```
-brew install dejagnu
-cp baseboards/* $(brew --prefix)/opt/dejagnu/share/dejagnu/baseboards
-pip install -U  git+https://github.com/bebbo/amitools.git  
-make check
+echo "lappend boards_dir \"$PWD/baseboards\"" > dejagnu-site.exp
+DEJAGNU=$PWD/dejagnu-site.exp PATH="$PWD/.venv/bin:$PATH" make -j$(nproc) check
 ```
 
 ## Version management
-This project does not use git submodules since it's to inconvenient to work with develop and release branches in each module and the main module.
-
-Instead the **Makefile** provides some targets to switch to an older state for all modules.
+The **Makefile** provides some targets to switch to an older state
+for all modules.
 
 ### Switching amiga-gcc to a given date
 Use make to switch all modules to a given date. You may also add the time
@@ -245,27 +272,18 @@ make branch mod=binutils branch=devel1
 ```
 The default branches and repositories are in the file **default-repos**, the local state is managed in the file **.repos**.
 
-Note that the gcc default branch is now `amiga6` and there is also an `amiga13.1` branch. To switch gcc to a specific branch use
+The gcc default branch is `amiga6`; see the Branches section above
+for the alternatives. If you start from scratch, switch gcc as soon
+as possible, e.g.:
 ```
-make branch branch=amiga13.1 mod=gcc
+sudo mkdir -p /opt/amiga16
+sudo chown $USER /opt/amiga16
+git clone https://github.com/AmigaPorts/m68k-amigaos-gcc
+cd m68k-amigaos-gcc
+export PREFIX=/opt/amiga16
+make branch branch=amiga16.2 mod=gcc
+make all -j$(nproc)
 ```
-If you start from scratch, switch gcc as soon as possible, e.g.:
-```
-sudo mkdir -p /opt/amiga13
-sudo chown $USER /opt/amiga13
-git clone https://github.com/bebbo/amiga-gcc
-cd amiga-gcc
-export PREFIX=/opt/amiga13
-make branch branch=amiga13.1 mod=gcc
-make all -j20
-```
-
-### Notable branches of gcc
-* `amiga6`: The default branch providing gcc-6.5.0b with a lot of hacks^^
-* `amiga13.3`: gcc-13.3.0  supports register parameters
-* `amiga15.2`: gcc-15.2.0  supports register parameters
-* `68080regs`: gcc-6.5.0b supporting the B0-B7/E0-E7 AMMX registers of the Apollo 68080 (experimental)
- 
 
 ## Fortran support
 m68k-amigaos-gfortran is available now too. To build it add `ADDLANG=fortran`:
