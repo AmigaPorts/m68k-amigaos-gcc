@@ -17,6 +17,22 @@ on:
       runner:
         description: runner label (e.g. papert for self-hosted)
         default: ubuntu-24.04
+  # same inputs again: workflow_call, used by release.yml, does not
+  # share the workflow_dispatch input declarations
+  workflow_call:
+    inputs:
+      gcc_branch:
+        type: string
+        default: amiga16.2
+      run_testsuite:
+        type: boolean
+        default: false
+      amitools_git:
+        type: string
+        default: git+https://github.com/AmigaPorts/amitools.git
+      runner:
+        type: string
+        default: ubuntu-24.04
 
 jobs:
   build:
@@ -72,8 +88,16 @@ jobs:
       - name: Build vbcc toolchain
         run: make -j $(nproc) vbcc vlink NDK=$NDK PREFIX=$PREFIX MAKEINFO=true
 
+      # name release tarballs after the tag: it versions the whole
+      # distribution, while gcc's BASE-VER only moves with gcc itself
       - name: Package
-        run: make package PREFIX=$PREFIX
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            make package PREFIX=$PREFIX \
+              PACKAGE=m68k-amigaos-gcc-${GITHUB_REF_NAME#v}-$(uname -s)-$(uname -m).tar.xz
+          else
+            make package PREFIX=$PREFIX
+          fi
 
       - name: Upload toolchain tarball
         uses: actions/upload-artifact@v7
