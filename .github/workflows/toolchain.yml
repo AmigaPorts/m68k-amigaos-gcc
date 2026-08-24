@@ -3,9 +3,9 @@ name: Bootstrap toolchain
 on:
   workflow_dispatch:
     inputs:
-      gcc_branch:
-        description: gcc branch to build
-        default: amiga16.2
+      gcc_version:
+        description: gcc version to build (branch amiga<version>)
+        default: "16.2"
         required: true
       run_testsuite:
         description: run the gcc testsuite under vamos
@@ -21,9 +21,9 @@ on:
   # share the workflow_dispatch input declarations
   workflow_call:
     inputs:
-      gcc_branch:
+      gcc_version:
         type: string
-        default: amiga16.2
+        default: "16.2"
       run_testsuite:
         type: boolean
         default: false
@@ -40,11 +40,18 @@ jobs:
     timeout-minutes: 300
     env:
       NDK: "3.2"
+      # not GCC_VERSION: the Makefile reads that from gcc's BASE-VER
+      # (16.2.0b) for gcc's own lib/gcc/<target>/<version> layout
+      GCC_VER: ${{ inputs.gcc_version || '16.2' }}
       # aminet.net picks a random mirror per download, some broken or
       # slow; pin one that is fast and healthy from the CI runners
       AMINET_MIRROR: http://nl.aminet.net
     steps:
       - uses: actions/checkout@v7
+
+      # PREFIX and NDK reach every make invocation through the environment
+      - name: Set prefix
+        run: echo "PREFIX=$HOME/m68k-amigaos-gcc-$GCC_VER" >> $GITHUB_ENV
 
       - name: Install build dependencies (Linux)
         if: runner.os == 'Linux'
@@ -72,57 +79,38 @@ jobs:
       - name: Set build parallelism
         run: echo "NPROC=$(nproc 2>/dev/null || sysctl -n hw.ncpu)" >> $GITHUB_ENV
 
-      # skip if present: self-hosted runners keep state between runs
-      # (built from source everywhere: brew only has lhasa, which cannot
-      # create archives and parses some options differently)
-      - name: Build and install lha
-        run: |
-          command -v lha >/dev/null && exit 0
-          rm -rf /tmp/lha
-          git clone --depth 1 https://github.com/jca02266/lha.git /tmp/lha
-          cd /tmp/lha
-          autoreconf -vfi
-          ./configure
-          make -j $NPROC
-          sudo make install
-
       - name: Select gcc branch
-        run: make branch branch=${{ inputs.gcc_branch }} mod=gcc
+        run: make branch branch=amiga$GCC_VER mod=gcc
 
       - name: Fetch sources
-        run: make update NDK=$NDK
-
-      - name: Set versioned prefix
-        run: echo "PREFIX=$HOME/m68k-amigaos-gcc-$(cat projects/gcc/gcc/BASE-VER)" >> $GITHUB_ENV
+        run: make update
 
       - name: Build toolchain
-        run: |
-          mkdir -p $PREFIX
-          make -j $NPROC all NDK=$NDK PREFIX=$PREFIX MAKEINFO=true
+        run: make -j $NPROC all MAKEINFO=true
 
       # modest -j: downloads are network bound, and more jobs just garble the log
       - name: Install SDKs
-        run: make -j4 all-sdk NDK=$NDK PREFIX=$PREFIX MAKEINFO=true
+        run: make -j4 all-sdk MAKEINFO=true
 
       # vbcc/vlink/vasm plus the vbcc target archives and vc.config
       - name: Build vbcc toolchain
-        run: make -j $NPROC vbcc vlink NDK=$NDK PREFIX=$PREFIX MAKEINFO=true
+        run: make -j $NPROC vbcc vlink MAKEINFO=true
 
-      # name release tarballs after the tag: it versions the whole
-      # distribution, while gcc's BASE-VER only moves with gcc itself
+      # release tarballs are named after the tag (16.2-rc4), which
+      # versions the whole distribution rather than just gcc
       - name: Package
         run: |
           if [[ "$GITHUB_REF" == refs/tags/* ]]; then
-            make package PREFIX=$PREFIX \
+            make package \
               PACKAGE=m68k-amigaos-gcc-${GITHUB_REF_NAME#v}-$(uname -s)-$(uname -m).tar.xz
           else
-            make package PREFIX=$PREFIX
+            make package
           fi
 
       - name: Upload toolchain tarball
         uses: actions/upload-artifact@v7
         with:
-          name: m68k-amigaos-gcc-${{ inputs.gcc_branch }}-${{ runner.os }}-${{ runner.arch }}
+          name: m68k-amigaos-gcc-${{ env.GCC_VER }}-${{ runner.os }}-${{ runner.arch }}
           path: m68k-amigaos-gcc-*.tar.xz
           compression-level: 0
           if-no-files-found: error
@@ -148,7 +136,7 @@ jobs:
         run: |
           echo "lappend boards_dir \"$PWD/baseboards\"" > dejagnu-site.exp
           env DEJAGNU=$PWD/dejagnu-site.exp PATH="$HOME/amitools-venv/bin:$PATH" \
-            make -j $NPROC check MAKEINFO=true PREFIX=$PREFIX
+            make -j $NPROC check MAKEINFO=true
 
       - name: Testsuite summary
         if: always() && inputs.run_testsuite && runner.os == 'Linux'
