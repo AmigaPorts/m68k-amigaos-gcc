@@ -131,10 +131,14 @@ $(L0)"downloading $(1)"$(L1) cd "$(DOWNLOAD)" || exit 1; \
   archive="$(3)"; \
   archive_tmp="$${archive}.neu"; \
   expected_sha256="$(4)"; \
+  url="$(2)"; \
+  if [ -n "$$AMINET_MIRROR" ]; then \
+    url=$$(printf '%s' "$$url" | sed -E "s|^https?://(www\.)?aminet\.net|$$AMINET_MIRROR|"); \
+  fi; \
   rm -f "$$archive_tmp"; \
   download_status=1; \
   for download_attempt in 1 2 3 4; do \
-    if wget --timeout=10 --tries=1 "$(2)" -O "$$archive_tmp"; then \
+    if wget --timeout=10 --tries=1 "$$url" -O "$$archive_tmp"; then \
       download_status=0; \
       break; \
     fi; \
@@ -145,7 +149,7 @@ $(L0)"downloading $(1)"$(L1) cd "$(DOWNLOAD)" || exit 1; \
     fi; \
   done; \
   if [ "$$download_status" -ne 0 ]; then \
-    echo "failed to download $(2)" >&2; \
+    echo "failed to download $$url" >&2; \
     exit 1; \
   fi; \
   if [ ! -s "$$archive_tmp" ]; then \
