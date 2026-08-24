@@ -265,9 +265,9 @@ case $1 in
 				rm $3/${a[1]}.bak
 			;;
 			symlink)
-				echo creating symlink from $3/m68k-amigaos/${a[2]} to $3/m68k-amigaos/${a[1]}
+				echo creating symlink from $3/m68k-amigaos/${a[2]} to ${a[1]}
 				rm -rf $3/m68k-amigaos/${a[2]}
-				ln -s $3/m68k-amigaos/${a[1]} $3/m68k-amigaos/${a[2]}
+				ln -s ${a[1]} $3/m68k-amigaos/${a[2]}
 			;;
 			stdargs)
 				echo adding __stdargs to build/$2/${a[1]}
