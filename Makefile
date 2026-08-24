@@ -703,19 +703,20 @@ $(BUILD)/vlink/Makefile: $(PROJECTS)/vlink/Makefile
 $(PROJECTS)/vlink/Makefile:
 	@cd $(PROJECTS) &&	git clone -b $(vlink_BRANCH) --depth 4 $(vlink_URL)
 
-.PHONY: lha
-lha: $(BUILD)/_lha_done
+# Always built, so the toolchain ships its own lha instead of relying
+# on the host: brew only has lhasa, which cannot create archives and
+# parses some options differently
+LHA := $(PREFIX)/bin/lha$(EXEEXT)
 
-$(BUILD)/_lha_done:
-	@if [ ! -e "$$(which lha 2>/dev/null)" ]; then \
-	  cd $(BUILD) && rm -rf lha; \
-	  $(L00)"clone lha"$(L1) git clone -b $(lha_BRANCH) $(lha_URL); $(L2); \
-	  cd lha; \
-	  $(L00)"configure lha"$(L1) aclocal; autoheader; automake -a; autoconf; ./configure; $(L2); \
-	  $(L00)"make lha"$(L1) make all; $(L2); \
-	  $(L00)"install lha"$(L1) mkdir -p $(PREFIX)/bin/; install src/lha$(EXEEXT) $(PREFIX)/bin/lha$(EXEEXT); $(L2); \
-	fi
-	@echo "done" >$@
+.PHONY: lha
+lha: $(LHA)
+
+$(LHA):
+	@mkdir -p $(BUILD) && rm -rf $(BUILD)/lha
+	$(L0)"clone lha"$(L1) cd $(BUILD) && git clone -b $(lha_BRANCH) --depth 1 $(lha_URL) $(L2)
+	$(L0)"configure lha"$(L1) cd $(BUILD)/lha && autoreconf -fi && ./configure $(L2)
+	$(L0)"make lha"$(L1) cd $(BUILD)/lha && $(MAKE) all $(L2)
+	$(L0)"install lha"$(L1) mkdir -p $(PREFIX)/bin && install $(BUILD)/lha/src/lha$(EXEEXT) $(LHA) $(L2)
 
 
 .PHONY: vbcc-target
@@ -746,11 +747,11 @@ $(BUILD)/vbcc_target_m68k-amigaos/_done: $(BUILD)/vbcc_target_m68k-amigaos.info 
 	@echo "done" >$@
 
 
-$(BUILD)/vbcc_target_m68k-kick13.info: $(DOWNLOAD)/vbcc_target_m68k-kick13.lha $(BUILD)/_lha_done
+$(BUILD)/vbcc_target_m68k-kick13.info: $(DOWNLOAD)/vbcc_target_m68k-kick13.lha $(LHA)
 	$(L0)"unpack vbcc_target_m68k-kick13"$(L1) cd $(BUILD) && lha xf $(DOWNLOAD)/vbcc_target_m68k-kick13.lha $(L2)
 	@touch $(BUILD)/vbcc_target_m68k-kick13.info
 
-$(BUILD)/vbcc_target_m68k-amigaos.info: $(DOWNLOAD)/vbcc_target_m68k-amigaos.lha $(BUILD)/_lha_done
+$(BUILD)/vbcc_target_m68k-amigaos.info: $(DOWNLOAD)/vbcc_target_m68k-amigaos.lha $(LHA)
 	$(L0)"unpack vbcc_target_m68k-amigaos"$(L1) cd $(BUILD) && lha xf $(DOWNLOAD)/vbcc_target_m68k-amigaos.lha $(L2)
 	@touch $(BUILD)/vbcc_target_m68k-amigaos.info
 
@@ -841,7 +842,7 @@ $(BUILD)/ndk-include_proto: $(PROJECTS)/$(NDK_FOLDER_NAME).info
 	@mkdir -p $(BUILD)/ndk-include/
 	@echo "done" >$@
 
-$(PROJECTS)/$(NDK_FOLDER_NAME).info: $(BUILD)/_lha_done $(DOWNLOAD)/$(NDK_ARC_NAME).lha $(shell find 2>/dev/null patches/$(NDK_FOLDER_NAME)/ -type f)
+$(PROJECTS)/$(NDK_FOLDER_NAME).info: $(LHA) $(DOWNLOAD)/$(NDK_ARC_NAME).lha $(shell find 2>/dev/null patches/$(NDK_FOLDER_NAME)/ -type f)
 	$(L0)"unpack ndk"$(L1) cd $(PROJECTS) && if [[ $(NDK_ARC_NAME) == "NDK3.2" ]] ; \
 	   then mkdir NDK3.2 ; cd NDK3.2 ; fi ; \
 	   lha xf $(DOWNLOAD)/$(NDK_ARC_NAME).lha $(L2)
@@ -1068,7 +1069,7 @@ $(PREFIX)/$(TARGET)/ixemul/lib/libc.a: $(BUILD)/ixemul/lib/libc.a
 	$(L0)"installing ixemul-sdk"$(L1) rsync -a --no-group $(BUILD)/ixemul/* $(PREFIX)/$(TARGET)/ixemul/ $(L2)
 
 
-$(BUILD)/ixemul/lib/libc.a: $(DOWNLOAD)/ixemul-sdk.lha
+$(BUILD)/ixemul/lib/libc.a: $(DOWNLOAD)/ixemul-sdk.lha $(LHA)
 	@mkdir -p $(BUILD)/ixemul
 	$(L0)"unpacking ixemul-sdk.lha"$(L1) cd $(BUILD)/ixemul && lha xf $(DOWNLOAD)/ixemul-sdk.lha $(L2)
 
@@ -1079,7 +1080,7 @@ $(DOWNLOAD)/ixemul-sdk.lha:
 # sdk installation
 # =================================================
 .PHONY: sdk all-sdk
-sdk: libnix $(BUILD)/_lha_done
+sdk: libnix $(LHA)
 	$(L0)"sdk $(sdk)"$(L1) $(PWD)/sdk/install install $(sdk) $(PREFIX) $(L2)
 
 SDKS0=$(shell find sdk/*.sdk)
