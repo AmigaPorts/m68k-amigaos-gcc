@@ -425,10 +425,10 @@ CONFIG_BINUTILS += --enable-plugins
 # autodetection has produced readelf link failures on some hosts.
 CONFIG_BINUTILS += --without-msgpack
 
-# FreeBSD, OSX : libs added by the command brew install gmp
+# FreeBSD, OSX : libs added by the command brew install gmp mpfr
 ifeq (Darwin, $(findstring Darwin, $(UNAME_S)))
 	BREW_PREFIX := $$(brew --prefix)
-	CONFIG_BINUTILS += --with-libgmp-prefix=$(BREW_PREFIX)
+	CONFIG_BINUTILS += --with-gmp=$(BREW_PREFIX) --with-mpfr=$(BREW_PREFIX)
 endif
 
 ifeq (FreeBSD, $(findstring FreeBSD, $(UNAME_S)))
@@ -1096,8 +1096,8 @@ $(SDKS): libnix lha
 .PHONY: update-repos
 update-repos:
 	@for i in $(modules); do \
-		url=$$(grep "^$$i[[:blank:]]" .repos | sed -e 's/[[:blank:]]\+/ /g' | cut -d' ' -f2); \
-		bra=$$(grep "^$$i[[:blank:]]" .repos | sed -e 's/[[:blank:]]\+/ /g' | cut -d' ' -f3); \
+		url=$$(grep "^$$i[[:blank:]]" .repos | $(SED) -e 's/[[:blank:]]\+/ /g' | cut -d' ' -f2); \
+		bra=$$(grep "^$$i[[:blank:]]" .repos | $(SED) -e 's/[[:blank:]]\+/ /g' | cut -d' ' -f3); \
 		bra=$${bra/$$'\n'} ;\
 		bra=$${bra/$$'\r'} ;\
 		if [ -e projects/$$i ]; then \
@@ -1161,7 +1161,7 @@ b:
 v:
 	@D="$(date)"; \
 	for i in $(modules); do \
-		bra=$$(grep $$i .repos | sed -e 's/[[:blank:]]\+/ /g' | cut -d' ' -f3); \
+		bra=$$(grep $$i .repos | $(SED) -e 's/[[:blank:]]\+/ /g' | cut -d' ' -f3); \
 		bra=$${bra/$$'\n'} ;\
 		bra=$${bra/$$'\r'} ;\
 		if [ -e projects/$$i ]; then \
@@ -1187,7 +1187,7 @@ v:
 branch:
 	@if [ "" != "$(branch)" ] && [ "1" == "$$(grep -c '^$(mod)[[:blank:]]' .repos)" ]; then \
 		echo $(mod) $(branch) ; \
-	    url=$$(grep '^$(mod)[[:blank:]]' .repos | sed -e 's/[[:blank:]]\+/ /g' | cut -d' ' -f2); \
+	    url=$$(grep '^$(mod)[[:blank:]]' .repos | $(SED) -e 's/[[:blank:]]\+/ /g' | cut -d' ' -f2); \
 	    mv .repos .repos.bak; \
 	    grep -v '^$(mod)[[:blank:]]' .repos.bak > .repos; \
 	    echo "$(mod) $$url $(branch)" >> .repos; \
