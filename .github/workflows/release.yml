@@ -7,14 +7,20 @@ on:
 
 jobs:
   # Bootstrap the toolchain and run the gcc testsuite as a release gate;
-  # the tarball is uploaded as the workflow artifact we publish below.
-  build:
+  # the tarballs are uploaded as the workflow artifacts we publish below.
+  build-linux:
     uses: ./.github/workflows/toolchain.yml
     with:
       run_testsuite: true
 
+  # the testsuite only runs on Linux; the macOS build gates on compiling
+  build-macos:
+    uses: ./.github/workflows/toolchain.yml
+    with:
+      runner: macos-15
+
   release:
-    needs: build
+    needs: [build-linux, build-macos]
     runs-on: ubuntu-24.04
     permissions:
       contents: write
@@ -25,10 +31,11 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Download toolchain tarball
+      - name: Download toolchain tarballs
         uses: actions/download-artifact@v7
         with:
-          name: m68k-amigaos-gcc-amiga16.2-linux-x86_64
+          pattern: m68k-amigaos-gcc-*
+          merge-multiple: true
 
       - name: Create release
         env:
@@ -59,5 +66,5 @@ jobs:
             echo
             git log --pretty=format:"- %h: %s" "$RANGE"
           } > notes.md
-          gh release create "$TAG" m68k-amigaos-gcc-*-Linux-x86_64.tar.xz \
+          gh release create "$TAG" m68k-amigaos-gcc-*.tar.xz \
             --title "Release ${TAG#v}" --notes-file notes.md
