@@ -8,4 +8,4 @@ SDI_interrupt.h
 SDI_lib.h
 SDI_misc.h
 SDI_stdarg.h
-symlink : include include/SDI
+symlink : . include/SDI
