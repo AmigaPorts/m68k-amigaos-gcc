@@ -33,12 +33,19 @@ on:
       runner:
         type: string
         default: ubuntu-24.04
+  # label a pull request "ci" for a macOS build of its merge commit, or
+  # "ci-testsuite" for a Linux build with the gcc testsuite
+  pull_request:
+    types: [labeled]
 
 jobs:
   build:
-    runs-on: ${{ inputs.runner || 'ubuntu-24.04' }}
+    if: github.event_name != 'pull_request' || startsWith(github.event.label.name, 'ci')
+    runs-on: ${{ inputs.runner || (github.event.label.name == 'ci' && 'macos-15') || 'ubuntu-24.04' }}
     timeout-minutes: 300
     env:
+      RUN_TESTSUITE: ${{ inputs.run_testsuite || github.event.label.name == 'ci-testsuite' }}
+      AMITOOLS_GIT: ${{ inputs.amitools_git || 'git+https://github.com/AmigaPorts/amitools.git' }}
       NDK: "3.2"
       # not GCC_VERSION: the Makefile reads that from gcc's BASE-VER
       # (16.2.0b) for gcc's own lib/gcc/<target>/<version> layout
@@ -125,21 +132,21 @@ jobs:
 
       # the vamos testsuite setup is Linux-only for now
       - name: Install testsuite dependencies
-        if: inputs.run_testsuite && runner.os == 'Linux'
+        if: env.RUN_TESTSUITE == 'true' && runner.os == 'Linux'
         run: |
           sudo apt-get install -y --no-install-recommends dejagnu python3-dev python3-venv
           python3 -m venv $HOME/amitools-venv
-          $HOME/amitools-venv/bin/pip install "amitools[vamos] @ ${{ inputs.amitools_git }}"
+          $HOME/amitools-venv/bin/pip install "amitools[vamos] @ $AMITOOLS_GIT"
 
       - name: Run the gcc testsuite
-        if: inputs.run_testsuite && runner.os == 'Linux'
+        if: env.RUN_TESTSUITE == 'true' && runner.os == 'Linux'
         run: |
           echo "lappend boards_dir \"$PWD/baseboards\"" > dejagnu-site.exp
           env DEJAGNU=$PWD/dejagnu-site.exp PATH="$HOME/amitools-venv/bin:$PATH" \
             make -j $NPROC check MAKEINFO=true
 
       - name: Testsuite summary
-        if: always() && inputs.run_testsuite && runner.os == 'Linux'
+        if: always() && env.RUN_TESTSUITE == 'true' && runner.os == 'Linux'
         run: |
           sum=$(ls build-*/gcc/gcc/testsuite/gcc/gcc.sum) || exit 0
           echo '```' >> $GITHUB_STEP_SUMMARY
@@ -149,7 +156,7 @@ jobs:
           echo '```' >> $GITHUB_STEP_SUMMARY
 
       - name: Upload testsuite results
-        if: always() && inputs.run_testsuite && runner.os == 'Linux'
+        if: always() && env.RUN_TESTSUITE == 'true' && runner.os == 'Linux'
         uses: actions/upload-artifact@v7
         with:
           name: testsuite-results
