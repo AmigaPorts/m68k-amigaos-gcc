@@ -3,8 +3,6 @@ Version: 54.10
 Url: git://github.com/salass00/filesysbox:V54.10
 
 include
-include/sys
-include/sys/statvfs.h
 fd
 fd/filesysbox_lib.fd
 include/pragmas
