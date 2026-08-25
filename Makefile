@@ -1,11 +1,16 @@
 # =================================================
 # Makefile based Amiga compiler setup.
 # (c) Stefan "Bebbo" Franke in 2018
-# (c) Marlon Beijer in 2025
+# (c) Marlon Beijer in 2025-2026
 #
 # Riding a dead horse...
 # =================================================
 include disable_implicite_rules.mk
+
+# Keep variable-only invocations such as `make sdk=ahi` working even when
+# helper targets are declared before the dispatcher below.
+.DEFAULT_GOAL := x
+
 # =================================================
 # variables
 # =================================================
@@ -37,6 +42,24 @@ BUILD := $(shell pwd)/build-$(UNAME_S)-$(TARGET)
 PROJECTS := $(shell pwd)/projects
 DOWNLOAD := $(shell pwd)/download
 __BUILDDIR := $(shell mkdir -p $(BUILD))
+
+# binutils, gcc and newlib record the prefix in their configured build
+# trees: building the same tree for another PREFIX installs into both
+PREFIX_STAMP := $(BUILD)/.prefix
+ifeq ($(filter clean% drop-prefix help info update% branch,$(MAKECMDGOALS)),)
+ifneq ($(wildcard $(PREFIX_STAMP)),)
+ifneq ($(shell cat $(PREFIX_STAMP)),$(abspath $(PREFIX)))
+$(error $(BUILD) was configured for PREFIX=$(shell cat $(PREFIX_STAMP)); use that PREFIX, another BUILD, or make clean)
+endif
+# the _done stamps describe what was installed there
+ifeq ($(wildcard $(PREFIX)),)
+$(error $(BUILD) was configured for PREFIX=$(PREFIX), which no longer exists; run make clean first)
+endif
+endif
+endif
+
+$(PREFIX_STAMP):
+	@echo "$(abspath $(PREFIX))" >$@
 __PROJECTDIR := $(shell mkdir -p $(PROJECTS))
 __DOWNLOADDIR := $(shell mkdir -p $(DOWNLOAD))
 
@@ -53,13 +76,14 @@ endif
 # get git urls and branches from .repos file
 $(shell  [ ! -f .repos ] && cp default-repos .repos)
 modules := $(shell cat .repos | $(SED) -e 's/[[:blank:]]\+/ /g' | cut -d' ' -f1)
-get_url = $(shell grep $(1) .repos | $(SED) -e 's/[[:blank:]]\+/ /g' | cut -d' ' -f2)
-get_branch = $(shell grep $(1) .repos | $(SED) -e 's/[[:blank:]]\+/ /g' | cut -d' ' -f3)
+get_url = $(shell grep '^$(1)[[:blank:]]' .repos | $(SED) -e 's/[[:blank:]]\+/ /g' | cut -d' ' -f2)
+get_branch = $(shell grep '^$(1)[[:blank:]]' .repos | $(SED) -e 's/[[:blank:]]\+/ /g' | cut -d' ' -f3)
 $(foreach modu,$(modules),$(eval $(modu)_URL=$(call get_url,$(modu))))
 $(foreach modu,$(modules),$(eval $(modu)_BRANCH=$(call get_branch,$(modu))))
 
 ifneq ($(NDK),3.9)
-NDK_URL              := http://aminet.net/dev/misc/NDK3.2.lha
+NDK_URL              := https://aminet.net/dev/misc/NDK3.2.lha
+NDK_SHA256           := 96cabd4ad683dced632e147bf86dee0f50dcb1254386216c25c362916a6409bb
 NDK_ARC_NAME         := NDK3.2
 NDK_FOLDER_NAME      := NDK3.2
 NDK_FOLDER_NAME_H    := NDK3.2/Include_H
@@ -69,6 +93,7 @@ NDK_FOLDER_NAME_SFD  := NDK3.2/SFD
 NDK_FOLDER_NAME_LIBS := NDK3.2/lib
 else
 NDK_URL              := http://hp.alinea-computer.de/AmigaOS/NDK39.lha
+NDK_SHA256           :=
 NDK_ARC_NAME         := NDK3.9
 NDK_FOLDER_NAME      := NDK_3.9/Include
 NDK_FOLDER_NAME_H    := NDK_3.9/Include/include_h
@@ -142,22 +167,62 @@ endif
 # =================================================
 # download files
 # =================================================
+# get-file(label, url, archive name, optional SHA-256)
 define get-file
-$(L0)"downloading $(1)"$(L1) cd $(DOWNLOAD); \
-  mv $(3) $(3).bak; \
-  wget $(2) -O $(3).neu; \
-  if [ -s $(3).neu ]; then \
-    if [ "$$(cmp --silent $(3).neu $(3).bak); echo $$?" == 0 ]; then \
-      mv $(3).bak $(3); \
-      rm $(3).neu; \
-    else \
-      mv $(3).neu $(3); \
-      rm -f $(3).bak; \
-    fi \
-  else \
-    rm $(3).neu; \
+$(L0)"downloading $(1)"$(L1) cd "$(DOWNLOAD)" || exit 1; \
+  archive="$(3)"; \
+  archive_tmp="$${archive}.neu"; \
+  expected_sha256="$(4)"; \
+  url="$(2)"; \
+  if [ -n "$$AMINET_MIRROR" ]; then \
+    url=$$(printf '%s' "$$url" | sed -E "s|^https?://(www\.)?aminet\.net|$$AMINET_MIRROR|"); \
   fi; \
-  cd .. $(L2)
+  rm -f "$$archive_tmp"; \
+  download_status=1; \
+  for download_attempt in 1 2 3 4; do \
+    if wget --timeout=10 --tries=1 "$$url" -O "$$archive_tmp"; then \
+      download_status=0; \
+      break; \
+    fi; \
+    rm -f "$$archive_tmp"; \
+    if [ "$$download_attempt" -lt 4 ]; then \
+      echo "download attempt $$download_attempt/4 failed; retrying" >&2; \
+      sleep "$$download_attempt"; \
+    fi; \
+  done; \
+  if [ "$$download_status" -ne 0 ]; then \
+    echo "failed to download $$url" >&2; \
+    exit 1; \
+  fi; \
+  if [ ! -s "$$archive_tmp" ]; then \
+    echo "downloaded archive is empty: $$archive_tmp" >&2; \
+    rm -f "$$archive_tmp"; \
+    exit 1; \
+  fi; \
+  if [ -n "$$expected_sha256" ]; then \
+    if command -v sha256sum >/dev/null 2>&1; then \
+      actual_sha256=$$(sha256sum "$$archive_tmp"); \
+    elif command -v shasum >/dev/null 2>&1; then \
+      actual_sha256=$$(shasum -a 256 "$$archive_tmp"); \
+    else \
+      echo "cannot verify $$archive_tmp: sha256sum or shasum is required" >&2; \
+      rm -f "$$archive_tmp"; \
+      exit 1; \
+    fi; \
+    actual_sha256=$${actual_sha256%%[[:space:]]*}; \
+    if [ "$$actual_sha256" != "$$expected_sha256" ]; then \
+      echo "checksum mismatch for $$archive_tmp" >&2; \
+      echo "expected: $$expected_sha256" >&2; \
+      echo "actual:   $$actual_sha256" >&2; \
+      rm -f "$$archive_tmp"; \
+      exit 1; \
+    fi; \
+  fi; \
+  if [ -e "$$archive" ] && cmp --silent "$$archive_tmp" "$$archive"; then \
+    rm -f "$$archive_tmp"; \
+  else \
+    mv -f "$$archive_tmp" "$$archive"; \
+  fi $(L2)
 endef
 
 # =================================================
@@ -183,6 +248,7 @@ help:
 	@echo "make clean					remove the build folder"
 	@echo "make clean-<target>				remove the target's build folder"
 	@echo "make drop-prefix				remove all content from the prefix folder"
+	@echo "make package					tar up the prefix folder into m68k-amigaos-gcc-<version>-<os>-<arch>.tar.xz"
 	@echo "make update					perform git pull for all targets"
 	@echo "make update-<target>				perform git pull for the given target"
 	@echo "make sdk=<sdk>					install the sdk <sdk>"
@@ -198,10 +264,10 @@ help:
 # =================================================
 # all
 # =================================================
-.PHONY: all gcc gdb gprof binutils fd2sfd fd2pragma ira sfdc vasm libnix ixemul libgcc clib2 libdebug libpthread ndk ndk13 min
-all: gcc binutils gdb gprof fd2sfd fd2pragma ira sfdc vasm libnix ixemul libgcc clib2 libdebug libpthread ndk ndk13
+.PHONY: all gcc gdb gprof binutils fd2sfd fd2pragma ira sfdc vasm libnix ixemul libgcc clib2 libdebug libpthread ndk ndk13 min libnix4.library
+all: gcc binutils gdb gprof fd2sfd fd2pragma ira sfdc vasm libnix ixemul libgcc clib2 libdebug libpthread ndk ndk13 libnix4.library
 
-min: binutils gcc gprof libnix libgcc
+min: binutils gcc gprof libnix libgcc libnix4.library
 
 # =================================================
 # clean
@@ -293,6 +359,13 @@ drop-prefix:
 	rm -rf $(PREFIX)/share
 	@mkdir -p $(PREFIX)/bin
 
+# package the toolchain prefix into a tarball
+PACKAGE ?= m68k-amigaos-gcc-$(GCC_VERSION)-$(UNAME_S)-$(shell uname -m).tar.xz
+.PHONY: package
+package:
+	@test -n "$(GCC_VERSION)" || { echo "GCC_VERSION is empty - run make update first"; exit 1; }
+	XZ_OPT=-T0 tar -C $(dir $(abspath $(PREFIX))) -cJf $(PACKAGE) $(notdir $(abspath $(PREFIX)))
+
 # =================================================
 # update all projects
 # =================================================
@@ -303,7 +376,7 @@ update: update-gcc update-binutils update-fd2sfd update-fd2pragma update-ira upd
 	+$(MAKE) -B $(DOWNLOAD)/vbcc_target_m68k-kick13.lha
 	+$(MAKE) -B $(DOWNLOAD)/$(NDK_ARC_NAME).lha
 	+$(MAKE) -B $(DOWNLOAD)/ixemul-sdk.lha
-	+$(MAKE) -B $(DOWNLOAD)/$(ZLIB).tar.xz
+	+$(MAKE) -B $(DOWNLOAD)/$(ZLIB).tar.gz
 	+$(MAKE) -B $(DOWNLOAD)/$(LIBPNG).tar.xz
 	+$(MAKE) -B $(DOWNLOAD)/$(LIBFREETYPE).tar.xz
 
@@ -386,20 +459,14 @@ update-mpfr:
 # =================================================
 # binutils
 # =================================================
-CONFIG_BINUTILS =--prefix=$(PREFIX) --target=$(TARGET) --host=$(HOST) --disable-werror --disable-nls --disable-doc
+CONFIG_BINUTILS =--prefix=$(PREFIX) --target=$(TARGET) --host=$(HOST) --disable-werror --enable-tui --disable-nls --disable-doc
 
-ifneq (m68k-elf,$(TARGET))
-CONFIG_BINUTILS += --disable-plugins
-endif
-
-ifeq (,$(findstring mingw,$(HOST)))
-CONFIG_BINUTILS += --enable-tui
-endif
+CONFIG_BINUTILS += --enable-plugins
 
 # FreeBSD, OSX : libs added by the command brew install gmp
 ifeq (Darwin, $(findstring Darwin, $(UNAME_S)))
 	BREW_PREFIX := $$(brew --prefix)
-	CONFIG_BINUTILS += --with-libgmp-prefix=$(BREW_PREFIX)
+	CONFIG_BINUTILS += --with-gmp=$(BREW_PREFIX) --with-mpfr=$(BREW_PREFIX)
 endif
 
 ifeq (FreeBSD, $(findstring FreeBSD, $(UNAME_S)))
@@ -432,7 +499,7 @@ $(BUILD)/binutils/_done: $(BUILD)/binutils/Makefile $(shell find 2>/dev/null $(P
 	$(L0)"install binutils"$(L1)$(MAKE) -C $(BUILD)/binutils install-gas install-binutils install-ld $(L2)
 	@echo "done" >$@
 
-$(BUILD)/binutils/Makefile: $(PROJECTS)/binutils/configure
+$(BUILD)/binutils/Makefile: $(PROJECTS)/binutils/configure | $(PREFIX_STAMP)
 	@mkdir -p $(BUILD)/binutils
 	$(L0)"configure binutils"$(L1) cd $(BUILD)/binutils && $(E) $(PROJECTS)/binutils/configure $(CONFIG_BINUTILS) $(L2)
 
@@ -444,13 +511,16 @@ $(PROJECTS)/binutils/configure:
 # gdb
 # =================================================
 
+GDB_CC ?= gcc
+GDB_CXX ?= g++
+
 gdb: $(BUILD)/binutils/_gdb
 
 $(BUILD)/binutils/_gdb: $(BUILD)/binutils/_done
-	$(L0)"make binutils configure gdb"$(L1)$(MAKE) -C $(BUILD)/binutils configure-gdb $(L2)
-	$(L0)"make binutils gdb libs"$(L1)$(MAKE) -C $(BUILD)/binutils/gdb all-lib $(L2)
-	$(L0)"make binutils gdb"$(L1)$(MAKE) -C $(BUILD)/binutils $(ALL_GDB) $(L2)
-	$(L0)"install binutils gdb"$(L1)$(MAKE) -C $(BUILD)/binutils install-gas install-binutils install-ld $(INSTALL_GDB) $(L2)
+	$(L0)"make binutils configure gdb"$(L1)$(MAKE) -C $(BUILD)/binutils CC=$(GDB_CC) CXX=$(GDB_CXX) configure-gdb $(L2)
+	$(L0)"make binutils gdb libs"$(L1)$(MAKE) -C $(BUILD)/binutils/gdb CC=$(GDB_CC) CXX=$(GDB_CXX) all-lib $(L2)
+	$(L0)"make binutils gdb"$(L1)$(MAKE) -C $(BUILD)/binutils CC=$(GDB_CC) CXX=$(GDB_CXX) $(ALL_GDB) $(L2)
+	$(L0)"install binutils gdb"$(L1)$(MAKE) -C $(BUILD)/binutils CC=$(GDB_CC) CXX=$(GDB_CXX) install-gas install-binutils install-ld $(INSTALL_GDB) $(L2)
 	@echo "done" >$@
 
 # =================================================
@@ -506,7 +576,7 @@ $(BUILD)/gcc/_done: $(BUILD)/gcc/Makefile $(shell find 2>/dev/null $(GCCD) -maxd
 	$(L0)"install gcc"$(L1) $(MAKE) -C $(BUILD)/gcc install-gcc $(L2)
 	@echo "done" >$@
 
-$(BUILD)/gcc/Makefile: $(PROJECTS)/gcc/configure $(BUILD)/binutils/_done
+$(BUILD)/gcc/Makefile: $(PROJECTS)/gcc/configure $(BUILD)/binutils/_done | $(PREFIX_STAMP)
 	@mkdir -p $(BUILD)/gcc
 ifneq ($(OWNGMP),)
 	@mkdir -p $(PROJECTS)/gcc/gmp
@@ -674,48 +744,55 @@ $(BUILD)/vlink/Makefile: $(PROJECTS)/vlink/Makefile
 $(PROJECTS)/vlink/Makefile:
 	@cd $(PROJECTS) &&	git clone -b $(vlink_BRANCH) --depth 4 $(vlink_URL)
 
-.PHONY: lha
-lha: $(BUILD)/_lha_done
+# Always built, so the toolchain ships its own lha instead of relying
+# on the host: brew only has lhasa, which cannot create archives and
+# parses some options differently
+LHA := $(PREFIX)/bin/lha$(EXEEXT)
 
-$(BUILD)/_lha_done:
-	@if [ ! -e "$$(which lha 2>/dev/null)" ]; then \
-	  cd $(BUILD) && rm -rf lha; \
-	  $(L00)"clone lha"$(L1) git clone -b $(lha_BRANCH) $(lha_URL); $(L2); \
-	  cd lha; \
-	  $(L00)"configure lha"$(L1) aclocal; autoheader; automake -a; autoconf; ./configure; $(L2); \
-	  $(L00)"make lha"$(L1) make all; $(L2); \
-	  $(L00)"install lha"$(L1) mkdir -p $(PREFIX)/bin/; install src/lha$(EXEEXT) $(PREFIX)/bin/lha$(EXEEXT); $(L2); \
-	fi
-	@echo "done" >$@
+.PHONY: lha
+lha: $(LHA)
+
+$(LHA):
+	@mkdir -p $(BUILD) && rm -rf $(BUILD)/lha
+	$(L0)"clone lha"$(L1) cd $(BUILD) && git clone -b $(lha_BRANCH) --depth 1 $(lha_URL) $(L2)
+	$(L0)"configure lha"$(L1) cd $(BUILD)/lha && autoreconf -fi && ./configure $(L2)
+	$(L0)"make lha"$(L1) cd $(BUILD)/lha && $(MAKE) all $(L2)
+	$(L0)"install lha"$(L1) mkdir -p $(PREFIX)/bin && install $(BUILD)/lha/src/lha$(EXEEXT) $(LHA) $(L2)
 
 
 .PHONY: vbcc-target
 vbcc-target: $(BUILD)/vbcc_target_$(TARGET)/_done $(BUILD)/vbcc_target_m68k-kick13/_done
 
-$(BUILD)/vbcc_target_m68k-kick13/_done: $(BUILD)/vbcc_target_m68k-kick13.info patches/vc.config $(BUILD)/vasm/_done
+$(BUILD)/vbcc_target_m68k-kick13/_done: $(BUILD)/vbcc_target_m68k-kick13.info patches/vbcc/kick13.config $(BUILD)/vasm/_done
 	@mkdir -p $(PREFIX)/m68k-kick13/vbcc/include
 	$(L0)"copying vbcc headers"$(L1) rsync --no-group $(BUILD)/vbcc_target_m68k-kick13/targets/m68k-kick13/include/* $(PREFIX)/m68k-kick13/vbcc/include $(L2)
 	@mkdir -p $(PREFIX)/m68k-kick13/vbcc/lib
 	$(L0)"copying vbcc headers"$(L1) rsync --no-group $(BUILD)/vbcc_target_m68k-kick13/targets/m68k-kick13/lib/* $(PREFIX)/m68k-kick13/vbcc/lib $(L2)
-	@echo "done" >$@
-	$(L0)"creating vbcc kick13 config"$(L1) $(SED) -e "s|PREFIX|$(PREFIX)|g" patches/kick13.config >$(BUILD)/vasm/kick13.config ;\
+	@mkdir -p $(PREFIX)/bin
+	$(L0)"creating vbcc kick13 config"$(L1) $(SED) -e "s|PREFIX|$(PREFIX)|g" patches/vbcc/kick13.config >$(BUILD)/vasm/kick13.config ;\
 	install $(BUILD)/vasm/kick13.config $(PREFIX)/bin/ $(L2)
+	@echo "done" >$@
 
-$(BUILD)/vbcc_target_m68k-amigaos/_done: $(BUILD)/vbcc_target_m68k-amigaos.info $(BUILD)/vasm/_done
+$(BUILD)/vbcc_target_m68k-amigaos/_done: $(BUILD)/vbcc_target_m68k-amigaos.info $(wildcard patches/vbcc/*.config) $(BUILD)/vasm/_done
 	@mkdir -p $(PREFIX)/m68k-amigaos/vbcc/include
 	$(L0)"copying vbcc headers"$(L1) rsync --no-group $(BUILD)/vbcc_target_m68k-amigaos/targets/m68k-amigaos/include/* $(PREFIX)/m68k-amigaos/vbcc/include $(L2)
 	@mkdir -p $(PREFIX)/m68k-amigaos/vbcc/lib
 	$(L0)"copying vbcc headers"$(L1) rsync --no-group $(BUILD)/vbcc_target_m68k-amigaos/targets/m68k-amigaos/lib/* $(PREFIX)/m68k-amigaos/vbcc/lib $(L2)
-	@echo "done" >$@
-	$(L0)"creating vbcc config"$(L1) $(SED) -e "s|PREFIX|$(PREFIX)|g" patches/vc.config >$(BUILD)/vasm/vc.config ;\
+	@mkdir -p $(PREFIX)/bin
+	$(L0)"creating vbcc config"$(L1) $(SED) -e "s|PREFIX|$(PREFIX)|g" patches/vbcc/vc.config >$(BUILD)/vasm/vc.config ;\
 	install $(BUILD)/vasm/vc.config $(PREFIX)/bin/ $(L2)
+	$(L0)"creating vbcc aos68k configs"$(L1) for c in aos68k aos68km aos68kr; do \
+		$(SED) -e "s|PREFIX|$(PREFIX)|g" patches/vbcc/$$c.config >$(BUILD)/vasm/$$c && \
+		install $(BUILD)/vasm/$$c $(PREFIX)/bin/ || exit 1; \
+	done $(L2)
+	@echo "done" >$@
 
 
-$(BUILD)/vbcc_target_m68k-kick13.info: $(DOWNLOAD)/vbcc_target_m68k-kick13.lha $(BUILD)/_lha_done
+$(BUILD)/vbcc_target_m68k-kick13.info: $(DOWNLOAD)/vbcc_target_m68k-kick13.lha $(LHA)
 	$(L0)"unpack vbcc_target_m68k-kick13"$(L1) cd $(BUILD) && lha xf $(DOWNLOAD)/vbcc_target_m68k-kick13.lha $(L2)
 	@touch $(BUILD)/vbcc_target_m68k-kick13.info
 
-$(BUILD)/vbcc_target_m68k-amigaos.info: $(DOWNLOAD)/vbcc_target_m68k-amigaos.lha $(BUILD)/_lha_done
+$(BUILD)/vbcc_target_m68k-amigaos.info: $(DOWNLOAD)/vbcc_target_m68k-amigaos.lha $(LHA)
 	$(L0)"unpack vbcc_target_m68k-amigaos"$(L1) cd $(BUILD) && lha xf $(DOWNLOAD)/vbcc_target_m68k-amigaos.lha $(L2)
 	@touch $(BUILD)/vbcc_target_m68k-amigaos.info
 
@@ -775,7 +852,7 @@ $(BUILD)/ndk-include_ndk0: $(PROJECTS)/$(NDK_FOLDER_NAME).info $(NDK_INCLUDE) $(
 
 ndk-inline: $(NDK_INCLUDE_INLINE) sfdc $(BUILD)/ndk-include_inline
 $(NDK_INCLUDE_INLINE): $(PREFIX)/bin/sfdc $(NDK_INCLUDE_SFD) $(BUILD)/ndk-include_inline $(BUILD)/ndk-include_lvo $(BUILD)/ndk-include_proto $(BUILD)/ndk-include_ndk0
-	$(L0)"sfdc inline $(@F)"$(L1) sfdc --target=m68k-amigaos --mode=macros --output=$@ $(patsubst $(PREFIX)/$(TARGET)/ndk-include/inline/%.h,$(PROJECTS)/$(NDK_FOLDER_NAME_SFD)/%_lib.sfd,$@) $(L2)
+	$(L0)"sfdc inline $(@F)"$(L1) sfdc --target=m68k-gcc-amigaos --mode=macros --output=$@ $(patsubst $(PREFIX)/$(TARGET)/ndk-include/inline/%.h,$(PROJECTS)/$(NDK_FOLDER_NAME_SFD)/%_lib.sfd,$@) $(L2)
 
 ndk-inline-vbcc: $(NDK_INCLUDE_INLINE_VBCC) sfdc $(BUILD)/ndk-include_inline
 $(NDK_INCLUDE_INLINE_VBCC): $(PREFIX)/bin/sfdc $(NDK_INCLUDE_SFD) $(BUILD)/ndk-include_inline $(BUILD)/ndk-include_lvo $(BUILD)/ndk-include_proto $(BUILD)/ndk-include_ndk0
@@ -806,7 +883,7 @@ $(BUILD)/ndk-include_proto: $(PROJECTS)/$(NDK_FOLDER_NAME).info
 	@mkdir -p $(BUILD)/ndk-include/
 	@echo "done" >$@
 
-$(PROJECTS)/$(NDK_FOLDER_NAME).info: $(BUILD)/_lha_done $(DOWNLOAD)/$(NDK_ARC_NAME).lha $(shell find 2>/dev/null patches/$(NDK_FOLDER_NAME)/ -type f)
+$(PROJECTS)/$(NDK_FOLDER_NAME).info: $(LHA) $(DOWNLOAD)/$(NDK_ARC_NAME).lha $(shell find 2>/dev/null patches/$(NDK_FOLDER_NAME)/ -type f)
 	$(L0)"unpack ndk"$(L1) cd $(PROJECTS) && if [[ $(NDK_ARC_NAME) == "NDK3.2" ]] ; \
 	   then mkdir NDK3.2 ; cd NDK3.2 ; fi ; \
 	   lha xf $(DOWNLOAD)/$(NDK_ARC_NAME).lha $(L2)
@@ -818,7 +895,7 @@ $(PROJECTS)/$(NDK_FOLDER_NAME).info: $(BUILD)/_lha_done $(DOWNLOAD)/$(NDK_ARC_NA
 	@touch $(PROJECTS)/$(NDK_FOLDER_NAME).info
 
 $(DOWNLOAD)/$(NDK_ARC_NAME).lha:
-	$(call get-file,$(NDK_ARC_NAME),$(NDK_URL),$(NDK_ARC_NAME).lha)
+	$(call get-file,$(NDK_ARC_NAME),$(NDK_URL),$(NDK_ARC_NAME).lha,$(NDK_SHA256))
 
 
 # =================================================
@@ -844,7 +921,7 @@ $(BUILD)/ndk-include_ndk13: $(BUILD)/ndk-include_ndk $(BUILD)/fd2sfd/_done $(BUI
 	@mkdir -p $(PREFIX)/$(TARGET)/ndk/lib/sfd13
 	@for i in $(PREFIX)/$(TARGET)/ndk/lib/fd13/*; do fd2sfd$(EXEEXT) $$i $(PREFIX)/$(TARGET)/ndk13-include/clib/$$(basename $$i _lib.fd)_protos.h > $(PREFIX)/$(TARGET)/ndk/lib/sfd13/$$(basename $$i .fd).sfd; done
 	$(L0)"macros+protos ndk13"$(L1) for i in $(PREFIX)/$(TARGET)/ndk/lib/sfd13/*; do \
-	  sfdc --target=m68k-amigaos --mode=macros --output=$(PREFIX)/$(TARGET)/ndk13-include/inline/$$(basename $$i _lib.sfd).h $$i; \
+	  sfdc --target=m68k-gcc-amigaos --mode=macros --output=$(PREFIX)/$(TARGET)/ndk13-include/inline/$$(basename $$i _lib.sfd).h $$i; \
 	  sfdc --target=m68k-amigaos --mode=proto --output=$(PREFIX)/$(TARGET)/ndk13-include/proto/$$(basename $$i _lib.sfd).h $$i; \
 	done $(L2)
 	$(L0)"STDARGing ndk13"$(L1) for i in $$(find $(PREFIX)/$(TARGET)/ndk13-include/clib/*protos.h -type f); do \
@@ -894,7 +971,6 @@ LIBNIX_SRC = $(shell find 2>/dev/null $(PROJECTS)/libnix -not \( -path $(PROJECT
 libnix: $(BUILD)/libnix/_done
 
 $(BUILD)/libnix/_done: $(BUILD)/newlib/_done $(BUILD)/ndk-include_ndk $(BUILD)/ndk-include_ndk13 $(BUILD)/_netinclude $(BUILD)/binutils/_done $(BUILD)/gcc/_done $(PROJECTS)/libnix/Makefile.gcc6 $(LIBAMIGA) $(LIBNIX_SRC)
-#	@rsync -a --no-group --delete sys-include/ $(PREFIX)/$(TARGET)/sys-include
 	@mkdir -p $(PREFIX)/$(TARGET)/libnix/lib/libnix
 	@mkdir -p $(BUILD)/libnix
 	@mkdir -p $(PREFIX)/lib/gcc/$(TARGET)/$(GCC_VERSION)
@@ -919,6 +995,14 @@ $(BUILD)/gcc/_libgcc_done: $(BUILD)/libnix/_done $(BUILD)/libpthread/_done $(LIB
 	$(L0)"make libgcc"$(L1) $(MAKE) -C $(BUILD)/gcc all-target $(L2)
 	$(L0)"install libgcc"$(L1) $(MAKE) -C $(BUILD)/gcc install-target $(L2)
 	@echo "done" >$@
+
+# =================================================
+# libnix4.library
+# =================================================
+libnix4.library: $(BUILD)/libnix/libb/libnix4.library
+$(BUILD)/libnix/libb/libnix4.library: $(BUILD)/gcc/_libgcc_done $(BUILD)/libnix/_done
+	$(L0)"make libnix4.library"$(L1) CFLAGS="$(CFLAGS_FOR_TARGET)" \
+	$(MAKE) -C $(BUILD)/libnix -f $(PROJECTS)/libnix/Makefile.gcc6 root=$(PROJECTS)/libnix libb/libnix4.library $(L2)
 
 # =================================================
 # clib2
@@ -951,7 +1035,7 @@ $(BUILD)/libdebug/_done: $(BUILD)/libdebug/Makefile
 	@cp $(BUILD)/libdebug/libdebug.a $(PREFIX)/$(TARGET)/lib/
 	@echo "done" >$@
 
-$(BUILD)/libdebug/Makefile: $(BUILD)/libnix/_done $(PROJECTS)/libdebug/configure $(shell find 2>/dev/null $(PROJECTS)/libdebug -not \( -path $(PROJECTS)/libdebug/.git -prune \) -type f)
+$(BUILD)/libdebug/Makefile: $(BUILD)/gcc/_libgcc_done $(BUILD)/libnix/_done $(PROJECTS)/libdebug/configure $(shell find 2>/dev/null $(PROJECTS)/libdebug -not \( -path $(PROJECTS)/libdebug/.git -prune \) -type f)
 	@mkdir -p $(BUILD)/libdebug
 	$(L0)"configure libdebug"$(L1) cd $(BUILD)/libdebug && LD=$(TARGET)-ld CC=$(TARGET)-gcc CFLAGS="$(CFLAGS_FOR_TARGET)" $(PROJECTS)/libdebug/configure $(CONFIG_LIBDEBUG) $(L2)
 
@@ -995,15 +1079,14 @@ newlib: $(BUILD)/newlib/_done
 $(BUILD)/newlib/_done: $(BUILD)/newlib/newlib/libc.a
 	@echo "done" >$@
 
-$(BUILD)/newlib/newlib/libc.a: $(BUILD)/newlib/newlib/Makefile $(NEWLIB_FILES)
+$(BUILD)/newlib/newlib/libc.a: $(BUILD)/newlib/newlib/Makefile $(BUILD)/binutils/_gdb $(NEWLIB_FILES)
 	@rsync -a --no-group $(PROJECTS)/newlib-cygwin/newlib/libc/include/ $(PREFIX)/$(TARGET)/sys-include
-	@rsync -a --no-group $(PROJECTS)/newlib-cygwin/newlib/libc/sys/amigaos/include/stabs.h $(PREFIX)/$(TARGET)/sys-include
+	@rsync -a --no-group $(PROJECTS)/newlib-cygwin/newlib/libc/sys/amigaos/include/ $(PREFIX)/$(TARGET)/sys-include
 	$(L0)"make newlib"$(L1) $(MAKE) -C $(BUILD)/newlib/newlib $(L2)
 	$(L0)"install newlib"$(L1) $(MAKE) -C $(BUILD)/newlib/newlib install $(L2)
-	@for x in $$(find $(PREFIX)/$(TARGET)/lib/* -name libm.a); do ln -sf $$x $${x%*m.a}__m__.a; done
 	@touch $@
 
-$(BUILD)/newlib/newlib/Makefile: $(PROJECTS)/newlib-cygwin/newlib/configure $(BUILD)/ndk-include_ndk $(BUILD)/gcc/_done
+$(BUILD)/newlib/newlib/Makefile: $(PROJECTS)/newlib-cygwin/newlib/configure $(BUILD)/ndk-include_ndk $(BUILD)/gcc/_done | $(PREFIX_STAMP)
 	@mkdir -p $(BUILD)/newlib/newlib
 	@if [ ! -f "$(BUILD)/newlib/newlib/Makefile" ]; then \
 	$(L00)"configure newlib"$(L1) cd $(BUILD)/newlib/newlib && $(NEWLIB_CONFIG) CFLAGS="$(CFLAGS_FOR_TARGET)" CC_FOR_BUILD="$(CC)" CXXFLAGS="$(CXXFLAGS_FOR_TARGET)" $(PROJECTS)/newlib-cygwin/newlib/configure --host=$(TARGET) --prefix=$(PREFIX) --enable-newlib-io-long-long --enable-newlib-io-c99-formats --enable-newlib-reent-small --enable-newlib-mb --enable-newlib-long-time_t $(L2) \
@@ -1026,7 +1109,7 @@ $(PREFIX)/$(TARGET)/ixemul/lib/libc.a: $(BUILD)/ixemul/lib/libc.a
 	$(L0)"installing ixemul-sdk"$(L1) rsync -a --no-group $(BUILD)/ixemul/* $(PREFIX)/$(TARGET)/ixemul/ $(L2)
 
 
-$(BUILD)/ixemul/lib/libc.a: $(DOWNLOAD)/ixemul-sdk.lha
+$(BUILD)/ixemul/lib/libc.a: $(DOWNLOAD)/ixemul-sdk.lha $(LHA)
 	@mkdir -p $(BUILD)/ixemul
 	$(L0)"unpacking ixemul-sdk.lha"$(L1) cd $(BUILD)/ixemul && lha xf $(DOWNLOAD)/ixemul-sdk.lha $(L2)
 
@@ -1037,7 +1120,7 @@ $(DOWNLOAD)/ixemul-sdk.lha:
 # sdk installation
 # =================================================
 .PHONY: sdk all-sdk
-sdk: libnix $(BUILD)/_lha_done
+sdk: libnix $(LHA)
 	$(L0)"sdk $(sdk)"$(L1) $(PWD)/sdk/install install $(sdk) $(PREFIX) $(L2)
 
 SDKS0=$(shell find sdk/*.sdk)
@@ -1046,7 +1129,7 @@ SDKS=$(patsubst sdk/%.sdk,%,$(SDKS0))
 all-sdk: $(SDKS)
 
 $(SDKS): libnix lha
-	$(MAKE) sdk=$@
+	$(MAKE) sdk sdk=$@
 
 # =================================================
 # update repos
@@ -1054,8 +1137,8 @@ $(SDKS): libnix lha
 .PHONY: update-repos
 update-repos:
 	@for i in $(modules); do \
-		url=$$(grep $$i .repos | sed -e 's/[[:blank:]]\+/ /g' | cut -d' ' -f2); \
-		bra=$$(grep $$i .repos | sed -e 's/[[:blank:]]\+/ /g' | cut -d' ' -f3); \
+		url=$$(grep "^$$i[[:blank:]]" .repos | $(SED) -e 's/[[:blank:]]\+/ /g' | cut -d' ' -f2); \
+		bra=$$(grep "^$$i[[:blank:]]" .repos | $(SED) -e 's/[[:blank:]]\+/ /g' | cut -d' ' -f3); \
 		bra=$${bra/$$'\n'} ;\
 		bra=$${bra/$$'\r'} ;\
 		if [ -e projects/$$i ]; then \
@@ -1119,7 +1202,7 @@ b:
 v:
 	@D="$(date)"; \
 	for i in $(modules); do \
-		bra=$$(grep $$i .repos | sed -e 's/[[:blank:]]\+/ /g' | cut -d' ' -f3); \
+		bra=$$(grep $$i .repos | $(SED) -e 's/[[:blank:]]\+/ /g' | cut -d' ' -f3); \
 		bra=$${bra/$$'\n'} ;\
 		bra=$${bra/$$'\r'} ;\
 		if [ -e projects/$$i ]; then \
@@ -1143,11 +1226,11 @@ v:
 
 # change version to the given branch
 branch:
-	@if [ "" != "$(branch)" ] && [ "1" == "$$(grep -c $(mod) .repos)" ]; then \
+	@if [ "" != "$(branch)" ] && [ "1" == "$$(grep -c '^$(mod)[[:blank:]]' .repos)" ]; then \
 		echo $(mod) $(branch) ; \
-	    url=$$(grep $(mod) .repos | sed -e 's/[[:blank:]]\+/ /g' | cut -d' ' -f2); \
+	    url=$$(grep '^$(mod)[[:blank:]]' .repos | $(SED) -e 's/[[:blank:]]\+/ /g' | cut -d' ' -f2); \
 	    mv .repos .repos.bak; \
-	    grep -v $(mod) .repos.bak > .repos; \
+	    grep -v '^$(mod)[[:blank:]]' .repos.bak > .repos; \
 	    echo "$(mod) $$url $(branch)" >> .repos; \
 	    if [ -d  projects/$(mod) ]; then \
 	      pushd projects/$(mod); \
@@ -1192,7 +1275,7 @@ MULTICONFIGURE = $(L0)"configure $1"$(L1) $(foreach T,$(subst MODNAME,$1,$(MULTI
 # =================================================
 # zlib
 # =================================================
-ZLIB=zlib-1.2.13
+ZLIB=zlib-1.3.1
 
 .PHONY: zlib clean-zlib
 
@@ -1218,12 +1301,12 @@ $(BUILD)/$(ZLIB)/Makefile: $(PROJECTS)/$(ZLIB)/configure
 	$(call MULTICONFIGURE,$(ZLIB),libz.a,)
 	@touch $@
 
-$(PROJECTS)/$(ZLIB)/configure: $(DOWNLOAD)/$(ZLIB).tar.xz
-	tar -C $(PROJECTS) -xf $(DOWNLOAD)/$(ZLIB).tar.xz
+$(PROJECTS)/$(ZLIB)/configure: $(DOWNLOAD)/$(ZLIB).tar.gz
+	tar -C $(PROJECTS) -xf $(DOWNLOAD)/$(ZLIB).tar.gz
 	@touch $@
 
-$(DOWNLOAD)/$(ZLIB).tar.xz:
-	$(call get-file,zlib,https://zlib.net/$(ZLIB).tar.xz,$(ZLIB).tar.xz)
+$(DOWNLOAD)/$(ZLIB).tar.gz:
+	$(call get-file,zlib,https://zlib.net/fossils/$(ZLIB).tar.gz,$(ZLIB).tar.gz)
 
 # =================================================
 # libpng
@@ -1298,4 +1381,4 @@ $(PROJECTS)/$(LIBFREETYPE)/configure: $(DOWNLOAD)/$(LIBFREETYPE).tar.xz $(BUILD)
 	@touch $@
 
 $(DOWNLOAD)/$(LIBFREETYPE).tar.xz:
-	$(call get-file,$(LIBFREETYPE),https://download.savannah.gnu.org/releases/freetype/$(LIBFREETYPE).tar.xz,$(LIBFREETYPE).tar.xz)
+	$(call get-file,$(LIBFREETYPE),https://download-mirror.savannah.gnu.org/releases/freetype/$(LIBFREETYPE).tar.xz,$(LIBFREETYPE).tar.xz)

@@ -38,7 +38,7 @@ def killall_jobs() {
 	echo "Done killing"
 }
 
-def buildStep(DOCKER_ROOT, DOCKERIMAGE, DOCKERTAG, DOCKERFILE, BUILD_NEXT, BUILD_PARAM) {
+def buildStep(buildConf, DOCKER_ROOT, DOCKERIMAGE, DOCKERTAG, DOCKERFILE, BUILD_NEXT, BUILD_PARAM) {
 	def split_job_name = env.JOB_NAME.split(/\/{1}/);
 	def fixed_job_name = split_job_name[1].replace('%2F',' ');
 	def buildenv = '';
@@ -65,7 +65,7 @@ def buildStep(DOCKER_ROOT, DOCKERIMAGE, DOCKERTAG, DOCKERFILE, BUILD_NEXT, BUILD
 		docker.withRegistry("https://index.docker.io/v1/", "dockerhub") {
 			def customImage
 			stage("Building ${DOCKERIMAGE}:${tag}...") {
-				customImage = docker.build("${DOCKER_ROOT}/${DOCKERIMAGE}:${tag}", "--build-arg BUILDENV=${buildenv} --network=host --pull -f ${DOCKERFILE} .");
+				customImage = docker.build("${DOCKER_ROOT}/${DOCKERIMAGE}:${tag}", "--build-arg BUILDENV=${buildenv} --build-arg PATHPREFIX=${buildConf.PathPrefix} --build-arg GCC_BRANCH=${buildConf.GCCBranch} --build-arg BINUTILS_BRANCH=${buildConf.BinutilsBranch} --network=host --pull -f ${DOCKERFILE} .");
 			}
 
 			stage("Pushing to docker hub registry...") {
@@ -155,7 +155,7 @@ node('master') {
 				platforms["Build ${v.DockerRoot}/${v.DockerImage}:${v.DockerTag}_${p}"] = {
 					stage("Build ${p} version") {
 						node(p) {
-							buildStep(v.DockerRoot, v.DockerImage, "${v.DockerTag}_${p}", v.Dockerfile, [], v.BuildParam);
+							buildStep(v, v.DockerRoot, v.DockerImage, "${v.DockerTag}_${p}", v.Dockerfile, [], v.BuildParam);
 						}
 					}
 				}

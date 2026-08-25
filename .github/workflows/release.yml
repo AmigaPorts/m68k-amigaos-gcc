@@ -1,0 +1,70 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  # Bootstrap the toolchain and run the gcc testsuite as a release gate;
+  # the tarballs are uploaded as the workflow artifacts we publish below.
+  build-linux:
+    uses: ./.github/workflows/toolchain.yml
+    with:
+      run_testsuite: true
+
+  # the testsuite only runs on Linux; the macOS build gates on compiling
+  build-macos:
+    uses: ./.github/workflows/toolchain.yml
+    with:
+      runner: macos-15
+
+  release:
+    needs: [build-linux, build-macos]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Download toolchain tarballs
+        uses: actions/download-artifact@v7
+        with:
+          pattern: m68k-amigaos-gcc-*
+          merge-multiple: true
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          # search from the tag itself, excluding it: "$TAG^" would only
+          # walk the first-parent lineage and miss the previous tag when
+          # the release commit is a merge
+          PREV_TAG=$(git describe --tags --abbrev=0 --match='v*' --exclude="$TAG" "$TAG" 2>/dev/null || true)
+          if [ -n "$PREV_TAG" ]; then
+            RANGE="$PREV_TAG..$TAG"
+          else
+            RANGE="$TAG"
+          fi
+          # --notes-file, so a tag message or commit subject can never be read
+          # as workflow syntax the way a $GITHUB_OUTPUT heredoc can.
+          #
+          # The tag's message body, if it has one, becomes the prose at the top
+          # of the release; write it with "git tag -a -e". A tag with only a
+          # subject line leaves just the commit list.
+          {
+            NOTES=$(git tag -l --format='%(contents:body)' "$TAG")
+            if [ -n "$NOTES" ]; then
+              printf '%s\n\n' "$NOTES"
+            fi
+            echo "## Changes"
+            echo
+            git log --pretty=format:"- %h: %s" "$RANGE"
+          } > notes.md
+          gh release create "$TAG" m68k-amigaos-gcc-*.tar.xz \
+            --title "Release ${TAG#v}" --notes-file notes.md

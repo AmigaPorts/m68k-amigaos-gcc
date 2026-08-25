@@ -1,15 +1,144 @@
 #!/bin/bash
 export PATH=$PATH:$3/bin
-if [ ! -e "sdk/$2.sdk" ]; then
+sdk_descriptor="sdk/$2.sdk"
+
+if [ ! -e "$sdk_descriptor" ]; then
 	echo "sdk/$2.sdk not found"
 	exit 1
 fi
+
+sdk_trim()
+{
+	local sdk_trimmed_value=$1
+	sdk_trimmed_value=${sdk_trimmed_value#"${sdk_trimmed_value%%[![:space:]]*}"}
+	sdk_trimmed_value=${sdk_trimmed_value%"${sdk_trimmed_value##*[![:space:]]}"}
+	printf '%s' "$sdk_trimmed_value"
+}
+
+sdk_verify_archive()
+{
+	local sdk_archive=$1
+	local sdk_expected_sha256=$2
+	local sdk_checksum_output
+	local sdk_actual_sha256
+
+	if [ -z "$sdk_expected_sha256" ]; then
+		return 0
+	fi
+
+	if command -v sha256sum >/dev/null 2>&1; then
+		sdk_checksum_output=$(sha256sum "$sdk_archive") || return 1
+	elif command -v shasum >/dev/null 2>&1; then
+		sdk_checksum_output=$(shasum -a 256 "$sdk_archive") || return 1
+	else
+		echo "cannot verify $sdk_archive: sha256sum or shasum is required" >&2
+		return 1
+	fi
+
+	sdk_actual_sha256=${sdk_checksum_output%%[[:space:]]*}
+	sdk_actual_sha256=$(printf '%s' "$sdk_actual_sha256" | tr '[:upper:]' '[:lower:]')
+	sdk_expected_sha256=$(printf '%s' "$sdk_expected_sha256" | tr '[:upper:]' '[:lower:]')
+
+	if [ "$sdk_actual_sha256" != "$sdk_expected_sha256" ]; then
+		echo "checksum mismatch for $sdk_archive" >&2
+		echo "expected: $sdk_expected_sha256" >&2
+		echo "actual:   $sdk_actual_sha256" >&2
+		return 1
+	fi
+
+	echo "verified sha256 $sdk_expected_sha256  $sdk_archive"
+}
+
+sdk_fetch_archive()
+{
+	local sdk_archive_url=$1
+	local sdk_archive_tmp=$2
+
+	# aminet.net redirects each download to a random mirror, some of
+	# which are broken or slow; allow pinning a known-good one
+	if [ -n "$AMINET_MIRROR" ]; then
+		sdk_archive_url=$(printf '%s' "$sdk_archive_url" | \
+			sed -E "s|^https?://(www\.)?aminet\.net|$AMINET_MIRROR|")
+	fi
+
+	rm -f "$sdk_archive_tmp"
+	if command -v curl >/dev/null 2>&1; then
+		# --retry alone only covers timeouts and 408/429/5xx; aminet
+		# sometimes closes the connection mid-transfer (curl error 18),
+		# so retry on all errors. The sha256 check catches bad data.
+		echo curl --fail --location --connect-timeout 10 \
+			--retry 3 --retry-all-errors \
+			"$sdk_archive_url" --output "$sdk_archive_tmp"
+		curl --fail --location --connect-timeout 10 \
+			--retry 3 --retry-all-errors \
+			"$sdk_archive_url" --output "$sdk_archive_tmp"
+	elif command -v wget >/dev/null 2>&1; then
+		echo wget --timeout=10 --tries=4 "$sdk_archive_url" -O "$sdk_archive_tmp"
+		wget --timeout=10 --tries=4 "$sdk_archive_url" -O "$sdk_archive_tmp"
+	else
+		echo "cannot download $sdk_archive_url: curl or wget is required" >&2
+		return 1
+	fi
+}
+
+sdk_download_archive()
+{
+	local sdk_primary_url=$1
+	local sdk_fallback_url=$2
+	local sdk_archive=$3
+	local sdk_expected_sha256=$4
+	local sdk_archive_tmp=${sdk_archive}.tmp
+
+	if sdk_fetch_archive "$sdk_primary_url" "$sdk_archive_tmp" && \
+		sdk_verify_archive "$sdk_archive_tmp" "$sdk_expected_sha256"; then
+		mv "$sdk_archive_tmp" "$sdk_archive" || return 1
+		return 0
+	fi
+
+	rm -f "$sdk_archive_tmp"
+	if [ -n "$sdk_fallback_url" ]; then
+		echo "primary download failed or did not verify; trying $sdk_fallback_url" >&2
+		if sdk_fetch_archive "$sdk_fallback_url" "$sdk_archive_tmp" && \
+			sdk_verify_archive "$sdk_archive_tmp" "$sdk_expected_sha256"; then
+			mv "$sdk_archive_tmp" "$sdk_archive" || return 1
+			return 0
+		fi
+	fi
+
+	rm -f "$sdk_archive_tmp"
+	echo "failed to download a verified archive from $sdk_primary_url" >&2
+	return 1
+}
+
+sdk_fallback_url=""
+sdk_sha256=""
+while IFS='' read -r sdk_metadata_line || [[ -n "$sdk_metadata_line" ]]; do
+	case $sdk_metadata_line in
+		FallbackUrl:*)
+			sdk_fallback_url=$(sdk_trim "${sdk_metadata_line#FallbackUrl:}")
+			;;
+		Sha256:*)
+			sdk_sha256=$(sdk_trim "${sdk_metadata_line#Sha256:}")
+			;;
+	esac
+done < "$sdk_descriptor"
+
+if [ -n "$sdk_sha256" ] && ! [[ $sdk_sha256 =~ ^[[:xdigit:]]{64}$ ]]; then
+	echo "invalid Sha256 value in $sdk_descriptor" >&2
+	exit 1
+fi
+
+if [ -n "$sdk_fallback_url" ] && [ -z "$sdk_sha256" ]; then
+	echo "FallbackUrl in $sdk_descriptor requires Sha256" >&2
+	exit 1
+fi
+
 case $1 in
   install)
 	while IFS='' read -r line || [[ -n "$line" ]]; do
 		a=(${line//:/ })
 		case ${a[0]} in
-			Short | Version | Author | Uploader | Type | Replaces | Architecture)
+			Short | Version | Author | Uploader | Type | Replaces | Architecture | FallbackUrl | Sha256)
 				echo "$line"
 				;;
 			Url)
@@ -30,9 +159,16 @@ case $1 in
 					mkdir -p build/$2/
 					rsync -r projects/$file/* build/$2/
 				else
-					if [ ! -e "download/$file" ]; then
-						echo wget ${a[1]}:${a[2]} -O download/$file
-						wget ${a[1]}:${a[2]} -O download/$file || (rm download/$file; exit 1)
+					archive="download/$file"
+					if [ -e "$archive" ] && ! sdk_verify_archive "$archive" "$sdk_sha256"; then
+						echo "discarding unverified cached archive $archive" >&2
+						rm -f "$archive"
+						rm -rf "build/$2"
+					fi
+					if [ ! -e "$archive" ]; then
+						url=${a[1]}:${a[2]}
+						sdk_download_archive "$url" "$sdk_fallback_url" \
+							"$archive" "$sdk_sha256" || exit 1
 					fi
 					if [ ! -e "build/$2" ] || [ "$(ls -l build/$2)" == "total 0" ]; then
 						mkdir -p build/$2
@@ -64,11 +200,14 @@ case $1 in
 				name=${file%????}
 				mkdir -p $3/m68k-amigaos/include/proto/
 				rm $3/m68k-amigaos/include/proto/$name.h
-				$3/bin/sfdc --mode=proto --target=m68k-amigaos --output=$3/m68k-amigaos/include/proto/$name.h $3/m68k-amigaos/lib/sfd/$sfd || exit 1
+				$3/bin/sfdc --mode=proto --target=m68k-gcc-amigaos --output=$3/m68k-amigaos/include/proto/$name.h $3/m68k-amigaos/lib/sfd/$sfd || exit 1
 				sed -i.bak -e 's/\(<clib\/.*>\)/\L\1/' -e 's/\(<defines\/.*>\)/\L\1/' -e 's/\(<inline\/.*>\)/\L\1/' -e 's/\(<pragmas\/.*>\)/\L\1/' $3/m68k-amigaos/include/proto/$name.h
 				rm $3/m68k-amigaos/include/proto/$name.h.bak
 				mkdir -p $3/m68k-amigaos/include/inline/
-				$3/bin/sfdc --mode=macros --target=m68k-amigaos --output=$3/m68k-amigaos/include/inline/$name.h $3/m68k-amigaos/lib/sfd/$sfd || exit 1
+				$3/bin/sfdc --mode=macros --target=m68k-gcc-amigaos --output=$3/m68k-amigaos/include/inline/$name.h $3/m68k-amigaos/lib/sfd/$sfd || exit 1
+				# sfdc derives the proto include from the SFD basename, which
+				# need not match the proto/<name>.h generated above - fix it up
+				sed -i -e "s|#include <proto/.*\.h>|#include <proto/$name.h>|" $3/m68k-amigaos/include/inline/$name.h
 				$3/bin/sfdc --mode=macros --target=m68kvbcc-amigaos --output=$3/m68k-amigaos/include/inline/${name}_protos.h $3/m68k-amigaos/lib/sfd/$sfd || exit 1
 				mkdir -p $3/m68k-amigaos/include/lvo/
 				$3/bin/sfdc --mode=lvo --target=m68k-amigaos --output=$3/m68k-amigaos/include/lvo/$name.i $3/m68k-amigaos/lib/sfd/$sfd || exit 1
@@ -138,9 +277,9 @@ case $1 in
 				rm $3/${a[1]}.bak
 			;;
 			symlink)
-				echo creating symlink from $3/m68k-amigaos/${a[2]} to $3/m68k-amigaos/${a[1]}
+				echo creating symlink from $3/m68k-amigaos/${a[2]} to ${a[1]}
 				rm -rf $3/m68k-amigaos/${a[2]}
-				ln -s $3/m68k-amigaos/${a[1]} $3/m68k-amigaos/${a[2]}
+				ln -s ${a[1]} $3/m68k-amigaos/${a[2]}
 			;;
 			stdargs)
 				echo adding __stdargs to build/$2/${a[1]}
@@ -152,6 +291,31 @@ case $1 in
 				patch=patches/$2/${a[1]}
 				echo applying patch $patch to build/$2
 				patch -N -p0 -r - -d build/$2 < $patch
+			;;
+			patch1)
+				# absolute path: patch chdirs to the -d directory before opening -i
+				patch=$PWD/${a[1]}
+				if patch --forward --dry-run --batch -d build/$2 -p1 -i $patch >/dev/null 2>&1; then
+					echo applying patch $patch to build/$2
+					patch --forward --batch -d build/$2 -p1 -i $patch || exit 1
+				elif patch --reverse --dry-run --batch -d build/$2 -p1 -i $patch >/dev/null 2>&1; then
+					echo patch $patch already applied to build/$2
+				else
+					echo failed to apply patch $patch to build/$2
+					patch --forward --dry-run --batch -d build/$2 -p1 -i $patch
+					exit 1
+				fi
+			;;
+			copy)
+				source_file=${a[1]}
+				destination_file=${a[2]}
+				if [ -z "$source_file" ] || [ -z "$destination_file" ]; then
+					echo "copy requires a source and destination"
+					exit 1
+				fi
+				mkdir -p "$3/$(dirname "$destination_file")"
+				echo cp "build/$2/$source_file" "$3/$destination_file"
+				cp "build/$2/$source_file" "$3/$destination_file" || exit 1
 			;;
 			*)
 				if [ "$line" != "" ]; then
@@ -192,7 +356,7 @@ case $1 in
 				fi
 			;;
 		esac
-	done < "sdk/$2.sdk"
+	done < "$sdk_descriptor"
   ;;
   clean)
 	rm -rf build/$2
