@@ -20,6 +20,24 @@ BUILD := $(shell pwd)/build-$(UNAME_S)-$(TARGET)
 PROJECTS := $(shell pwd)/projects
 DOWNLOAD := $(shell pwd)/download
 __BUILDDIR := $(shell mkdir -p $(BUILD))
+
+# binutils, gcc and newlib record the prefix in their configured build
+# trees: building the same tree for another PREFIX installs into both
+PREFIX_STAMP := $(BUILD)/.prefix
+ifeq ($(filter clean% drop-prefix help info update% branch,$(MAKECMDGOALS)),)
+ifneq ($(wildcard $(PREFIX_STAMP)),)
+ifneq ($(shell cat $(PREFIX_STAMP)),$(abspath $(PREFIX)))
+$(error $(BUILD) was configured for PREFIX=$(shell cat $(PREFIX_STAMP)); use that PREFIX, another BUILD, or make clean)
+endif
+# the _done stamps describe what was installed there
+ifeq ($(wildcard $(PREFIX)),)
+$(error $(BUILD) was configured for PREFIX=$(PREFIX), which no longer exists; run make clean first)
+endif
+endif
+endif
+
+$(PREFIX_STAMP):
+	@echo "$(abspath $(PREFIX))" >$@
 __PROJECTDIR := $(shell mkdir -p $(PROJECTS))
 __DOWNLOADDIR := $(shell mkdir -p $(DOWNLOAD))
 
@@ -461,7 +479,7 @@ $(BUILD)/binutils/_done: $(BUILD)/binutils/Makefile $(shell find 2>/dev/null $(P
 	$(L0)"install binutils"$(L1)$(MAKE) -C $(BUILD)/binutils install-gas install-binutils install-ld $(L2)
 	@echo "done" >$@
 
-$(BUILD)/binutils/Makefile: $(PROJECTS)/binutils/configure
+$(BUILD)/binutils/Makefile: $(PROJECTS)/binutils/configure | $(PREFIX_STAMP)
 	@mkdir -p $(BUILD)/binutils
 	$(L0)"configure binutils"$(L1) cd $(BUILD)/binutils && $(E) $(PROJECTS)/binutils/configure $(CONFIG_BINUTILS) $(L2)
 
@@ -535,7 +553,7 @@ $(BUILD)/gcc/_done: $(BUILD)/gcc/Makefile $(shell find 2>/dev/null $(GCCD) -maxd
 	$(L0)"install gcc"$(L1) $(MAKE) -C $(BUILD)/gcc install-gcc $(L2)
 	@echo "done" >$@
 
-$(BUILD)/gcc/Makefile: $(PROJECTS)/gcc/configure $(BUILD)/binutils/_done
+$(BUILD)/gcc/Makefile: $(PROJECTS)/gcc/configure $(BUILD)/binutils/_done | $(PREFIX_STAMP)
 	@mkdir -p $(BUILD)/gcc
 ifneq ($(OWNGMP),)
 	@mkdir -p $(PROJECTS)/gcc/gmp
@@ -930,7 +948,6 @@ LIBNIX_SRC = $(shell find 2>/dev/null $(PROJECTS)/libnix -not \( -path $(PROJECT
 libnix: $(BUILD)/libnix/_done
 
 $(BUILD)/libnix/_done: $(BUILD)/newlib/_done $(BUILD)/ndk-include_ndk $(BUILD)/ndk-include_ndk13 $(BUILD)/_netinclude $(BUILD)/binutils/_done $(BUILD)/gcc/_done $(PROJECTS)/libnix/Makefile.gcc6 $(LIBAMIGA) $(LIBNIX_SRC)
-#	@rsync -a --no-group --delete sys-include/ $(PREFIX)/$(TARGET)/sys-include
 	@mkdir -p $(PREFIX)/$(TARGET)/libnix/lib/libnix
 	@mkdir -p $(BUILD)/libnix
 	@mkdir -p $(PREFIX)/lib/gcc/$(TARGET)/$(GCC_VERSION)
@@ -1041,12 +1058,12 @@ $(BUILD)/newlib/_done: $(BUILD)/newlib/newlib/libc.a
 
 $(BUILD)/newlib/newlib/libc.a: $(BUILD)/newlib/newlib/Makefile $(BUILD)/binutils/_gdb $(NEWLIB_FILES)
 	@rsync -a --no-group $(PROJECTS)/newlib-cygwin/newlib/libc/include/ $(PREFIX)/$(TARGET)/sys-include
-	@rsync -a --no-group $(PROJECTS)/newlib-cygwin/newlib/libc/sys/amigaos/include/stabs.h $(PREFIX)/$(TARGET)/sys-include
+	@rsync -a --no-group $(PROJECTS)/newlib-cygwin/newlib/libc/sys/amigaos/include/ $(PREFIX)/$(TARGET)/sys-include
 	$(L0)"make newlib"$(L1) $(MAKE) -C $(BUILD)/newlib/newlib $(L2)
 	$(L0)"install newlib"$(L1) $(MAKE) -C $(BUILD)/newlib/newlib install $(L2)
 	@touch $@
 
-$(BUILD)/newlib/newlib/Makefile: $(PROJECTS)/newlib-cygwin/newlib/configure $(BUILD)/ndk-include_ndk $(BUILD)/gcc/_done
+$(BUILD)/newlib/newlib/Makefile: $(PROJECTS)/newlib-cygwin/newlib/configure $(BUILD)/ndk-include_ndk $(BUILD)/gcc/_done | $(PREFIX_STAMP)
 	@mkdir -p $(BUILD)/newlib/newlib
 	@if [ ! -f "$(BUILD)/newlib/newlib/Makefile" ]; then \
 	$(L00)"configure newlib"$(L1) cd $(BUILD)/newlib/newlib && $(NEWLIB_CONFIG) CFLAGS="$(CFLAGS_FOR_TARGET)" CC_FOR_BUILD="$(CC)" CXXFLAGS="$(CXXFLAGS_FOR_TARGET)" $(PROJECTS)/newlib-cygwin/newlib/configure --host=$(TARGET) --prefix=$(PREFIX) --enable-newlib-io-long-long --enable-newlib-io-c99-formats --enable-newlib-reent-small --enable-newlib-mb --enable-newlib-long-time_t $(L2) \
