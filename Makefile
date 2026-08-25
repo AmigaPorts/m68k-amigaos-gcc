@@ -5,6 +5,11 @@
 # Riding a dead horse...
 # =================================================
 include disable_implicite_rules.mk
+
+# Keep variable-only invocations such as `make sdk=ahi` working even when
+# helper targets are declared before the dispatcher below.
+.DEFAULT_GOAL := x
+
 # =================================================
 # variables
 # =================================================
@@ -491,13 +496,16 @@ $(PROJECTS)/binutils/configure:
 # gdb
 # =================================================
 
+GDB_CC ?= gcc
+GDB_CXX ?= g++
+
 gdb: $(BUILD)/binutils/_gdb
 
 $(BUILD)/binutils/_gdb: $(BUILD)/binutils/_done
-	$(L0)"make binutils configure gdb"$(L1)$(MAKE) -C $(BUILD)/binutils configure-gdb $(L2)
-	$(L0)"make binutils gdb libs"$(L1)$(MAKE) -C $(BUILD)/binutils/gdb all-lib $(L2)
-	$(L0)"make binutils gdb"$(L1)$(MAKE) -C $(BUILD)/binutils $(ALL_GDB) $(L2)
-	$(L0)"install binutils gdb"$(L1)$(MAKE) -C $(BUILD)/binutils install-gas install-binutils install-ld $(INSTALL_GDB) $(L2)
+	$(L0)"make binutils configure gdb"$(L1)$(MAKE) -C $(BUILD)/binutils CC=$(GDB_CC) CXX=$(GDB_CXX) configure-gdb $(L2)
+	$(L0)"make binutils gdb libs"$(L1)$(MAKE) -C $(BUILD)/binutils/gdb CC=$(GDB_CC) CXX=$(GDB_CXX) all-lib $(L2)
+	$(L0)"make binutils gdb"$(L1)$(MAKE) -C $(BUILD)/binutils CC=$(GDB_CC) CXX=$(GDB_CXX) $(ALL_GDB) $(L2)
+	$(L0)"install binutils gdb"$(L1)$(MAKE) -C $(BUILD)/binutils CC=$(GDB_CC) CXX=$(GDB_CXX) install-gas install-binutils install-ld $(INSTALL_GDB) $(L2)
 	@echo "done" >$@
 
 # =================================================
@@ -1106,7 +1114,7 @@ SDKS=$(patsubst sdk/%.sdk,%,$(SDKS0))
 all-sdk: $(SDKS)
 
 $(SDKS): libnix lha
-	$(MAKE) sdk=$@
+	$(MAKE) sdk sdk=$@
 
 # =================================================
 # update repos
