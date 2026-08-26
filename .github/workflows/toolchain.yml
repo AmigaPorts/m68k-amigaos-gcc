@@ -145,7 +145,6 @@ jobs:
       - name: Run the gcc testsuite
         if: env.RUN_TESTSUITE == 'true' && runner.os == 'Linux'
         run: |
-          echo "lappend boards_dir \"$PWD/baseboards\"" > dejagnu-site.exp
           env DEJAGNU=$PWD/dejagnu-site.exp PATH="$HOME/amitools-venv/bin:$PATH" \
             make -j $NPROC check MAKEINFO=true
 

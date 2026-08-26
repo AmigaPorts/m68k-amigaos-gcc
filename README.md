@@ -239,10 +239,9 @@ python3 -m venv .venv
 .venv/bin/pip install "amitools[vamos] @ git+https://github.com/AmigaPorts/amitools.git"
 ```
 
-Then point dejagnu at the board description in this repo and run the
-suite:
+Then run the suite with the site file from this repo, which points
+dejagnu at the board descriptions in `baseboards/`:
 ```
-echo "lappend boards_dir \"$PWD/baseboards\"" > dejagnu-site.exp
 DEJAGNU=$PWD/dejagnu-site.exp PATH="$PWD/.venv/bin:$PATH" make -j$(nproc) check
 ```
 
