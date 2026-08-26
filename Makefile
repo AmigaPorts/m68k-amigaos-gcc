@@ -1276,8 +1276,8 @@ $(BUILD)/$(ZLIB)/_done: $(PREFIX)/$(TARGET)/lib/libz.a
 	@echo "done" >$@
 
 $(PREFIX)/$(TARGET)/lib/libz.a: $(BUILD)/$(ZLIB)/libz.a
-	@rsync -a --no-group $(PROJECTS)/$(ZLIB)/zlib.h $(PREFIX)/include/
-	@rsync -a --no-group $(BUILD)/$(ZLIB)/zconf.h $(PREFIX)/include/
+	@rsync -a --no-group $(PROJECTS)/$(ZLIB)/zlib.h $(PREFIX)/$(TARGET)/include/
+	@rsync -a --no-group $(BUILD)/$(ZLIB)/zconf.h $(PREFIX)/$(TARGET)/include/
 	$(call INSTALL_MULTILIBS,$(ZLIB),libz.a)
 	@touch $@
 
@@ -1314,9 +1314,9 @@ $(BUILD)/$(LIBPNG)/_done: $(PREFIX)/$(TARGET)/lib/libpng.a
 	@echo "done" >$@
 
 $(PREFIX)/$(TARGET)/lib/libpng.a: $(BUILD)/$(LIBPNG)/libpng.a
-	@rsync -a --no-group $(PROJECTS)/$(LIBPNG)/png.h $(PREFIX)/include/
-	@rsync -a --no-group $(PROJECTS)/$(LIBPNG)/pngconf.h $(PREFIX)/include/
-	@rsync -a --no-group $(BUILD)/$(LIBPNG)/pnglibconf.h $(PREFIX)/include/
+	@rsync -a --no-group $(PROJECTS)/$(LIBPNG)/png.h $(PREFIX)/$(TARGET)/include/
+	@rsync -a --no-group $(PROJECTS)/$(LIBPNG)/pngconf.h $(PREFIX)/$(TARGET)/include/
+	@rsync -a --no-group $(BUILD)/$(LIBPNG)/pnglibconf.h $(PREFIX)/$(TARGET)/include/
 	@$(call COPY_MULTILIBS,$(LIBPNG),.libs/libpng16.a,libpng.a)
 	$(call INSTALL_MULTILIBS,$(LIBPNG),libpng.a)
 	@touch $@
@@ -1352,8 +1352,8 @@ $(BUILD)/$(LIBFREETYPE)/_done: $(PREFIX)/$(TARGET)/lib/libfreetype.a
 	@echo "done" >$@
 
 $(PREFIX)/$(TARGET)/lib/libfreetype.a: $(BUILD)/$(LIBFREETYPE)/libfreetype.a
-	@rsync -a --no-group $(PROJECTS)/$(LIBFREETYPE)/include/ft2build.h $(PREFIX)/include/
-	@rsync -a --no-group $(PROJECTS)/$(LIBFREETYPE)/include/freetype $(PREFIX)/include/
+	@rsync -a --no-group $(PROJECTS)/$(LIBFREETYPE)/include/ft2build.h $(PREFIX)/$(TARGET)/include/
+	@rsync -a --no-group $(PROJECTS)/$(LIBFREETYPE)/include/freetype $(PREFIX)/$(TARGET)/include/
 	@$(call COPY_MULTILIBS,$(LIBFREETYPE),.libs/libfreetype.a,libfreetype.a)
 	$(call INSTALL_MULTILIBS,$(LIBFREETYPE),libfreetype.a)
 	@touch $@
