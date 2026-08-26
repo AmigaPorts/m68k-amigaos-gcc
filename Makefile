@@ -290,7 +290,8 @@ help:
 	@echo "make clean					remove the build folder"
 	@echo "make clean-<target>				remove the target's build folder"
 	@echo "make drop-prefix				remove all content from the prefix folder"
-	@echo "make package					tar up the prefix folder into m68k-amigaos-gcc-<version>-<os>-<arch>.tar.xz"
+	@echo "make package [PACKAGE_FORMAT=tar.xz|lha]	package the prefix folder for the destination host"
+	@echo "make package-lha				package the prefix folder as an .lha archive"
 	@echo "make update					perform git pull for all targets"
 	@echo "make update-<target>				perform git pull for the given target"
 	@echo "make sdk=<sdk>					install the sdk <sdk>"
@@ -405,12 +406,39 @@ drop-prefix:
 	rm -rf $(PREFIX)/share
 	@mkdir -p $(PREFIX)/bin
 
-# package the toolchain prefix into a tarball
-PACKAGE ?= m68k-amigaos-gcc-$(GCC_VERSION)-$(UNAME_S)-$(shell uname -m).tar.xz
-.PHONY: package
+# Package native builds for the build machine and cross builds for the machine
+# on which the produced tools run.  PACKAGE_PLATFORM may be overridden for a
+# more user-facing platform label without changing the configured HOST.
+ifeq (,$(strip $(HOST)))
+PACKAGE_PLATFORM ?= $(UNAME_S)-$(shell uname -m)
+else
+PACKAGE_PLATFORM ?= $(HOST)
+endif
+PACKAGE_FORMAT ?= tar.xz
+PACKAGE_BASENAME ?= m68k-amigaos-gcc-$(GCC_VERSION)-$(PACKAGE_PLATFORM)
+PACKAGE ?= $(PACKAGE_BASENAME).$(PACKAGE_FORMAT)
+PACKAGE_LHA ?= lha
+
+.PHONY: package package-lha
+package-lha: PACKAGE_FORMAT=lha
+package-lha: package
+
 package:
 	@test -n "$(GCC_VERSION)" || { echo "GCC_VERSION is empty - run make update first"; exit 1; }
-	XZ_OPT=-T0 tar -C $(dir $(abspath $(PREFIX))) -cJf $(PACKAGE) $(notdir $(abspath $(PREFIX)))
+	@case "$(PACKAGE_FORMAT)" in \
+	  tar.xz) \
+	    XZ_OPT=-T0 tar -C "$(dir $(abspath $(PREFIX)))" -cJf "$(abspath $(PACKAGE))" "$(notdir $(abspath $(PREFIX)))"; \
+	    ;; \
+	  lha) \
+	    command -v "$(PACKAGE_LHA)" >/dev/null || { echo "$(PACKAGE_LHA) is required for PACKAGE_FORMAT=lha"; exit 1; }; \
+	    rm -f "$(abspath $(PACKAGE))"; \
+	    cd "$(dir $(abspath $(PREFIX)))" && "$(PACKAGE_LHA)" aq "$(abspath $(PACKAGE))" "$(notdir $(abspath $(PREFIX)))"; \
+	    ;; \
+	  *) \
+	    echo "unsupported PACKAGE_FORMAT=$(PACKAGE_FORMAT); use tar.xz or lha"; \
+	    exit 2; \
+	    ;; \
+	esac
 
 # =================================================
 # update all projects

@@ -148,7 +148,8 @@ make <target>		      builds a target: binutils, gcc, fd2sfd, fd2pragma, ira, sfd
 make clean		        remove the build folder
 make clean-<target>	  remove the target's build folder
 make drop-prefix	    remove all content from the prefix folder, beware!
-make package		      tar up the prefix folder into m68k-amigaos-gcc-<version>-<os>-<arch>.tar.xz
+make package		      package the prefix folder as .tar.xz (default) or .lha
+make package-lha	      package the prefix folder as .lha
 make check		        run the gcc testsuite against the built toolchain, using vamos as simulator
 make update		        perform git pull for all targets
 make update-<target>	perform git pull for the given target
@@ -189,9 +190,26 @@ A full bootstrap takes roughly 10 to 30 minutes on current Linux
 hardware, dominated by serial configure and multilib phases.
 
 ## Packaging
-`make package` tars up the PREFIX folder into `m68k-amigaos-gcc-<version>-<os>-<arch>.tar.xz`. Override the output path with `PACKAGE=`:
+`make package` packages the PREFIX folder as `.tar.xz` by default. Native
+builds use the build machine's OS and architecture in the filename. Cross
+builds use `HOST`, so their filenames identify the system on which the tools
+will run rather than the build machine.
+
+Select an LHA archive with `PACKAGE_FORMAT=lha` or the `package-lha`
+convenience target:
+
+```
+make package PACKAGE_FORMAT=lha
+make package-lha
+```
+
+For example, `HOST=m68k-amigaos` produces a filename ending in
+`-m68k-amigaos.tar.xz` or `-m68k-amigaos.lha`. Override the platform label
+with `PACKAGE_PLATFORM=` and the complete output path with `PACKAGE=`:
+
 ```
 make package PREFIX=/opt/amiga PACKAGE=/tmp/toolchain.tar.xz
+make package-lha PREFIX=/opt/amiga PACKAGE_PLATFORM=AmigaOS-m68k
 ```
 
 ## Continuous integration and releases
