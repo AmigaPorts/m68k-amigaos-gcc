@@ -2,9 +2,21 @@
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 
 #define MyAppName "amiga-gcc"
-;#define MyAppVersion "22221122"
-#define MyAppPublisher "Bebbo"
-#define MyAppURL "https://franke.ms"
+#ifndef MyAppVersion
+#define MyAppVersion GetEnv("AMIGA_GCC_VERSION")
+#endif
+#if MyAppVersion == ""
+#define MyAppVersion "development"
+#endif
+#ifndef SourceDir
+#define SourceDir GetEnv("AMIGA_GCC_SOURCE_DIR")
+#endif
+#if SourceDir == ""
+; Keep setup/buildwin working from its historical MSYS2 environment.
+#define SourceDir "\msys64\opt\amiga"
+#endif
+#define MyAppPublisher "AmigaDev"
+#define MyAppURL "https://github.com/AmigaPorts/m68k-amigaos-gcc"
 #define MyAppExeName "cmdline.bat"
 
 [Setup]
@@ -19,12 +31,14 @@ AppPublisher={#MyAppPublisher}
 AppPublisherURL={#MyAppURL}
 AppSupportURL={#MyAppURL}
 AppUpdatesURL={#MyAppURL}
-DefaultDirName=c:\{#MyAppName}
+DefaultDirName={autopf}\{#MyAppName}
 DisableProgramGroupPage=yes
 OutputBaseFilename=setup-amiga-gcc
 SetupIconFile=icon.ico
 Compression=lzma
 SolidCompression=yes
+ArchitecturesAllowed=x64compatible
+ArchitecturesInstallIn64BitMode=x64compatible
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
@@ -34,7 +48,7 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 Name: "quicklaunchicon"; Description: "{cm:CreateQuickLaunchIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked; OnlyBelowVersion: 0,6.1
 
 [Files]
-Source: "\msys64\opt\amiga\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "{#SourceDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
 Name: "{commonprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
@@ -43,4 +57,3 @@ Name: "{userappdata}\Microsoft\Internet Explorer\Quick Launch\{#MyAppName}"; Fil
 
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
-

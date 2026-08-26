@@ -28,7 +28,6 @@ ENV PATH="/opt/build-binutils:${PATH}" \
     HOST_RUNNER="vamos -C 68040 --" \
     NDK="3.9" \
     OWNGMP="1" \
-    HOST_TOOL_PREFIX="/opt/m68k-amigaos/bin/m68k-amigaos-" \
     VERBOSE="${MAKE_VERBOSE}" \
     BUILD_CC="x86_64-linux-gnu-gcc -B/opt/build-binutils/" \
     BUILD_CXX="x86_64-linux-gnu-g++ -B/opt/build-binutils/"

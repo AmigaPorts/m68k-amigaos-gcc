@@ -215,11 +215,29 @@ make package-lha PREFIX=/opt/amiga PACKAGE_PLATFORM=AmigaOS-m68k
 ## Continuous integration and releases
 The GitHub Actions workflow in `.github/workflows/toolchain.yml`
 bootstraps the toolchain from scratch, optionally runs the gcc
-testsuite under vamos, and uploads the packaged tarball as a build
-artifact. It can be dispatched manually against any gcc branch.
+testsuite under vamos, and uploads the native `.tar.xz` packages as build
+artifacts. By default it also Canadian-cross-builds the `amiga6` compiler for
+AmigaOS and MinGW hosts using the published
+`amigadev/crosstools:m68k-amigaos-gcc10` and
+`amigadev/crosstools:x86_64-w64-mingw32` build environments. The local hosted
+build Dockerfiles are not rebuilt by CI. The AmigaOS package is an `.lha`; the
+Windows runner uses the files in `setup/` to compile an Inno Setup installer
+without running the generated installer. If installer compilation fails, the
+workflow uploads a portable `.zip` instead.
 
-Pushing a tag matching `v*` additionally publishes the tarball as a
-GitHub release, with the gcc testsuite as a release gate.
+Manual runs may disable the hosted builds with `build_hosted=false` or select
+another hosted compiler branch with `hosted_gcc_branch`. Label a pull request
+`ci-cross` to exercise the hosted builds for its merge commit.
+
+For a hosted build, build-time tools such as `fd2sfd`, `fd2pragma`, and `vasm`
+are built separately for the build machine and destination host; `sfdc`
+remains directly runnable because it is a Perl script. GCC and binutils are
+built only for the requested host. When target libraries need the newly built
+hosted compiler or binutils, the Makefile invokes them through `HOST_RUNNER`.
+No prebuilt target toolchain needs to be copied into the build.
+
+Pushing a tag matching `v*` additionally publishes all native and hosted
+packages as a GitHub release, with the gcc testsuite as a release gate.
 
 ## Kickstart 1.3
 

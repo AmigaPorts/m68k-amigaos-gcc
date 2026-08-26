@@ -36,18 +36,6 @@ BUILD_CC ?= cc
 BUILD_CXX ?= c++
 HOST_TOOL_PREFIX ?=
 TARGET_TOOL_PREFIX ?=
-ifneq (,$(strip $(TARGET_TOOL_PREFIX)))
-TARGET_AR_FOR_BUILD := $(TARGET_TOOL_PREFIX)ar
-else ifneq (,$(strip $(HOST_TOOL_PREFIX)))
-TARGET_AR_FOR_BUILD := $(HOST_TOOL_PREFIX)ar
-else
-TARGET_AR_FOR_BUILD := $(PREFIX)/bin/$(TARGET)-ar
-endif
-ifneq (,$(strip $(HOST)))
-TARGET_CC_FOR_BUILD ?= $(shell command -v $(TARGET)-gcc 2>/dev/null)
-SDK_CC_FOR_BUILD := $(TARGET_CC_FOR_BUILD)
-SDK_AR_FOR_BUILD := $(TARGET_AR_FOR_BUILD)
-endif
 
 # Default empty; set to .exe for MinGW targets
 ifneq (,$(findstring mingw,$(HOST)))
@@ -73,6 +61,48 @@ ifneq (,$(strip $(HOST)))
 endif
 BUILD_TOOLS := $(BUILD)/build-tools
 BUILD_TOOLS_PREFIX ?= $(PREFIX)/build-tools
+
+# Prefer a build-machine TARGET compiler when the environment already
+# provides one (as it does for an AmigaOS host build).  Otherwise create
+# wrappers that run the newly built HOST tools through HOST_RUNNER.  GCC and
+# binutils themselves are still built only once, for HOST.
+ifneq (,$(strip $(HOST)))
+ifeq (,$(strip $(HOST_TOOL_PREFIX)))
+ifeq ($(strip $(HOST)),$(strip $(TARGET)))
+HOST_TOOL_PREFIX := $(patsubst %gcc,%,$(shell command -v $(HOST)-gcc 2>/dev/null))
+endif
+endif
+ifneq (,$(strip $(TARGET_TOOL_PREFIX)))
+TARGET_CC_FOR_BUILD := $(TARGET_TOOL_PREFIX)gcc
+TARGET_AR_FOR_BUILD := $(TARGET_TOOL_PREFIX)ar
+else ifneq (,$(strip $(HOST_TOOL_PREFIX)))
+TARGET_CC_FOR_BUILD := $(HOST_TOOL_PREFIX)gcc
+TARGET_AR_FOR_BUILD := $(HOST_TOOL_PREFIX)ar
+else
+TARGET_RUNNER_WRAPPER_DIR := $(BUILD_TOOLS)/target-runner
+TARGET_RUNNER_TOOL_NAMES := gcc g++ c++ cpp gcc-ar gcc-nm gcc-ranlib \
+	addr2line ar as c++filt elfedit ld ld.bfd nm objcopy objdump ranlib \
+	readelf size strings strip
+TARGET_RUNNER_WRAPPERS := $(patsubst %,$(TARGET_RUNNER_WRAPPER_DIR)/$(TARGET)-%,$(TARGET_RUNNER_TOOL_NAMES))
+TARGET_CC_FOR_BUILD := $(TARGET_RUNNER_WRAPPER_DIR)/$(TARGET)-gcc
+TARGET_AR_FOR_BUILD := $(TARGET_RUNNER_WRAPPER_DIR)/$(TARGET)-ar
+TARGET_CXX_FOR_BUILD := $(TARGET_RUNNER_WRAPPER_DIR)/$(TARGET)-c++
+export PATH := $(TARGET_RUNNER_WRAPPER_DIR):$(PATH)
+endif
+SDK_CC_FOR_BUILD := $(TARGET_CC_FOR_BUILD)
+SDK_AR_FOR_BUILD := $(TARGET_AR_FOR_BUILD)
+else
+TARGET_CC_FOR_BUILD ?= $(shell command -v $(TARGET)-gcc 2>/dev/null)
+TARGET_AR_FOR_BUILD := $(PREFIX)/bin/$(TARGET)-ar
+endif
+
+ifneq (,$(strip $(TARGET_RUNNER_WRAPPER_DIR)))
+$(TARGET_RUNNER_WRAPPER_DIR)/$(TARGET)-%:
+	@mkdir -p $(@D)
+	@test -n "$(HOST_RUNNER)" || { echo "HOST_RUNNER is required to execute HOST=$(HOST) tools while building TARGET=$(TARGET) libraries"; exit 1; }
+	@printf '%s\n' '#!/bin/sh' 'exec $(HOST_RUNNER) "$(PREFIX)/bin/$(TARGET)-$*$(EXEEXT)" "$$@"' >$@
+	@chmod +x $@
+endif
 PROJECTS := $(shell pwd)/projects
 DOWNLOAD := $(shell pwd)/download
 __BUILDDIR := $(shell mkdir -p $(BUILD))
@@ -137,20 +167,27 @@ NDK_FOLDER_NAME_SFD  := NDK_3.9/Include/sfd
 NDK_FOLDER_NAME_LIBS := NDK_3.9/Include/linker_libs
 endif
 
+ifeq (,$(strip $(HOST)))
+CFLAGS ?= -Os
+CXXFLAGS ?= $(CFLAGS)
+BUILD_CFLAGS ?= $(CFLAGS)
+BUILD_CXXFLAGS ?= $(CXXFLAGS)
+CFLAGS_FOR_TARGET ?= -O2 -fomit-frame-pointer
+CXXFLAGS_FOR_TARGET ?= $(CFLAGS_FOR_TARGET) -fno-exceptions -fno-rtti
+
+# Preserve the original native configure environment exactly.
+E:=CFLAGS="$(CFLAGS)" CXXFLAGS="$(CXXFLAGS)" CFLAGS_FOR_BUILD="$(CFLAGS)" CXXFLAGS_FOR_BUILD="$(CXXFLAGS)"  CFLAGS_FOR_TARGET="$(CFLAGS_FOR_TARGET)" CXXFLAGS_FOR_TARGET="$(CFLAGS_FOR_TARGET)"
+else
 CFLAGS ?= -Os $(HOST_CPU_FLAGS) $(HOST_CRT_FLAGS)
 CXXFLAGS ?= $(CFLAGS)
 LDFLAGS ?= $(HOST_LINK_FLAGS)
-ifeq (,$(strip $(HOST)))
-BUILD_CFLAGS ?= $(CFLAGS)
-BUILD_CXXFLAGS ?= $(CXXFLAGS)
-else
 BUILD_CFLAGS ?= -Os
 BUILD_CXXFLAGS ?= $(BUILD_CFLAGS)
-endif
 CFLAGS_FOR_TARGET ?= -O2 -fomit-frame-pointer
 CXXFLAGS_FOR_TARGET ?= $(CFLAGS_FOR_TARGET)
 
 E:=CFLAGS="$(CFLAGS)" CXXFLAGS="$(CXXFLAGS)" LDFLAGS="$(LDFLAGS)" CFLAGS_FOR_BUILD="$(BUILD_CFLAGS)" CXXFLAGS_FOR_BUILD="$(BUILD_CXXFLAGS)" CFLAGS_FOR_TARGET="$(CFLAGS_FOR_TARGET)" CXXFLAGS_FOR_TARGET="$(CXXFLAGS_FOR_TARGET)"
+endif
 
 THREADS ?= no
 
@@ -554,12 +591,12 @@ update-mpc:
 # =================================================
 # binutils
 # =================================================
-CONFIG_BINUTILS =--prefix=$(PREFIX) --target=$(TARGET) $(HOST_CONFIGURE) --disable-werror --disable-nls --disable-doc
+CONFIG_BINUTILS =--prefix=$(PREFIX) --target=$(TARGET) $(HOST_CONFIGURE) --disable-werror --disable-nls
 
 ifeq (,$(strip $(HOST)))
-CONFIG_BINUTILS += --enable-tui --enable-plugins
+CONFIG_BINUTILS += --enable-tui --enable-plugins --without-msgpack
 else
-CONFIG_BINUTILS += --disable-plugins --disable-gdb --disable-gdbserver --without-msgpack
+CONFIG_BINUTILS += --disable-doc --disable-plugins --disable-gdb --disable-gdbserver --without-msgpack
 LD_CROSS_MAKE_ENV := bfdplugin_LTLIBRARIES= noinst_LTLIBRARIES=
 LD_CROSS_MAKE_FLAGS := -e
 endif
@@ -616,7 +653,7 @@ $(BUILD)/binutils/Makefile: $(PROJECTS)/binutils/configure | $(PREFIX_STAMP)
 
 $(PROJECTS)/binutils/configure:
 	@cd $(PROJECTS) &&	git clone -b $(binutils_BRANCH) --depth 16 $(binutils_URL) binutils
-	for i in $$(find patches/binutils/ -type f); \
+	for i in $$(find patches/binutils/ -type f 2>/dev/null); \
 	do if [[ "$$i" == *.diff ]] ; \
 		then j=$${i:8}; patch -N "$(PROJECTS)/$${j%.diff}" "$$i"; fi ; done
 
@@ -739,7 +776,7 @@ GCCD := $(patsubst %,$(PROJECTS)/gcc/%, $(GCC_DIR))
 
 gcc: $(BUILD)/gcc/_done
 
-$(BUILD)/gcc/_done: $(BUILD)/gcc/Makefile $(shell find 2>/dev/null $(GCCD) -maxdepth 1 -type f )
+$(BUILD)/gcc/_done: $(BUILD)/gcc/Makefile $(shell find 2>/dev/null $(GCCD) -maxdepth 1 -type f ) $(TARGET_RUNNER_WRAPPERS)
 	$(L0)"make gcc"$(L1) $(MAKE) -C $(BUILD)/gcc $(GCC_HOST_TOOLS) $(GCC_BUILD_MAKE_FLAGS) $(GCC_HOST_LDFLAGS) all-gcc $(L2)
 	$(L0)"install gcc"$(L1) $(MAKE) -C $(BUILD)/gcc $(GCC_HOST_TOOLS) $(GCC_BUILD_MAKE_FLAGS) $(GCC_HOST_LDFLAGS) install-gcc $(L2)
 	@for tool in $(GCC_HOST_ALIAS_CMD); do \
@@ -772,7 +809,7 @@ $(BUILD)/gcc-host-compat.o: support/amiga-host-compat.c
 
 $(PROJECTS)/gcc/configure:
 	@cd $(PROJECTS) &&	git clone -b $(gcc_BRANCH) --depth 16 $(gcc_URL)
-	for i in $$(find patches/gcc/ -type f); \
+	for i in $$(find patches/gcc/ -type f 2>/dev/null); \
 	do if [[ "$$i" == *.diff ]] ; \
 		then j=$${i:8}; patch -N "$(PROJECTS)/$${j%.diff}" "$$i"; fi ; done
 
