@@ -1282,7 +1282,7 @@ $(PREFIX)/$(TARGET)/lib/libz.a: $(BUILD)/$(ZLIB)/libz.a
 	@touch $@
 
 $(BUILD)/$(ZLIB)/libz.a: $(BUILD)/$(ZLIB)/Makefile
-	+$(call MULTIMAKE,$(ZLIB),libz.a)
+	+$(call MULTIMAKE,$(ZLIB),libz.a,AR=$(TARGET)-ar,ARFLAGS=rc)
 	@touch $@
 
 $(BUILD)/$(ZLIB)/Makefile: $(PROJECTS)/$(ZLIB)/configure
