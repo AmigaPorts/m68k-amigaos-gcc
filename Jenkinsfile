@@ -43,33 +43,43 @@ def buildStep(buildConf, DOCKER_ROOT, DOCKERIMAGE, DOCKERTAG, DOCKERFILE, BUILD_
 	def fixed_job_name = split_job_name[1].replace('%2F',' ');
 	def buildenv = '';
 	def tag = '';
+	def isPullRequest = env.CHANGE_ID?.trim();
+	def branchName = isPullRequest ? env.CHANGE_TARGET : env.BRANCH_NAME;
 
 	try {
 		checkout scm;
 
-
-		if (env.BRANCH_NAME.equals('master')) {
+		if (branchName == 'master') {
 			buildenv = 'production';
 			tag = "${DOCKERTAG}";
-		} else if (env.BRANCH_NAME.equals('gcc10')) {
+		} else if (branchName == 'gcc10') {
 			buildenv = 'production';
 			tag = "${DOCKERTAG}";
-			env.BRANCH_NAME = "master";
-		} else if (env.BRANCH_NAME.equals('dev')) {
+			if (!isPullRequest) {
+				env.BRANCH_NAME = "master";
+			}
+		} else if (branchName == 'dev') {
 			buildenv = 'development';
 			tag = "${DOCKERTAG}-dev";
 		} else {
 			throw new Exception("Invalid branch, stopping build!");
 		}
 
+		def buildArgs = "--build-arg BUILDENV=${buildenv} --build-arg PATHPREFIX=${buildConf.PathPrefix} --build-arg GCC_BRANCH=${buildConf.GCCBranch} --build-arg BINUTILS_BRANCH=${buildConf.BinutilsBranch} --network=host --pull -f ${DOCKERFILE} .";
 		docker.withRegistry("https://index.docker.io/v1/", "dockerhub") {
 			def customImage
 			stage("Building ${DOCKERIMAGE}:${tag}...") {
-				customImage = docker.build("${DOCKER_ROOT}/${DOCKERIMAGE}:${tag}", "--build-arg BUILDENV=${buildenv} --build-arg PATHPREFIX=${buildConf.PathPrefix} --build-arg GCC_BRANCH=${buildConf.GCCBranch} --build-arg BINUTILS_BRANCH=${buildConf.BinutilsBranch} --network=host --pull -f ${DOCKERFILE} .");
+				customImage = docker.build("${DOCKER_ROOT}/${DOCKERIMAGE}:${tag}", buildArgs);
 			}
 
-			stage("Pushing to docker hub registry...") {
-				customImage.push();
+			if (isPullRequest) {
+				stage("Skipping publication of ${DOCKERIMAGE}:${tag}") {
+					echo "PR build completed; no image will be pushed.";
+				}
+			} else {
+				stage("Pushing to docker hub registry...") {
+					customImage.push();
+				}
 			}
 		}
 
@@ -84,6 +94,13 @@ def buildStep(buildConf, DOCKER_ROOT, DOCKERIMAGE, DOCKERTAG, DOCKERFILE, BUILD_
 def buildManifest(DOCKER_ROOT, DOCKERIMAGE, DOCKERTAG, DOCKERFILE, PLATFORMS, BUILD_NEXT, BUILD_PARAM) {
 	def fixed_job_name = env.JOB_NAME.replace('%2F','/')
 	try {
+		if (env.CHANGE_ID?.trim()) {
+			stage("Skipping ${DOCKERIMAGE}:${DOCKERTAG} manifest publication") {
+				echo "PR platform builds completed; no manifest will be created and no downstream builds will be triggered.";
+			}
+			return;
+		}
+
 		checkout scm;
 
 		def buildenv = '';
