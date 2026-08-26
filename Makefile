@@ -1490,11 +1490,14 @@ branch:
 # multilib support
 # =================================================
 MULTI = MODNAME/.: \
+		MODNAME/libm060:-m68060 \
 		MODNAME/libm020:-m68020 \
 		MODNAME/libm020/libm881:-m68020_-m68881 \
 		MODNAME/libb:-fbaserel \
+		MODNAME/libb/libm060:-fbaserel_-m68060 \
 		MODNAME/libb/libm020:-fbaserel_-m68020 \
 		MODNAME/libb/libm020/libm881:-fbaserel_-m68020_-m68881 \
+		MODNAME/libb32/libm060:-fbaserel32_-m68060 \
 		MODNAME/libb32/libm020:-fbaserel32_-m68020 \
 		MODNAME/libb32/libm020/libm881:-fbaserel32_-m68020_-m68881
 
@@ -1502,7 +1505,7 @@ MULTI = MODNAME/.: \
 COPY_MULTILIBS = $(foreach T, $(subst MODNAME,$1,$(MULTI)),cp $(BUILD)/$(word 1,$(subst :, ,${T}))/$2 $(BUILD)/$(word 1,$(subst :, ,${T}))/$3;)
 
 # 1=module name, 2=lib name
-INSTALL_MULTILIBS = $(L0)"install $1"$(L1) $(foreach T, $(subst MODNAME,$1,$(MULTI)),rsync -av --no-group $(BUILD)/$(word 1,$(subst :, ,${T}))/$2 $(PREFIX)/lib/$(word 1,$(subst :, ,$(subst $1/,,${T})));) $(L2)
+INSTALL_MULTILIBS = $(L0)"install $1"$(L1) $(foreach T, $(subst MODNAME,$1,$(MULTI)),rsync -av --no-group $(BUILD)/$(word 1,$(subst :, ,${T}))/$2 $(PREFIX)/$(TARGET)/lib/$(word 1,$(subst :, ,$(subst $1/,,${T})))/;) $(L2)
 
 # 1=module name 3,4... = params for make
 MULTIMAKE = $(L0)"make $1"$(L1) $(foreach T,$(subst MODNAME,$1,$(MULTI)), $(MAKE) -C $(BUILD)/$(word 1,$(subst :, ,${T})) $3 $4 $5 $6 $7 $8;) $(L2)
@@ -1517,7 +1520,7 @@ MULTICONFIGURE = $(L0)"configure $1"$(L1) $(foreach T,$(subst MODNAME,$1,$(MULTI
 # =================================================
 # zlib
 # =================================================
-ZLIB=zlib-1.3.1
+ZLIB=zlib-1.3.2
 
 .PHONY: zlib clean-zlib
 
@@ -1526,21 +1529,23 @@ clean-zlib:
 
 zlib: $(BUILD)/$(ZLIB)/_done
 
-$(BUILD)/$(ZLIB)/_done: $(PREFIX)/lib/libz.a
+$(BUILD)/$(ZLIB)/_done: $(PREFIX)/$(TARGET)/lib/libz.a
 	@echo "done" >$@
 
-$(PREFIX)/lib/libz.a: $(BUILD)/$(ZLIB)/libz.a
-	@rsync -a --no-group $(PROJECTS)/$(ZLIB)/zlib.h $(PREFIX)/include/
-	@rsync -a --no-group $(BUILD)/$(ZLIB)/zconf.h $(PREFIX)/include/
+$(PREFIX)/$(TARGET)/lib/libz.a: $(BUILD)/$(ZLIB)/libz.a
+	@rsync -a --no-group $(PROJECTS)/$(ZLIB)/zlib.h $(PREFIX)/$(TARGET)/include/
+	@rsync -a --no-group $(BUILD)/$(ZLIB)/zconf.h $(PREFIX)/$(TARGET)/include/
 	$(call INSTALL_MULTILIBS,$(ZLIB),libz.a)
 	@touch $@
 
 $(BUILD)/$(ZLIB)/libz.a: $(BUILD)/$(ZLIB)/Makefile
-	+$(call MULTIMAKE,$(ZLIB),libz.a)
+	+$(call MULTIMAKE,$(ZLIB),libz.a,AR=$(TARGET)-ar,ARFLAGS=rc)
 	@touch $@
 
 $(BUILD)/$(ZLIB)/Makefile: $(PROJECTS)/$(ZLIB)/configure
 	$(call MULTICONFIGURE,$(ZLIB),libz.a,)
+	@# zlib 1.3.2 adds -fPIC unconditionally; the Amiga assembler has no GOT
+	@$(foreach T,$(subst MODNAME,$(ZLIB),$(MULTI)),$(SED) -i 's/ -fPIC//' $(BUILD)/$(word 1,$(subst :, ,${T}))/Makefile;)
 	@touch $@
 
 $(PROJECTS)/$(ZLIB)/configure: $(DOWNLOAD)/$(ZLIB).tar.gz
@@ -1548,12 +1553,12 @@ $(PROJECTS)/$(ZLIB)/configure: $(DOWNLOAD)/$(ZLIB).tar.gz
 	@touch $@
 
 $(DOWNLOAD)/$(ZLIB).tar.gz:
-	$(call get-file,zlib,https://zlib.net/fossils/$(ZLIB).tar.gz,$(ZLIB).tar.gz)
+	$(call get-file,zlib,https://zlib.net/fossils/$(ZLIB).tar.gz,$(ZLIB).tar.gz,bb329a0a2cd0274d05519d61c667c062e06990d72e125ee2dfa8de64f0119d16)
 
 # =================================================
 # libpng
 # =================================================
-LIBPNG=libpng-1.6.39
+LIBPNG=libpng-1.6.58
 
 .PHONY: libpng clean-libpng
 
@@ -1562,13 +1567,13 @@ clean-libpng:
 
 libpng: $(BUILD)/$(LIBPNG)/_done
 
-$(BUILD)/$(LIBPNG)/_done: $(PREFIX)/lib/libpng.a
+$(BUILD)/$(LIBPNG)/_done: $(PREFIX)/$(TARGET)/lib/libpng.a
 	@echo "done" >$@
 
-$(PREFIX)/lib/libpng.a: $(BUILD)/$(LIBPNG)/libpng.a
-	@rsync -a --no-group $(PROJECTS)/$(LIBPNG)/png.h $(PREFIX)/include/
-	@rsync -a --no-group $(PROJECTS)/$(LIBPNG)/pngconf.h $(PREFIX)/include/
-	@rsync -a --no-group $(BUILD)/$(LIBPNG)/pnglibconf.h $(PREFIX)/include/
+$(PREFIX)/$(TARGET)/lib/libpng.a: $(BUILD)/$(LIBPNG)/libpng.a
+	@rsync -a --no-group $(PROJECTS)/$(LIBPNG)/png.h $(PREFIX)/$(TARGET)/include/
+	@rsync -a --no-group $(PROJECTS)/$(LIBPNG)/pngconf.h $(PREFIX)/$(TARGET)/include/
+	@rsync -a --no-group $(BUILD)/$(LIBPNG)/pnglibconf.h $(PREFIX)/$(TARGET)/include/
 	@$(call COPY_MULTILIBS,$(LIBPNG),.libs/libpng16.a,libpng.a)
 	$(call INSTALL_MULTILIBS,$(LIBPNG),libpng.a)
 	@touch $@
@@ -1586,7 +1591,7 @@ $(PROJECTS)/$(LIBPNG)/configure: $(DOWNLOAD)/$(LIBPNG).tar.xz $(BUILD)/$(ZLIB)/_
 	@touch $@
 
 $(DOWNLOAD)/$(LIBPNG).tar.xz:
-	$(call get-file,libpng16,https://sourceforge.net/projects/libpng/files/libpng16/$(subst libpng-,,$(LIBPNG))/$(LIBPNG).tar.xz,$(LIBPNG).tar.xz)
+	$(call get-file,libpng16,https://sourceforge.net/projects/libpng/files/libpng16/$(subst libpng-,,$(LIBPNG))/$(LIBPNG).tar.xz,$(LIBPNG).tar.xz,28eb403f51f0f7405249132cecfe82ea5c0ef97f1b32c5a65828814ae0d34775)
 
 # =================================================
 # libfreetype
@@ -1600,12 +1605,12 @@ clean-libfreetype2:
 
 libfreetype2: $(BUILD)/$(LIBFREETYPE)/_done
 
-$(BUILD)/$(LIBFREETYPE)/_done: $(PREFIX)/lib/libfreetype.a
+$(BUILD)/$(LIBFREETYPE)/_done: $(PREFIX)/$(TARGET)/lib/libfreetype.a
 	@echo "done" >$@
 
-$(PREFIX)/lib/libfreetype.a: $(BUILD)/$(LIBFREETYPE)/libfreetype.a
-	@rsync -a --no-group $(PROJECTS)/$(LIBFREETYPE)/include/ft2build.h $(PREFIX)/include/
-	@rsync -a --no-group $(PROJECTS)/$(LIBFREETYPE)/include/freetype $(PREFIX)/include/
+$(PREFIX)/$(TARGET)/lib/libfreetype.a: $(BUILD)/$(LIBFREETYPE)/libfreetype.a
+	@rsync -a --no-group $(PROJECTS)/$(LIBFREETYPE)/include/ft2build.h $(PREFIX)/$(TARGET)/include/
+	@rsync -a --no-group $(PROJECTS)/$(LIBFREETYPE)/include/freetype $(PREFIX)/$(TARGET)/include/
 	@$(call COPY_MULTILIBS,$(LIBFREETYPE),.libs/libfreetype.a,libfreetype.a)
 	$(call INSTALL_MULTILIBS,$(LIBFREETYPE),libfreetype.a)
 	@touch $@
