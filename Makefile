@@ -1233,11 +1233,14 @@ branch:
 # multilib support
 # =================================================
 MULTI = MODNAME/.: \
+		MODNAME/libm060:-m68060 \
 		MODNAME/libm020:-m68020 \
 		MODNAME/libm020/libm881:-m68020_-m68881 \
 		MODNAME/libb:-fbaserel \
+		MODNAME/libb/libm060:-fbaserel_-m68060 \
 		MODNAME/libb/libm020:-fbaserel_-m68020 \
 		MODNAME/libb/libm020/libm881:-fbaserel_-m68020_-m68881 \
+		MODNAME/libb32/libm060:-fbaserel32_-m68060 \
 		MODNAME/libb32/libm020:-fbaserel32_-m68020 \
 		MODNAME/libb32/libm020/libm881:-fbaserel32_-m68020_-m68881
 
