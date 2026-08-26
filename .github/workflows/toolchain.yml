@@ -103,6 +103,10 @@ jobs:
       - name: Build vbcc toolchain
         run: make -j $NPROC vbcc vlink MAKEINFO=true
 
+      # target libraries, one copy per multilib
+      - name: Build zlib and libpng
+        run: make -j $NPROC zlib libpng MAKEINFO=true
+
       # release tarballs are named after the tag (16.2-rc4), which
       # versions the whole distribution rather than just gcc
       - name: Package
