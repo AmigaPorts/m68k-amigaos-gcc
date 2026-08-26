@@ -1248,7 +1248,7 @@ MULTI = MODNAME/.: \
 COPY_MULTILIBS = $(foreach T, $(subst MODNAME,$1,$(MULTI)),cp $(BUILD)/$(word 1,$(subst :, ,${T}))/$2 $(BUILD)/$(word 1,$(subst :, ,${T}))/$3;)
 
 # 1=module name, 2=lib name
-INSTALL_MULTILIBS = $(L0)"install $1"$(L1) $(foreach T, $(subst MODNAME,$1,$(MULTI)),rsync -av --no-group $(BUILD)/$(word 1,$(subst :, ,${T}))/$2 $(PREFIX)/lib/$(word 1,$(subst :, ,$(subst $1/,,${T})));) $(L2)
+INSTALL_MULTILIBS = $(L0)"install $1"$(L1) $(foreach T, $(subst MODNAME,$1,$(MULTI)),rsync -av --no-group $(BUILD)/$(word 1,$(subst :, ,${T}))/$2 $(PREFIX)/$(TARGET)/lib/$(word 1,$(subst :, ,$(subst $1/,,${T})))/;) $(L2)
 
 # 1=module name 3,4... = params for make
 MULTIMAKE = $(L0)"make $1"$(L1) $(foreach T,$(subst MODNAME,$1,$(MULTI)), $(MAKE) -C $(BUILD)/$(word 1,$(subst :, ,${T})) $3 $4 $5 $6 $7 $8;) $(L2)
@@ -1272,10 +1272,10 @@ clean-zlib:
 
 zlib: $(BUILD)/$(ZLIB)/_done
 
-$(BUILD)/$(ZLIB)/_done: $(PREFIX)/lib/libz.a
+$(BUILD)/$(ZLIB)/_done: $(PREFIX)/$(TARGET)/lib/libz.a
 	@echo "done" >$@
 
-$(PREFIX)/lib/libz.a: $(BUILD)/$(ZLIB)/libz.a
+$(PREFIX)/$(TARGET)/lib/libz.a: $(BUILD)/$(ZLIB)/libz.a
 	@rsync -a --no-group $(PROJECTS)/$(ZLIB)/zlib.h $(PREFIX)/include/
 	@rsync -a --no-group $(BUILD)/$(ZLIB)/zconf.h $(PREFIX)/include/
 	$(call INSTALL_MULTILIBS,$(ZLIB),libz.a)
@@ -1308,10 +1308,10 @@ clean-libpng:
 
 libpng: $(BUILD)/$(LIBPNG)/_done
 
-$(BUILD)/$(LIBPNG)/_done: $(PREFIX)/lib/libpng.a
+$(BUILD)/$(LIBPNG)/_done: $(PREFIX)/$(TARGET)/lib/libpng.a
 	@echo "done" >$@
 
-$(PREFIX)/lib/libpng.a: $(BUILD)/$(LIBPNG)/libpng.a
+$(PREFIX)/$(TARGET)/lib/libpng.a: $(BUILD)/$(LIBPNG)/libpng.a
 	@rsync -a --no-group $(PROJECTS)/$(LIBPNG)/png.h $(PREFIX)/include/
 	@rsync -a --no-group $(PROJECTS)/$(LIBPNG)/pngconf.h $(PREFIX)/include/
 	@rsync -a --no-group $(BUILD)/$(LIBPNG)/pnglibconf.h $(PREFIX)/include/
@@ -1346,10 +1346,10 @@ clean-libfreetype2:
 
 libfreetype2: $(BUILD)/$(LIBFREETYPE)/_done
 
-$(BUILD)/$(LIBFREETYPE)/_done: $(PREFIX)/lib/libfreetype.a
+$(BUILD)/$(LIBFREETYPE)/_done: $(PREFIX)/$(TARGET)/lib/libfreetype.a
 	@echo "done" >$@
 
-$(PREFIX)/lib/libfreetype.a: $(BUILD)/$(LIBFREETYPE)/libfreetype.a
+$(PREFIX)/$(TARGET)/lib/libfreetype.a: $(BUILD)/$(LIBFREETYPE)/libfreetype.a
 	@rsync -a --no-group $(PROJECTS)/$(LIBFREETYPE)/include/ft2build.h $(PREFIX)/include/
 	@rsync -a --no-group $(PROJECTS)/$(LIBFREETYPE)/include/freetype $(PREFIX)/include/
 	@$(call COPY_MULTILIBS,$(LIBFREETYPE),.libs/libfreetype.a,libfreetype.a)
