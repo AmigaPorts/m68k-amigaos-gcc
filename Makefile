@@ -1263,7 +1263,7 @@ MULTICONFIGURE = $(L0)"configure $1"$(L1) $(foreach T,$(subst MODNAME,$1,$(MULTI
 # =================================================
 # zlib
 # =================================================
-ZLIB=zlib-1.3.1
+ZLIB=zlib-1.3.2
 
 .PHONY: zlib clean-zlib
 
@@ -1287,6 +1287,8 @@ $(BUILD)/$(ZLIB)/libz.a: $(BUILD)/$(ZLIB)/Makefile
 
 $(BUILD)/$(ZLIB)/Makefile: $(PROJECTS)/$(ZLIB)/configure
 	$(call MULTICONFIGURE,$(ZLIB),libz.a,)
+	@# zlib 1.3.2 adds -fPIC unconditionally; the Amiga assembler has no GOT
+	@$(foreach T,$(subst MODNAME,$(ZLIB),$(MULTI)),$(SED) -i 's/ -fPIC//' $(BUILD)/$(word 1,$(subst :, ,${T}))/Makefile;)
 	@touch $@
 
 $(PROJECTS)/$(ZLIB)/configure: $(DOWNLOAD)/$(ZLIB).tar.gz
@@ -1294,12 +1296,12 @@ $(PROJECTS)/$(ZLIB)/configure: $(DOWNLOAD)/$(ZLIB).tar.gz
 	@touch $@
 
 $(DOWNLOAD)/$(ZLIB).tar.gz:
-	$(call get-file,zlib,https://zlib.net/fossils/$(ZLIB).tar.gz,$(ZLIB).tar.gz)
+	$(call get-file,zlib,https://zlib.net/fossils/$(ZLIB).tar.gz,$(ZLIB).tar.gz,bb329a0a2cd0274d05519d61c667c062e06990d72e125ee2dfa8de64f0119d16)
 
 # =================================================
 # libpng
 # =================================================
-LIBPNG=libpng-1.6.39
+LIBPNG=libpng-1.6.58
 
 .PHONY: libpng clean-libpng
 
@@ -1332,7 +1334,7 @@ $(PROJECTS)/$(LIBPNG)/configure: $(DOWNLOAD)/$(LIBPNG).tar.xz $(BUILD)/$(ZLIB)/_
 	@touch $@
 
 $(DOWNLOAD)/$(LIBPNG).tar.xz:
-	$(call get-file,libpng16,https://sourceforge.net/projects/libpng/files/libpng16/$(subst libpng-,,$(LIBPNG))/$(LIBPNG).tar.xz,$(LIBPNG).tar.xz)
+	$(call get-file,libpng16,https://sourceforge.net/projects/libpng/files/libpng16/$(subst libpng-,,$(LIBPNG))/$(LIBPNG).tar.xz,$(LIBPNG).tar.xz,28eb403f51f0f7405249132cecfe82ea5c0ef97f1b32c5a65828814ae0d34775)
 
 # =================================================
 # libfreetype
