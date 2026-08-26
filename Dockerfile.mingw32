@@ -1,0 +1,72 @@
+ARG TARGET_BUILD_IMAGE="amigadev/crosstools:m68k-amigaos-gcc10"
+FROM ${TARGET_BUILD_IMAGE} AS target-build
+
+FROM amigadev/crosstools:x86_64-w64-mingw32
+
+WORKDIR /root
+
+RUN export DEBIAN_FRONTEND=noninteractive && \
+    mkdir -p /opt/build-binutils && \
+    ln -s /usr/bin/x86_64-linux-gnu-as /opt/build-binutils/as && \
+    ln -s /usr/bin/x86_64-linux-gnu-ld /opt/build-binutils/ld && \
+    ln -s /usr/bin/x86_64-linux-gnu-gcc /opt/build-binutils/cc && \
+    ln -s /usr/bin/x86_64-linux-gnu-gcc /opt/build-binutils/gcc && \
+    ln -s /usr/bin/x86_64-linux-gnu-g++ /opt/build-binutils/c++ && \
+    ln -s /usr/bin/x86_64-linux-gnu-g++ /opt/build-binutils/g++ && \
+    ln -s /usr/bin/x86_64-linux-gnu-ar /opt/build-binutils/ar && \
+    ln -s /usr/bin/x86_64-linux-gnu-ranlib /opt/build-binutils/ranlib && \
+    ln -s /usr/bin/x86_64-linux-gnu-strip /opt/build-binutils/strip && \
+    apt update && \
+    apt install -y wine wine64 && \
+    rm -rf /var/lib/apt/lists/*
+
+COPY --from=target-build /opt/m68k-amigaos /opt/m68k-amigaos
+
+COPY ./ ./
+
+ARG PATHPREFIX="m68k-amigaos"
+ARG BINUTILS_BRANCH="amiga-2.46"
+ARG GCC_BRANCH="amiga6"
+
+ENV PATH="/opt/build-binutils:/opt/m68k-amigaos/bin:${PATH}" \
+    PREFIX="/opt/${PATHPREFIX}" \
+    HOST="x86_64-w64-mingw32ucrt" \
+    BUILD_TRIPLET="x86_64-linux-gnu" \
+    HOST_RUNNER="wine" \
+    NDK="3.9" \
+    OWNGMP="1" \
+    TARGET_TOOL_PREFIX="/opt/m68k-amigaos/bin/m68k-amigaos-" \
+    BUILD_CC="x86_64-linux-gnu-gcc -B/opt/build-binutils/" \
+    BUILD_CXX="x86_64-linux-gnu-g++ -B/opt/build-binutils/" \
+    WINEARCH="win64" \
+    WINEDEBUG="-all"
+ENV CC_FOR_BUILD="${BUILD_CC}" \
+    CXX_FOR_BUILD="${BUILD_CXX}"
+
+RUN test "$(${CC} -dumpmachine)" = "${HOST}" && \
+    test "$(x86_64-linux-gnu-gcc -dumpmachine)" = "${BUILD_TRIPLET}" && \
+    command -v wine && \
+    command -v lha && \
+    echo "BUILD_ARCH:      ${BUILD_TRIPLET}" && \
+    echo "HOST_ARCH:       ${HOST}" && \
+    echo "PREFIX:          ${PREFIX}" && \
+    echo "BINUTILS_BRANCH: ${BINUTILS_BRANCH}" && \
+    echo "GCC_BRANCH:      ${GCC_BRANCH}" && \
+    make branch mod=binutils branch=${BINUTILS_BRANCH} && \
+    make branch mod=gcc branch=${GCC_BRANCH} && \
+    make update
+
+ARG BUILD_TARGET="all"
+ARG SDK_TARGET="all-sdk"
+
+RUN echo "BUILD_TARGET: ${BUILD_TARGET}" && \
+    echo "SDK_TARGET:   ${SDK_TARGET}" && \
+    make -j "$(nproc)" ${BUILD_TARGET} && \
+    if [ -n "${SDK_TARGET}" ]; then \
+        make -j "$(nproc)" ${SDK_TARGET}; \
+    fi && \
+    host_runtime="$(${CC} -print-file-name=libwinpthread-1.dll)" && \
+    test -f "${host_runtime}" && \
+    install -m 755 "${host_runtime}" "${PREFIX}/bin/"
+
+ENV PATH="${PREFIX}/bin:${PATH}"

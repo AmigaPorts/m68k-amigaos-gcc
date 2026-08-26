@@ -1,0 +1,11 @@
+--- rename.c
++++ rename.c
+@@ -69,7 +69,7 @@ simple_copy (int fromfd, const char *to,
+ 
+   saved = errno;
+ 
+-#if !defined (_WIN32) || defined (__CYGWIN32__)
++#if (!defined (_WIN32) || defined (__CYGWIN32__)) && !defined (__amiga__)
+   /* Writing to a setuid/setgid file may clear S_ISUID and S_ISGID.
+      Try to restore them, ignoring failure.  */
+   if (target_stat != NULL)

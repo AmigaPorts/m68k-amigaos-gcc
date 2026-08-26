@@ -1,6 +1,44 @@
 #!/bin/bash
 export PATH=$PATH:$3/bin
 sdk_descriptor="sdk/$2.sdk"
+sdk_prefix=$3
+
+run_host_tool()
+{
+	local -a sdk_tool_runner=()
+	if [ -n "$TOOL_RUNNER" ]; then
+		read -r -a sdk_tool_runner <<< "$TOOL_RUNNER"
+	fi
+	"${sdk_tool_runner[@]}" "$@"
+}
+
+run_sfdc()
+{
+	"${SFDC_FOR_BUILD:-$sdk_prefix/bin/sfdc}" "$@"
+}
+
+run_fd2sfd()
+{
+	"${FD2SFD_FOR_BUILD:-$sdk_prefix/bin/fd2sfd${HOST_EXEEXT}}" "$@"
+}
+
+run_target_cc()
+{
+	if [ -n "$CC_FOR_SDK" ]; then
+		"$CC_FOR_SDK" "$@"
+	else
+		run_host_tool "$sdk_prefix/bin/m68k-amigaos-gcc${HOST_EXEEXT}" "$@"
+	fi
+}
+
+run_target_ar()
+{
+	if [ -n "$AR_FOR_SDK" ]; then
+		"$AR_FOR_SDK" "$@"
+	else
+		run_host_tool "$sdk_prefix/bin/m68k-amigaos-ar${HOST_EXEEXT}" "$@"
+	fi
+}
 
 if [ ! -e "$sdk_descriptor" ]; then
 	echo "sdk/$2.sdk not found"
@@ -173,7 +211,7 @@ case $1 in
 					if [ ! -e "build/$2" ] || [ "$(ls -l build/$2)" == "total 0" ]; then
 						mkdir -p build/$2
 						pushd build/$2
-							lha x "../../download/$file"
+							"$LHA_FOR_BUILD" x "../../download/$file"
 							find . -type d -exec chmod +x {} \;
 						popd
 					fi
@@ -185,14 +223,14 @@ case $1 in
 				file=$(basename $fd)
 				name=${file%???}
 				mkdir -p $3/m68k-amigaos/lib/sfd/
-				$3/bin/fd2sfd -o $3/m68k-amigaos/lib/sfd/$name.sfd $3/m68k-amigaos/lib/fd/$fd $3/m68k-amigaos/include/$proto || exit 1
+				run_fd2sfd -o $3/m68k-amigaos/lib/sfd/$name.sfd $3/m68k-amigaos/lib/fd/$fd $3/m68k-amigaos/include/$proto || exit 1
 			;;
 			clib)
 				sfd=${a[1]}
 				file=$(basename $sfd)
 				name=${file%????}
 				mkdir -p $3/m68k-amigaos/include/clib/
-				$3/bin/sfdc --mode=clib --target=m68k-amigaos --output=$3/m68k-amigaos/include/clib/${name}_protos.h $3/m68k-amigaos/lib/sfd/$sfd || exit 1
+				run_sfdc --mode=clib --target=m68k-amigaos --output=$3/m68k-amigaos/include/clib/${name}_protos.h $3/m68k-amigaos/lib/sfd/$sfd || exit 1
 			;;
 			sfdc)
 				sfd=${a[1]}
@@ -200,17 +238,17 @@ case $1 in
 				name=${file%????}
 				mkdir -p $3/m68k-amigaos/include/proto/
 				rm $3/m68k-amigaos/include/proto/$name.h
-				$3/bin/sfdc --mode=proto --target=m68k-gcc-amigaos --output=$3/m68k-amigaos/include/proto/$name.h $3/m68k-amigaos/lib/sfd/$sfd || exit 1
+				run_sfdc --mode=proto --target=m68k-gcc-amigaos --output=$3/m68k-amigaos/include/proto/$name.h $3/m68k-amigaos/lib/sfd/$sfd || exit 1
 				sed -i.bak -e 's/\(<clib\/.*>\)/\L\1/' -e 's/\(<defines\/.*>\)/\L\1/' -e 's/\(<inline\/.*>\)/\L\1/' -e 's/\(<pragmas\/.*>\)/\L\1/' $3/m68k-amigaos/include/proto/$name.h
 				rm $3/m68k-amigaos/include/proto/$name.h.bak
 				mkdir -p $3/m68k-amigaos/include/inline/
-				$3/bin/sfdc --mode=macros --target=m68k-gcc-amigaos --output=$3/m68k-amigaos/include/inline/$name.h $3/m68k-amigaos/lib/sfd/$sfd || exit 1
+				run_sfdc --mode=macros --target=m68k-gcc-amigaos --output=$3/m68k-amigaos/include/inline/$name.h $3/m68k-amigaos/lib/sfd/$sfd || exit 1
 				# sfdc derives the proto include from the SFD basename, which
 				# need not match the proto/<name>.h generated above - fix it up
 				sed -i -e "s|#include <proto/.*\.h>|#include <proto/$name.h>|" $3/m68k-amigaos/include/inline/$name.h
-				$3/bin/sfdc --mode=macros --target=m68kvbcc-amigaos --output=$3/m68k-amigaos/include/inline/${name}_protos.h $3/m68k-amigaos/lib/sfd/$sfd || exit 1
+				run_sfdc --mode=macros --target=m68kvbcc-amigaos --output=$3/m68k-amigaos/include/inline/${name}_protos.h $3/m68k-amigaos/lib/sfd/$sfd || exit 1
 				mkdir -p $3/m68k-amigaos/include/lvo/
-				$3/bin/sfdc --mode=lvo --target=m68k-amigaos --output=$3/m68k-amigaos/include/lvo/$name.i $3/m68k-amigaos/lib/sfd/$sfd || exit 1
+				run_sfdc --mode=lvo --target=m68k-amigaos --output=$3/m68k-amigaos/include/lvo/$name.i $3/m68k-amigaos/lib/sfd/$sfd || exit 1
 				if [ "${a[2]}" != "" ] && [ "${a[3]}" != "" ]; then
 					echo fixup names from ${a[2]} to ${a[3]}
 					echo sed -i.bak -e "s/${a[2]}/${a[3]}/" $3/m68k-amigaos/include/proto/$name.h
@@ -225,15 +263,15 @@ case $1 in
 				sfd=${a[1]}
 				file=$(basename $sfd)
 				name=${file%????}
-				$3/bin/sfdc --mode=autoopen --target=m68k-amigaos --output=build/$2/$name.c $3/m68k-amigaos/lib/sfd/$name.sfd || exit 1
+				run_sfdc --mode=autoopen --target=m68k-amigaos --output=build/$2/$name.c $3/m68k-amigaos/lib/sfd/$name.sfd || exit 1
 				sed -i.bak -e 's/__inline//g' -e 's/: \"d0\",/:/g' build/$2/$name.c || exit 1
 				rm build/$2/$name.c.bak
 				echo $3/bin/m68k-amigaos-gcc -Os -noixemul -fomit-frame-pointer build/$2/$name.c -c
-				$3/bin/m68k-amigaos-gcc -Os -noixemul -fomit-frame-pointer build/$2/$name.c -c -o build/$2/$name.o || exit 1
+				run_target_cc -Os -noixemul -fomit-frame-pointer build/$2/$name.c -c -o build/$2/$name.o || exit 1
 				echo $3/bin/m68k-amigaos-ar r $3/m68k-amigaos/lib/libstubs.a build/$2/$name.o
 				(
 					flock -x 200
-					$3/bin/m68k-amigaos-ar r $3/m68k-amigaos/lib/libstubs.a build/$2/$name.o || exit 1
+					run_target_ar r $3/m68k-amigaos/lib/libstubs.a build/$2/$name.o || exit 1
 				) 200>/tmp/amiga-gcc-libstubs-lock
 				rm -f /tmp/amiga-gcc-libstubs-lock
 			;;
@@ -241,27 +279,27 @@ case $1 in
 				sfd=${a[1]}
 				file=$(basename $sfd)
 				name=${file%????}
-				$3/bin/sfdc --mode=stubs --target=m68k-amigaos --output=build/$2/lib$2.c $3/m68k-amigaos/lib/sfd/$name.sfd || exit 1
+				run_sfdc --mode=stubs --target=m68k-amigaos --output=build/$2/lib$2.c $3/m68k-amigaos/lib/sfd/$name.sfd || exit 1
 				sed -i.bak -e 's/__inline//g' -e 's/: \"d0\",/:/g' build/$2/lib$2.c || exit 1
 				rm build/$2/lib$2.c.bak
 				echo $3/bin/m68k-amigaos-gcc -Os -noixemul -fomit-frame-pointer build/$2/lib$2.c -c
-				$3/bin/m68k-amigaos-gcc -Os -noixemul -fomit-frame-pointer build/$2/lib$2.c -c -o build/$2/lib$2.o || exit 1
+				run_target_cc -Os -noixemul -fomit-frame-pointer build/$2/lib$2.c -c -o build/$2/lib$2.o || exit 1
 				echo $3/bin/m68k-amigaos-ar r $3/m68k-amigaos/lib/lib$2.a build/$2/lib$2.o
-				$3/bin/m68k-amigaos-ar r $3/m68k-amigaos/lib/lib$2.a build/$2/lib$2.o || exit 1
+				run_target_ar r $3/m68k-amigaos/lib/lib$2.a build/$2/lib$2.o || exit 1
 			;;
 			liba)
 				sfd=${a[1]}
 				file=$(basename $sfd)
 				name=${file%????}
-				$3/bin/sfdc --mode=stubs --target=m68k-amigaos --output=build/$2/lib$2.c $3/m68k-amigaos/lib/sfd/$name.sfd || exit 1
+				run_sfdc --mode=stubs --target=m68k-amigaos --output=build/$2/lib$2.c $3/m68k-amigaos/lib/sfd/$name.sfd || exit 1
 				sed -i.bak -e 's/__inline//g' -e 's/: \"d0\",/:/g' build/$2/lib$2.c || exit 1
 				rm build/$2/lib$2.c.bak
 			;;
 			libc)
 				echo $3/bin/m68k-amigaos-gcc -Os -noixemul -fomit-frame-pointer build/$2/lib$2.c -c
-				$3/bin/m68k-amigaos-gcc -Os -noixemul -fomit-frame-pointer build/$2/lib$2.c -c -o build/$2/lib$2.o || exit 1
+				run_target_cc -Os -noixemul -fomit-frame-pointer build/$2/lib$2.c -c -o build/$2/lib$2.o || exit 1
 				echo $3/bin/m68k-amigaos-ar r $3/m68k-amigaos/lib/lib$2.a build/$2/lib$2.o
-				$3/bin/m68k-amigaos-ar r $3/m68k-amigaos/lib/lib$2.a build/$2/lib$2.o || exit 1
+				run_target_ar r $3/m68k-amigaos/lib/lib$2.a build/$2/lib$2.o || exit 1
 			;;
 			
 			redirinc)

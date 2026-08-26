@@ -1,0 +1,10 @@
+--- gcc/gcc/opts.c
++++ gcc/gcc/opts.c
+@@ -2430,7 +2430,7 @@ setup_core_dumping (diagnostic_context *dc)
+   signal (SIGABRT, SIG_DFL);
+ #endif
+-#if defined(HAVE_SETRLIMIT)
++#if defined(HAVE_SETRLIMIT) && !defined(__amigaos__)
+   {
+     struct rlimit rlim;
+     if (getrlimit (RLIMIT_CORE, &rlim) != 0)

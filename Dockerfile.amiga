@@ -1,0 +1,62 @@
+ARG BASE_IMAGE="amigadev/crosstools:m68k-amigaos-gcc10"
+FROM ${BASE_IMAGE}
+
+WORKDIR /root
+
+RUN mkdir -p /opt/build-binutils && \
+    ln -s /usr/bin/x86_64-linux-gnu-as /opt/build-binutils/as && \
+    ln -s /usr/bin/x86_64-linux-gnu-ld /opt/build-binutils/ld && \
+    ln -s /usr/bin/x86_64-linux-gnu-gcc /opt/build-binutils/cc && \
+    ln -s /usr/bin/x86_64-linux-gnu-gcc /opt/build-binutils/gcc && \
+    ln -s /usr/bin/x86_64-linux-gnu-g++ /opt/build-binutils/c++ && \
+    ln -s /usr/bin/x86_64-linux-gnu-g++ /opt/build-binutils/g++ && \
+    ln -s /usr/bin/x86_64-linux-gnu-ar /opt/build-binutils/ar && \
+    ln -s /usr/bin/x86_64-linux-gnu-ranlib /opt/build-binutils/ranlib && \
+    ln -s /usr/bin/x86_64-linux-gnu-strip /opt/build-binutils/strip
+
+COPY ./ ./
+
+ARG PATHPREFIX="m68k-amigaos-native"
+ARG BINUTILS_BRANCH="amiga-2.46"
+ARG GCC_BRANCH="amiga6"
+ARG MAKE_VERBOSE=""
+
+ENV PATH="/opt/build-binutils:${PATH}" \
+    PREFIX="/opt/${PATHPREFIX}" \
+    HOST="m68k-amigaos" \
+    BUILD_TRIPLET="x86_64-linux-gnu" \
+    HOST_RUNNER="vamos -C 68040 --" \
+    NDK="3.9" \
+    OWNGMP="1" \
+    HOST_TOOL_PREFIX="/opt/m68k-amigaos/bin/m68k-amigaos-" \
+    VERBOSE="${MAKE_VERBOSE}" \
+    BUILD_CC="x86_64-linux-gnu-gcc -B/opt/build-binutils/" \
+    BUILD_CXX="x86_64-linux-gnu-g++ -B/opt/build-binutils/"
+ENV CC_FOR_BUILD="${BUILD_CC}" \
+    CXX_FOR_BUILD="${BUILD_CXX}"
+
+RUN test "$(${CC} -dumpmachine)" = "${HOST}" && \
+    test "$(x86_64-linux-gnu-gcc -dumpmachine)" = "${BUILD_TRIPLET}" && \
+    command -v vamos && \
+    command -v lha && \
+    echo "BUILD_ARCH:      ${BUILD_TRIPLET}" && \
+    echo "HOST_ARCH:       ${HOST}" && \
+    echo "PREFIX:          ${PREFIX}" && \
+    echo "BINUTILS_BRANCH: ${BINUTILS_BRANCH}" && \
+    echo "GCC_BRANCH:      ${GCC_BRANCH}" && \
+    make branch mod=binutils branch=${BINUTILS_BRANCH} && \
+    make branch mod=gcc branch=${GCC_BRANCH} && \
+    make update && \
+    make gcc-prerequisites
+
+ARG BUILD_TARGET="all"
+ARG SDK_TARGET="all-sdk"
+
+RUN echo "BUILD_TARGET: ${BUILD_TARGET}" && \
+    echo "SDK_TARGET:   ${SDK_TARGET}" && \
+    make -j "$(nproc)" ${BUILD_TARGET} && \
+    if [ -n "${SDK_TARGET}" ]; then \
+        make -j "$(nproc)" ${SDK_TARGET}; \
+    fi
+
+ENV PATH="${PREFIX}/bin:${PATH}"

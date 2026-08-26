@@ -1,0 +1,11 @@
+--- libgcc/config/m68k/gmon.c
++++ libgcc/config/m68k/gmon.c
+@@ -414,7 +414,7 @@ int profil(char *buf, size_t bufsiz,
+       vbint.is_Node.ln_Pri = 20;
+       vbint.is_Node.ln_Name = "gcc profiler";
+       vbint.is_Data = (APTR)&vbdata;
+-      vbint.is_Code = VertBServer;
++      vbint.is_Code = (void (*)(void)) VertBServer;
+ 
+       AddIntServer(INTB_VERTB, &vbint); /* Kick this interrupt server to life. */
+ 

@@ -1,0 +1,20 @@
+--- gcc/libiberty/make-relative-prefix.c
++++ gcc/libiberty/make-relative-prefix.c
+@@ -67,6 +67,9 @@ relative prefix can be found, return @code{NULL}.
+ #ifdef __MACH__
+ #include <mach-o/dyld.h>
+ #endif
++#ifdef _WIN32
++#include <windows.h>
++#endif
+ 
+ #include "ansidecl.h"
+ #include "libiberty.h"
+@@ -283,7 +286,7 @@ make_relative_prefix_1 (const char *progname, const char *bin_prefix,
+   strcpy(buf, "GCC:");
+   n = strlen("GCC:");
+-#elif defined(__MSYS__)
++#elif defined(_WIN32)
+   n = GetModuleFileNameA(0, buf, 1023);
+ #elif defined(__MACH__)
+   n = 1022;

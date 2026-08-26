@@ -1,0 +1,9 @@
+--- libgcc/config/m68k/new_op.c
++++ libgcc/config/m68k/new_op.c
+@@ -1,6 +1,5 @@
+ #include <stdlib.h>
+ #include <stdio.h>
+-extern void * malloc(unsigned);
+ void * _Znwj (unsigned sz)
+ {
+   void *p = malloc(sz);

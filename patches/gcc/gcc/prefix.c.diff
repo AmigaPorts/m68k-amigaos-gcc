@@ -1,0 +1,10 @@
+--- gcc/gcc/prefix.c
++++ gcc/gcc/prefix.c
+@@ -67,6 +67,7 @@
+ #include "system.h"
+ #include "coretypes.h"
+ #if defined(_WIN32) && defined(ENABLE_WIN32_REGISTRY)
++#define WIN32_LEAN_AND_MEAN
+ #include <windows.h>
+ #endif
+ #include "prefix.h"
