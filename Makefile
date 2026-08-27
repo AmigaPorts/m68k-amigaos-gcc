@@ -62,6 +62,17 @@ endif
 BUILD_TOOLS := $(BUILD)/build-tools
 BUILD_TOOLS_PREFIX ?= $(PREFIX)/build-tools
 
+# GitHub container jobs may provide a HOME owned by a different uid.  Keep
+# Wine's state in the writable build tree and initialize it once before a
+# Windows-hosted compiler can be executed.
+ifneq (,$(findstring mingw,$(HOST)))
+WINEPREFIX ?= $(BUILD)/wine-prefix
+WINEDEBUG ?= -all
+WINEBOOT ?= wineboot
+export WINEPREFIX WINEDEBUG
+HOST_RUNNER_SETUP_PREREQ := $(WINEPREFIX)/.initialized
+endif
+
 # Prefer a build-machine TARGET compiler when the environment already
 # provides one (as it does for an AmigaOS host build).  Otherwise create
 # wrappers that run the newly built HOST tools through HOST_RUNNER.  GCC and
@@ -94,6 +105,13 @@ SDK_AR_FOR_BUILD := $(TARGET_AR_FOR_BUILD)
 else
 TARGET_CC_FOR_BUILD ?= $(shell command -v $(TARGET)-gcc 2>/dev/null)
 TARGET_AR_FOR_BUILD := $(PREFIX)/bin/$(TARGET)-ar
+endif
+
+ifneq (,$(strip $(HOST_RUNNER_SETUP_PREREQ)))
+$(HOST_RUNNER_SETUP_PREREQ):
+	@mkdir -p $(@D)
+	@$(WINEBOOT) --init
+	@touch $@
 endif
 
 ifneq (,$(strip $(TARGET_RUNNER_WRAPPER_DIR)))
@@ -776,7 +794,7 @@ GCCD := $(patsubst %,$(PROJECTS)/gcc/%, $(GCC_DIR))
 
 gcc: $(BUILD)/gcc/_done
 
-$(BUILD)/gcc/_done: $(BUILD)/gcc/Makefile $(shell find 2>/dev/null $(GCCD) -maxdepth 1 -type f ) $(TARGET_RUNNER_WRAPPERS)
+$(BUILD)/gcc/_done: $(BUILD)/gcc/Makefile $(shell find 2>/dev/null $(GCCD) -maxdepth 1 -type f ) $(HOST_RUNNER_SETUP_PREREQ) $(TARGET_RUNNER_WRAPPERS)
 	$(L0)"make gcc"$(L1) $(MAKE) -C $(BUILD)/gcc $(GCC_HOST_TOOLS) $(GCC_BUILD_MAKE_FLAGS) $(GCC_HOST_LDFLAGS) all-gcc $(L2)
 	$(L0)"install gcc"$(L1) $(MAKE) -C $(BUILD)/gcc $(GCC_HOST_TOOLS) $(GCC_BUILD_MAKE_FLAGS) $(GCC_HOST_LDFLAGS) install-gcc $(L2)
 	@for tool in $(GCC_HOST_ALIAS_CMD); do \
