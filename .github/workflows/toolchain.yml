@@ -17,6 +17,9 @@ on:
       runner:
         description: runner label (e.g. papert for self-hosted)
         default: ubuntu-24.04
+      repos:
+        description: "module overrides, space separated: sfdc=branch or sfdc=URL#branch"
+        default: ""
   # same inputs again: workflow_call, used by release.yml, does not
   # share the workflow_dispatch input declarations
   workflow_call:
@@ -33,6 +36,9 @@ on:
       runner:
         type: string
         default: ubuntu-24.04
+      repos:
+        type: string
+        default: ""
   # label a pull request "ci" for a macOS build of its merge commit, or
   # "ci-testsuite" for a Linux build with the gcc testsuite
   pull_request:
@@ -88,6 +94,25 @@ jobs:
 
       - name: Select gcc branch
         run: make branch branch=amiga$GCC_VER mod=gcc
+
+      # build with a pull request from another module's repo: each
+      # word is module=branch, or module=URL#branch for a fork
+      - name: Override module repos
+        if: inputs.repos != ''
+        env:
+          REPOS: ${{ inputs.repos }}
+        run: |
+          for spec in $REPOS; do
+            mod=${spec%%=*}
+            ref=${spec#*=}
+            grep -q "^$mod[[:blank:]]" .repos || { echo "unknown module: $mod"; exit 1; }
+            if [[ "$ref" == *"#"* ]]; then
+              sed -i "s|^$mod[[:blank:]].*|$mod ${ref%%#*} ${ref##*#}|" .repos
+            else
+              make branch mod=$mod branch=$ref
+            fi
+          done
+          cat .repos
 
       - name: Fetch sources
         run: make update
