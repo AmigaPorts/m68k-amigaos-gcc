@@ -23,11 +23,11 @@ Currently, these tools are built:
 
 # Branches
 ## Notable branches of gcc
-* `amiga6`: The default branch providing gcc-6.5.0b with a lot of hacks^^
+* `amiga6`: The legacy gcc-6.5.0b branch
 * `amiga10.4`: gcc-10.4.0  supports register parameters
 * `amiga13.4`: gcc-13.4.0  supports register parameters
 * `amiga15.2`: gcc-15.2.0  supports register parameters
-* `amiga16.2`: gcc-16.2.0  the current development branch, built and tested by CI
+* `amiga16.2`: gcc-16.2.0, the default branch, built and tested by CI
 
 ## Notable branches of binutils
 * `amiga-2.46`: binutils 2.46 with amigaos support and dwarf2 debugging (the default)
@@ -53,7 +53,7 @@ Currently, these tools are built:
 
 There are also libraries (SDKs) which can be downloaded and installed. These libraries can all be built from source. All of these libraries are provided under their respective licenses.
 
-Various AmigaOS-specific patches have been applied to this version of gcc. None if these changes modify the original copyright in any way. All other changes are published under the terms of the GNU GENERAL PUBLIC LICENSE V2.
+AmigaOS-specific changes are maintained in the upstream AmigaPorts repositories. The optional `patches/<module>/` directories can still be used for downstream patches, but no GCC or binutils patches are required by default. None of these changes modify the original copyright in any way. All other changes are published under the terms of the GNU GENERAL PUBLIC LICENSE V2.
 
 ## Prerequisites
 ### Fedora
@@ -130,11 +130,8 @@ cd m68k-amigaos-gcc
 make update
 ```
 
-To build the current gcc 16.2 instead of the default gcc 6.5.0b,
-switch the gcc module before building:
-```
-make branch branch=amiga16.2 mod=gcc
-```
+The default configuration builds GCC 16.2. Use `make branch` as described
+under Version management if you need a different GCC branch.
 
 ## Overview
 ```
@@ -216,8 +213,8 @@ make package-lha PREFIX=/opt/amiga PACKAGE_PLATFORM=AmigaOS-m68k
 The GitHub Actions workflow in `.github/workflows/toolchain.yml`
 bootstraps the toolchain from scratch, optionally runs the gcc
 testsuite under vamos, and uploads the native `.tar.xz` packages as build
-artifacts. By default it also Canadian-cross-builds the `amiga6` compiler for
-AmigaOS and MinGW hosts using the published
+artifacts. The hosted-build workflow input independently defaults to the
+legacy `amiga6` compiler for AmigaOS and MinGW hosts, using the published
 `amigadev/crosstools:m68k-amigaos-gcc10` and
 `amigadev/crosstools:x86_64-w64-mingw32` build environments. The local hosted
 build Dockerfiles are not rebuilt by CI. The AmigaOS package is an `.lha`; the
@@ -296,16 +293,14 @@ make branch mod=binutils branch=devel1
 ```
 The default branches and repositories are in the file **default-repos**, the local state is managed in the file **.repos**.
 
-The gcc default branch is `amiga6`; see the Branches section above
-for the alternatives. If you start from scratch, switch gcc as soon
-as possible, e.g.:
+The default GCC branch is `amiga16.2`; see the Branches section above
+for the alternatives. A fresh build can therefore be started directly:
 ```
 sudo mkdir -p /opt/amiga16
 sudo chown $USER /opt/amiga16
 git clone https://github.com/AmigaPorts/m68k-amigaos-gcc
 cd m68k-amigaos-gcc
 export PREFIX=/opt/amiga16
-make branch branch=amiga16.2 mod=gcc
 make all -j$(nproc)
 ```
 

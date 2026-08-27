@@ -60,7 +60,9 @@ ifneq (,$(strip $(HOST)))
   BUILD := $(BUILD)-$(HOST)
 endif
 BUILD_TOOLS := $(BUILD)/build-tools
-BUILD_TOOLS_PREFIX ?= $(PREFIX)/build-tools
+# Helpers which must run on the build machine are private build artifacts.
+# Keep them out of PREFIX so they cannot leak into target packages.
+BUILD_TOOLS_PREFIX ?= $(BUILD_TOOLS)/prefix
 
 # GitHub container jobs may provide a HOME owned by a different uid.  Keep
 # Wine's state in the writable build tree and initialize it once before a
@@ -459,9 +461,11 @@ clean-libpthread:
 clean-newlib:
 	rm -rf $(BUILD)/newlib
 
-# drop-prefix drops the files from prefix folder
+# drop-prefix drops the files from prefix folder.  It also removes
+# build-machine helpers left by versions predating the build-local prefix.
 drop-prefix:
 	rm -rf $(PREFIX)/bin
+	rm -rf $(PREFIX)/build-tools
 	rm -rf $(PREFIX)/etc
 	rm -rf $(PREFIX)/info
 	rm -rf $(PREFIX)/libexec
@@ -679,6 +683,8 @@ $(BUILD)/binutils/Makefile: $(PROJECTS)/binutils/configure | $(PREFIX_STAMP)
 	$(L0)"configure binutils"$(L1) cd $(BUILD)/binutils && $(E) $(PROJECTS)/binutils/configure $(CONFIG_BINUTILS) $(L2)
 
 
+# GCC and binutils normally need no local patches: AmigaPorts fixes are
+# maintained upstream.  Their clone rules retain optional downstream hooks.
 $(PROJECTS)/binutils/configure:
 	@cd $(PROJECTS) &&	git clone -b $(binutils_BRANCH) --depth 16 $(binutils_URL) binutils
 	for i in $$(find patches/binutils/ -type f 2>/dev/null); \

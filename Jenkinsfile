@@ -13,6 +13,21 @@ def notify(status){
 }
 
 @NonCPS
+def jobLabels(jobName) {
+	def parts = jobName.split(/\/{1}/)
+	return [
+		group: parts[0],
+		name: (parts.length > 1 ? parts[1] : parts[0]).replace('%2F', ' ')
+	]
+}
+
+def notifyFailure(labels, target) {
+	currentBuild.result = 'FAILURE'
+	discordSend description: "Build Failed: ${labels.name} #${env.BUILD_NUMBER} Target: ${target}", customUsername: "AmigaDev", customAvatarUrl: "https://avatars.githubusercontent.com/u/34406884?s=400&u=770fb7263ff469e25bb120eb2c0e44a16beda385&v=4", footer: "AmigaDev CI/CD", link: env.BUILD_URL, result: 'FAILURE', title: "[${labels.group}] Build Failed: ${labels.name} #${env.BUILD_NUMBER}", webhookURL: env.AMIGADEV_WEBHOOK
+	notify("Build Failed: ${labels.name} #${env.BUILD_NUMBER} Target: ${target}")
+}
+
+@NonCPS
 def killall_jobs() {
 	def jobname = env.JOB_NAME
 	def buildnum = env.BUILD_NUMBER.toInteger()
@@ -39,8 +54,7 @@ def killall_jobs() {
 }
 
 def buildStep(buildConf, DOCKER_ROOT, DOCKERIMAGE, DOCKERTAG, DOCKERFILE, BUILD_NEXT, BUILD_PARAM) {
-	def split_job_name = env.JOB_NAME.split(/\/{1}/);
-	def fixed_job_name = split_job_name[1].replace('%2F',' ');
+	def labels = jobLabels(env.JOB_NAME)
 	def buildenv = '';
 	def tag = '';
 	def isPullRequest = env.CHANGE_ID?.trim();
@@ -84,15 +98,15 @@ def buildStep(buildConf, DOCKER_ROOT, DOCKERIMAGE, DOCKERTAG, DOCKERFILE, BUILD_
 		}
 
 	} catch(err) {
-		discordSend description: "Build Failed: ${fixed_job_name} #${env.BUILD_NUMBER} Target: ${DOCKER_ROOT}/${DOCKERIMAGE}:${tag}", customUsername: "AmigaDev", customAvatarUrl: "https://avatars.githubusercontent.com/u/34406884?s=400&u=770fb7263ff469e25bb120eb2c0e44a16beda385&v=4", footer: "AmigaDev CI/CD", link: env.BUILD_URL, result: currentBuild.currentResult, title: "[${split_job_name[0]}] Build Failed: ${fixed_job_name} #${env.BUILD_NUMBER}", webhookURL: env.AMIGADEV_WEBHOOK
-		currentBuild.result = 'FAILURE'
-		notify("Build Failed: ${fixed_job_name} #${env.BUILD_NUMBER} Target: ${DOCKER_ROOT}/${DOCKERIMAGE}:${tag}")
+		notifyFailure(labels, "${DOCKER_ROOT}/${DOCKERIMAGE}:${tag}")
 		throw err
 	}
 }
 
 def buildManifest(DOCKER_ROOT, DOCKERIMAGE, DOCKERTAG, DOCKERFILE, PLATFORMS, BUILD_NEXT, BUILD_PARAM) {
-	def fixed_job_name = env.JOB_NAME.replace('%2F','/')
+	def labels = jobLabels(env.JOB_NAME)
+	def buildenv = ''
+	def tag = ''
 	try {
 		if (env.CHANGE_ID?.trim()) {
 			stage("Skipping ${DOCKERIMAGE}:${DOCKERTAG} manifest publication") {
@@ -103,8 +117,6 @@ def buildManifest(DOCKER_ROOT, DOCKERIMAGE, DOCKERTAG, DOCKERFILE, PLATFORMS, BU
 
 		checkout scm;
 
-		def buildenv = '';
-		def tag = '';
 		if (env.BRANCH_NAME.equals('master')) {
 			buildenv = 'production';
 			tag = "${DOCKERTAG}";
@@ -128,7 +140,6 @@ def buildManifest(DOCKER_ROOT, DOCKERIMAGE, DOCKERTAG, DOCKERFILE, PLATFORMS, BU
 				sh("docker manifest push ${DOCKER_ROOT}/${DOCKERIMAGE}:${tag}");
 			}
 		}
-		//discordSend description: "Build successful: ${fixed_job_name} #${env.BUILD_NUMBER} Target: ${DOCKER_ROOT}/${DOCKERIMAGE}:${tag} successful!", customUsername: "AmigaDev", customAvatarUrl: "https://avatars.githubusercontent.com/u/34406884?s=400&u=770fb7263ff469e25bb120eb2c0e44a16beda385&v=4", footer: "AmigaDev CI/CD", link: env.BUILD_URL, result: currentBuild.currentResult, title: "[${split_job_name[0]}] Build Successful: ${fixed_job_name} #${env.BUILD_NUMBER}", webhookURL: env.AMIGADEV_WEBHOOK
 		def branches = [:]
 
 		BUILD_NEXT.each { v ->
@@ -139,18 +150,14 @@ def buildManifest(DOCKER_ROOT, DOCKERIMAGE, DOCKERTAG, DOCKERFILE, PLATFORMS, BU
 
 		parallel branches;
 	} catch(err) {
-		discordSend description: "Build Failed: ${fixed_job_name} #${env.BUILD_NUMBER} Target: ${DOCKER_ROOT}/${DOCKERIMAGE}:${tag}", customUsername: "AmigaDev", customAvatarUrl: "https://avatars.githubusercontent.com/u/34406884?s=400&u=770fb7263ff469e25bb120eb2c0e44a16beda385&v=4", footer: "AmigaDev CI/CD", link: env.BUILD_URL, result: currentBuild.currentResult, title: "[${split_job_name[0]}] Build Failed: ${fixed_job_name} #${env.BUILD_NUMBER}", webhookURL: env.AMIGADEV_WEBHOOK
-
-		currentBuild.result = 'FAILURE'
-		notify("Build Failed: ${fixed_job_name} #${env.BUILD_NUMBER} Target: ${DOCKER_ROOT}/${DOCKERIMAGE}:${tag}")
+		notifyFailure(labels, "${DOCKER_ROOT}/${DOCKERIMAGE}:${tag}")
 		throw err
 	}
 }
 
 node('master') {
 	killall_jobs();
-	def split_job_name = env.JOB_NAME.split(/\/{1}/);
-	def fixed_job_name = split_job_name[1].replace('%2F',' ');
+	def labels = jobLabels(env.JOB_NAME)
 	
 	checkout scm;
 	
@@ -159,7 +166,7 @@ node('master') {
 		returnStdout: true
 	).trim();
 
-	discordSend description: "${env.COMMIT_MSG}", customUsername: "AmigaDev", customAvatarUrl: "https://avatars.githubusercontent.com/u/34406884?s=400&u=770fb7263ff469e25bb120eb2c0e44a16beda385&v=4", footer: "AmigaDev CI/CD", link: env.BUILD_URL, result: currentBuild.currentResult, title: "[${split_job_name[0]}] Build Started: ${fixed_job_name} #${env.BUILD_NUMBER}", webhookURL: env.AMIGADEV_WEBHOOK;
+	discordSend description: "${env.COMMIT_MSG}", customUsername: "AmigaDev", customAvatarUrl: "https://avatars.githubusercontent.com/u/34406884?s=400&u=770fb7263ff469e25bb120eb2c0e44a16beda385&v=4", footer: "AmigaDev CI/CD", link: env.BUILD_URL, result: currentBuild.currentResult, title: "[${labels.group}] Build Started: ${labels.name} #${env.BUILD_NUMBER}", webhookURL: env.AMIGADEV_WEBHOOK;
 
 	def branches = [:]
 	def project = readJSON file: "JenkinsEnv.json";
