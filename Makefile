@@ -69,8 +69,13 @@ ifneq (,$(findstring mingw,$(HOST)))
 WINEPREFIX ?= $(BUILD)/wine-prefix
 WINEDEBUG ?= -all
 WINEBOOT ?= wineboot
-export WINEPREFIX WINEDEBUG
-HOST_RUNNER_SETUP_PREREQ := $(WINEPREFIX)/.initialized
+WINEPATH ?= Z:$(abspath $(PREFIX)/bin)
+WINE_RUNTIME_DIR ?= $(BUILD)/wine-runtime
+XDG_RUNTIME_DIR := $(WINE_RUNTIME_DIR)
+MINGW_HOST_RUNTIME_SOURCE ?= $(shell $(CC) -print-file-name=libwinpthread-1.dll)
+MINGW_HOST_RUNTIME := $(PREFIX)/bin/libwinpthread-1.dll
+export WINEPREFIX WINEDEBUG WINEPATH XDG_RUNTIME_DIR
+HOST_RUNNER_SETUP_PREREQ := $(WINEPREFIX)/.initialized $(MINGW_HOST_RUNTIME)
 endif
 
 # Prefer a build-machine TARGET compiler when the environment already
@@ -108,10 +113,15 @@ TARGET_AR_FOR_BUILD := $(PREFIX)/bin/$(TARGET)-ar
 endif
 
 ifneq (,$(strip $(HOST_RUNNER_SETUP_PREREQ)))
-$(HOST_RUNNER_SETUP_PREREQ):
-	@mkdir -p $(@D)
+$(WINEPREFIX)/.initialized:
+	@mkdir -p $(@D) $(WINE_RUNTIME_DIR)
+	@chmod 700 $(WINE_RUNTIME_DIR)
 	@$(WINEBOOT) --init
 	@touch $@
+
+$(MINGW_HOST_RUNTIME): $(MINGW_HOST_RUNTIME_SOURCE)
+	@mkdir -p $(@D)
+	@install -m 755 "$<" "$@"
 endif
 
 ifneq (,$(strip $(TARGET_RUNNER_WRAPPER_DIR)))
@@ -767,6 +777,15 @@ GCC_HOST_TOOLS := AR="$(HOST_TOOL_PREFIX)ar" AS="$(HOST_TOOL_PREFIX)as" \
 endif
 ifneq (,$(strip $(HOST)))
 GCC_BUILD_MAKE_FLAGS := CFLAGS_FOR_BUILD="$(BUILD_CFLAGS)" CXXFLAGS_FOR_BUILD="$(BUILD_CXXFLAGS)"
+ifneq (,$(strip $(TARGET_RUNNER_WRAPPER_DIR)))
+# GCC's Canadian-cross top-level make defaults GCC_FOR_TARGET to the installed
+# target compiler.  It is not installed until install-gcc, so run the hosted
+# driver from GCC's build directory while all-gcc creates its specs instead.
+GCC_FOR_TARGET_BUILD := $(HOST_RUNNER) ./xgcc$(EXEEXT) -B./ \
+	-B$(PREFIX)/$(TARGET)/bin/ -isystem $(PREFIX)/$(TARGET)/include \
+	-isystem $(PREFIX)/$(TARGET)/sys-include -L$(BUILD)/gcc/ld
+GCC_BUILD_MAKE_FLAGS += GCC_FOR_TARGET="$(GCC_FOR_TARGET_BUILD)"
+endif
 ifneq (,$(filter 6.%,$(GCC_VERSION)))
 # GCC 16 defaults to C++17, which cannot parse GCC 6's libstdc++ headers.
 # Put a same-named wrapper first in PATH only while building target libraries.

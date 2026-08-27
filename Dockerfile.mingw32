@@ -56,9 +56,6 @@ RUN echo "BUILD_TARGET: ${BUILD_TARGET}" && \
     make -j "$(nproc)" ${BUILD_TARGET} && \
     if [ -n "${SDK_TARGET}" ]; then \
         make -j "$(nproc)" ${SDK_TARGET}; \
-    fi && \
-    host_runtime="$(${CC} -print-file-name=libwinpthread-1.dll)" && \
-    test -f "${host_runtime}" && \
-    install -m 755 "${host_runtime}" "${PREFIX}/bin/"
+    fi
 
 ENV PATH="${PREFIX}/bin:${PATH}"

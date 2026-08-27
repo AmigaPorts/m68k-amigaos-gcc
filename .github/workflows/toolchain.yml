@@ -333,9 +333,6 @@ jobs:
           make update
           make -j "$(nproc)" all
           make -j "$(nproc)" all-sdk
-          host_runtime="$($CC -print-file-name=libwinpthread-1.dll)"
-          test -f "$host_runtime"
-          install -m 755 "$host_runtime" "$PREFIX/bin/"
           package_version=$(cat projects/gcc/gcc/BASE-VER)
           if [[ "$GITHUB_REF" == refs/tags/* ]]; then
             package_version="${GITHUB_REF_NAME#v}"
