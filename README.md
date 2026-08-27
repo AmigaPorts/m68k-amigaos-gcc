@@ -200,6 +200,18 @@ bootstraps the toolchain from scratch, optionally runs the gcc
 testsuite under vamos, and uploads the packaged tarball as a build
 artifact. It can be dispatched manually against any gcc branch.
 
+To test a change to one of the module repositories (sfdc, binutils,
+libnix, ...) before it is merged, dispatch the workflow with the
+`repos` input set to the module and branch, or `URL#branch` for a
+fork; several overrides are separated by spaces:
+
+```
+gh workflow run toolchain.yml --repo AmigaPorts/m68k-amigaos-gcc \
+    -f repos="sfdc=fix-nolibbase-tag-wrappers binutils=https://github.com/user/binutils-gdb#my-fix"
+```
+
+The module names are the first column of `.repos`.
+
 Pushing a tag matching `v*` additionally publishes the tarball as a
 GitHub release, with the gcc testsuite as a release gate.
 
