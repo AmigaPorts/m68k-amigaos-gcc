@@ -248,23 +248,23 @@ You can select one of the various runtimes. My favorite is `libnix` which is sel
 ## Checking gcc
 
 To check the built toolchain, run the gcc dejagnu execution tests.
+
 This does not cover everything but it's a start. The tests run each
-compiled testcase under vamos (from
-https://github.com/AmigaPorts/amitools) to emulate the AmigaOS APIs,
-so `vamos` must be on the PATH.
+compiled testcase under [vamos](https://github.com/AmigaPorts/amitools)
+to emulate the AmigaOS APIs, so `vamos` must be on the PATH.
 
 Install dejagnu (`sudo apt install dejagnu` on Debian/Ubuntu,
 `brew install dejagnu` on macOS) and amitools, in a venv to keep it
 out of the system Python:
-```
+```shell
 python3 -m venv .venv
 .venv/bin/pip install "amitools[vamos] @ git+https://github.com/AmigaPorts/amitools.git"
+source .venv/bin/activate
 ```
 
-Then run the suite with the site file from this repo, which points
-dejagnu at the board descriptions in `baseboards/`:
-```
-DEJAGNU=$PWD/dejagnu-site.exp PATH="$PWD/.venv/bin:$PATH" make -j$(nproc) check
+Then run the testsuite:
+```shell
+make -j$(nproc) check
 ```
 
 ## Version management

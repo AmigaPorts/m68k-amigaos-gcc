@@ -184,18 +184,11 @@ jobs:
       - name: Run the gcc testsuite
         if: env.RUN_TESTSUITE == 'true' && runner.os == 'Linux'
         run: |
-          env DEJAGNU=$PWD/dejagnu-site.exp PATH="$HOME/amitools-venv/bin:$PATH" \
-            make -j $NPROC check MAKEINFO=true
-
-      - name: Testsuite summary
-        if: always() && env.RUN_TESTSUITE == 'true' && runner.os == 'Linux'
-        run: |
-          sum=$(ls build-*/gcc/gcc/testsuite/gcc/gcc.sum) || exit 0
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          grep -A6 "=== gcc Summary ===" "$sum" >> $GITHUB_STEP_SUMMARY
-          echo >> $GITHUB_STEP_SUMMARY
-          grep "^FAIL\|^ERROR" "$sum" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
+          set +e
+          PATH="$HOME/amitools-venv/bin:$PATH" make -j $NPROC check
+          rc=$?
+          { echo '```'; cat check-gcc-execute.summary.txt check-gcc-amigaos.summary.txt 2>/dev/null; echo '```'; } >> $GITHUB_STEP_SUMMARY
+          exit $rc
 
       - name: Upload testsuite results
         if: always() && env.RUN_TESTSUITE == 'true' && runner.os == 'Linux'
@@ -203,8 +196,10 @@ jobs:
         with:
           name: testsuite-results
           path: |
-            build-*/gcc/gcc/testsuite/gcc/gcc.sum
-            build-*/gcc/gcc/testsuite/gcc/gcc.log
+            build-*/gcc/gcc/testsuite/gcc/gcc-execute.sum
+            build-*/gcc/gcc/testsuite/gcc/gcc-execute.log
+            build-*/gcc/gcc/testsuite/gcc/gcc-amigaos.sum
+            build-*/gcc/gcc/testsuite/gcc/gcc-amigaos.log
           if-no-files-found: ignore
 
   build_amigaos:
