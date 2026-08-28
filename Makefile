@@ -1583,8 +1583,7 @@ endif
 
 # Point dejagnu at the in-repo board descriptions in baseboards/ which wire up
 # vamos as the simulator.
-export DEJAGNU ?= $(shell pwd)/dejagnu-site.exp
-
+export DEJAGNU ?= $(CURDIR)/dejagnu-site.exp
 # Directory where dejagnu writes gcc.sum / gcc.log.
 TESTSUITE = $(BUILD)/gcc/gcc/testsuite/gcc
 
