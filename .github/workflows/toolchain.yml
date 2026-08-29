@@ -132,19 +132,19 @@ jobs:
         run: make update
 
       - name: Build toolchain
-        run: make -j $NPROC all MAKEINFO=true
+        run: make -j $NPROC all
 
       # modest -j: downloads are network bound, and more jobs just garble the log
       - name: Install SDKs
-        run: make -j4 all-sdk MAKEINFO=true
+        run: make -j4 all-sdk
 
       # vbcc/vlink/vasm plus the vbcc target archives and vc.config
       - name: Build vbcc toolchain
-        run: make -j $NPROC vbcc vlink MAKEINFO=true
+        run: make -j $NPROC vbcc vlink
 
       # target libraries, one copy per multilib
       - name: Build zlib and libpng
-        run: make -j $NPROC zlib libpng MAKEINFO=true
+        run: make -j $NPROC zlib libpng
 
       # release tarballs are named after the tag (16.2-rc4), which
       # versions the whole distribution rather than just gcc
