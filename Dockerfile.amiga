@@ -18,7 +18,8 @@ COPY ./ ./
 
 ARG PATHPREFIX="m68k-amigaos-native"
 ARG BINUTILS_BRANCH="amiga-2.46"
-ARG GCC_BRANCH="amiga6"
+ARG GCC_BRANCH="amiga16.2"
+ARG NEWLIB_BRANCH="amiga"
 ARG MAKE_VERBOSE=""
 
 ENV PATH="/opt/build-binutils:${PATH}" \
@@ -26,7 +27,7 @@ ENV PATH="/opt/build-binutils:${PATH}" \
     HOST="m68k-amigaos" \
     BUILD_TRIPLET="x86_64-linux-gnu" \
     HOST_RUNNER="vamos -C 68040 --" \
-    NDK="3.9" \
+    NDK="3.2" \
     OWNGMP="1" \
     VERBOSE="${MAKE_VERBOSE}" \
     BUILD_CC="x86_64-linux-gnu-gcc -B/opt/build-binutils/" \
@@ -43,8 +44,10 @@ RUN test "$(${CC} -dumpmachine)" = "${HOST}" && \
     echo "PREFIX:          ${PREFIX}" && \
     echo "BINUTILS_BRANCH: ${BINUTILS_BRANCH}" && \
     echo "GCC_BRANCH:      ${GCC_BRANCH}" && \
+    echo "NEWLIB_BRANCH:   ${NEWLIB_BRANCH}" && \
     make branch mod=binutils branch=${BINUTILS_BRANCH} && \
     make branch mod=gcc branch=${GCC_BRANCH} && \
+    make branch mod=newlib-cygwin branch=${NEWLIB_BRANCH} && \
     make update && \
     make gcc-prerequisites
 
@@ -55,7 +58,7 @@ RUN echo "BUILD_TARGET: ${BUILD_TARGET}" && \
     echo "SDK_TARGET:   ${SDK_TARGET}" && \
     make -j "$(nproc)" ${BUILD_TARGET} && \
     if [ -n "${SDK_TARGET}" ]; then \
-        make -j "$(nproc)" ${SDK_TARGET}; \
+        make -j 4 ${SDK_TARGET}; \
     fi
 
 ENV PATH="${PREFIX}/bin:${PATH}"

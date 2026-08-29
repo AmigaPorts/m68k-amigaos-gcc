@@ -213,8 +213,8 @@ make package-lha PREFIX=/opt/amiga PACKAGE_PLATFORM=AmigaOS-m68k
 The GitHub Actions workflow in `.github/workflows/toolchain.yml`
 bootstraps the toolchain from scratch, optionally runs the gcc
 testsuite under vamos, and uploads the native `.tar.xz` packages as build
-artifacts. The hosted-build workflow input independently defaults to the
-legacy `amiga6` compiler for AmigaOS and MinGW hosts, using the published
+artifacts. By default it also Canadian-cross-builds the `amiga16.2` compiler
+for AmigaOS and MinGW hosts, using the published
 `amigadev/crosstools:m68k-amigaos-gcc10` and
 `amigadev/crosstools:x86_64-w64-mingw32` build environments. The local hosted
 build Dockerfiles are not rebuilt by CI. The AmigaOS package is an `.lha`; the

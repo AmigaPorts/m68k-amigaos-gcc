@@ -47,10 +47,15 @@ endif
 ifneq (,$(findstring amigaos,$(HOST)))
   HOST_CPU_FLAGS := -mcpu=68040 -mhard-float
   HOST_CRT_FLAGS := -mcrt=nix20
+  # The AmigaOS libstdc++ supports the old string ABI reliably.  This affects
+  # only GCC executables that run on HOST; target libraries retain their own
+  # configuration and ABI defaults.
+  HOST_CXX_ABI_FLAGS := -D_GLIBCXX_USE_CXX11_ABI=0
   HOST_LINK_FLAGS := $(HOST_CPU_FLAGS) $(HOST_CRT_FLAGS)
 else
   HOST_CPU_FLAGS :=
   HOST_CRT_FLAGS :=
+  HOST_CXX_ABI_FLAGS :=
   HOST_LINK_FLAGS :=
 endif
 
@@ -92,10 +97,14 @@ endif
 endif
 ifneq (,$(strip $(TARGET_TOOL_PREFIX)))
 TARGET_CC_FOR_BUILD := $(TARGET_TOOL_PREFIX)gcc
+TARGET_CXX_FOR_BUILD := $(TARGET_TOOL_PREFIX)g++
 TARGET_AR_FOR_BUILD := $(TARGET_TOOL_PREFIX)ar
+TARGET_EXEC_PREFIX_FOR_BUILD := $(TARGET_TOOL_PREFIX)
 else ifneq (,$(strip $(HOST_TOOL_PREFIX)))
 TARGET_CC_FOR_BUILD := $(HOST_TOOL_PREFIX)gcc
+TARGET_CXX_FOR_BUILD := $(HOST_TOOL_PREFIX)g++
 TARGET_AR_FOR_BUILD := $(HOST_TOOL_PREFIX)ar
+TARGET_EXEC_PREFIX_FOR_BUILD := $(HOST_TOOL_PREFIX)
 else
 TARGET_RUNNER_WRAPPER_DIR := $(BUILD_TOOLS)/target-runner
 TARGET_RUNNER_TOOL_NAMES := gcc g++ c++ cpp gcc-ar gcc-nm gcc-ranlib \
@@ -109,6 +118,22 @@ export PATH := $(TARGET_RUNNER_WRAPPER_DIR):$(PATH)
 endif
 SDK_CC_FOR_BUILD := $(TARGET_CC_FOR_BUILD)
 SDK_AR_FOR_BUILD := $(TARGET_AR_FOR_BUILD)
+ifneq (,$(strip $(TARGET_EXEC_PREFIX_FOR_BUILD)))
+TARGET_EXEC_WRAPPER_DIR := $(BUILD_TOOLS)/target-exec
+TARGET_EXEC_TOOL_NAMES := ar as ld ld.bfd nm objcopy objdump ranlib strip
+TARGET_EXEC_WRAPPERS := $(patsubst %,$(TARGET_EXEC_WRAPPER_DIR)/%,$(TARGET_EXEC_TOOL_NAMES))
+TARGET_GCC_INCLUDE_FOR_BUILD := $(shell $(TARGET_CC_FOR_BUILD) -print-file-name=include 2>/dev/null)
+TARGET_COMPILER_WRAPPER_DIR := $(BUILD_TOOLS)/target-compiler
+TARGET_COMPILER_TOOL_NAMES := gcc g++ c++ cpp
+TARGET_COMPILER_WRAPPERS := $(patsubst %,$(TARGET_COMPILER_WRAPPER_DIR)/$(TARGET)-%,$(TARGET_COMPILER_TOOL_NAMES))
+TARGET_PREFIXED_EXEC_WRAPPERS := $(patsubst %,$(TARGET_COMPILER_WRAPPER_DIR)/$(TARGET)-%,$(TARGET_EXEC_TOOL_NAMES))
+TARGET_CC_COMMAND_FOR_BUILD := $(TARGET_COMPILER_WRAPPER_DIR)/$(TARGET)-gcc
+TARGET_CXX_COMMAND_FOR_BUILD := $(TARGET_COMPILER_WRAPPER_DIR)/$(TARGET)-g++
+export PATH := $(TARGET_COMPILER_WRAPPER_DIR):$(PATH)
+else
+TARGET_CC_COMMAND_FOR_BUILD := $(TARGET_CC_FOR_BUILD)
+TARGET_CXX_COMMAND_FOR_BUILD := $(TARGET_CXX_FOR_BUILD)
+endif
 else
 TARGET_CC_FOR_BUILD ?= $(shell command -v $(TARGET)-gcc 2>/dev/null)
 TARGET_AR_FOR_BUILD := $(PREFIX)/bin/$(TARGET)-ar
@@ -132,6 +157,24 @@ $(TARGET_RUNNER_WRAPPER_DIR)/$(TARGET)-%:
 	@test -n "$(HOST_RUNNER)" || { echo "HOST_RUNNER is required to execute HOST=$(HOST) tools while building TARGET=$(TARGET) libraries"; exit 1; }
 	@printf '%s\n' '#!/bin/sh' 'exec $(HOST_RUNNER) "$(PREFIX)/bin/$(TARGET)-$*$(EXEEXT)" "$$@"' >$@
 	@chmod +x $@
+endif
+
+ifneq (,$(strip $(TARGET_EXEC_WRAPPER_DIR)))
+$(TARGET_EXEC_WRAPPER_DIR)/%:
+	@mkdir -p $(@D)
+	@test -x "$(TARGET_EXEC_PREFIX_FOR_BUILD)$*"
+	@ln -sf "$(TARGET_EXEC_PREFIX_FOR_BUILD)$*" $@
+
+$(TARGET_COMPILER_WRAPPERS): $(TARGET_COMPILER_WRAPPER_DIR)/$(TARGET)-%: $(TARGET_EXEC_WRAPPERS)
+	@mkdir -p $(@D)
+	@test -x "$(TARGET_EXEC_PREFIX_FOR_BUILD)$*"
+	@test -n "$(TARGET_GCC_INCLUDE_FOR_BUILD)"
+	@printf '%s\n' '#!/bin/sh' 'exec "$(TARGET_EXEC_PREFIX_FOR_BUILD)$*" -B"$(TARGET_EXEC_WRAPPER_DIR)/" -isystem "$(TARGET_GCC_INCLUDE_FOR_BUILD)" "$$@"' >$@
+	@chmod +x $@
+
+$(TARGET_PREFIXED_EXEC_WRAPPERS): $(TARGET_COMPILER_WRAPPER_DIR)/$(TARGET)-%: $(TARGET_EXEC_WRAPPER_DIR)/%
+	@mkdir -p $(@D)
+	@ln -sf "$<" $@
 endif
 PROJECTS := $(shell pwd)/projects
 DOWNLOAD := $(shell pwd)/download
@@ -209,14 +252,15 @@ CXXFLAGS_FOR_TARGET ?= $(CFLAGS_FOR_TARGET) -fno-exceptions -fno-rtti
 E:=CFLAGS="$(CFLAGS)" CXXFLAGS="$(CXXFLAGS)" CFLAGS_FOR_BUILD="$(CFLAGS)" CXXFLAGS_FOR_BUILD="$(CXXFLAGS)"  CFLAGS_FOR_TARGET="$(CFLAGS_FOR_TARGET)" CXXFLAGS_FOR_TARGET="$(CFLAGS_FOR_TARGET)"
 else
 CFLAGS ?= -Os $(HOST_CPU_FLAGS) $(HOST_CRT_FLAGS)
-CXXFLAGS ?= $(CFLAGS)
+CXXFLAGS ?= $(CFLAGS) $(HOST_CXX_ABI_FLAGS)
 LDFLAGS ?= $(HOST_LINK_FLAGS)
 BUILD_CFLAGS ?= -Os
 BUILD_CXXFLAGS ?= $(BUILD_CFLAGS)
+BUILD_LDFLAGS ?=
 CFLAGS_FOR_TARGET ?= -O2 -fomit-frame-pointer
 CXXFLAGS_FOR_TARGET ?= $(CFLAGS_FOR_TARGET)
 
-E:=CFLAGS="$(CFLAGS)" CXXFLAGS="$(CXXFLAGS)" LDFLAGS="$(LDFLAGS)" CFLAGS_FOR_BUILD="$(BUILD_CFLAGS)" CXXFLAGS_FOR_BUILD="$(BUILD_CXXFLAGS)" CFLAGS_FOR_TARGET="$(CFLAGS_FOR_TARGET)" CXXFLAGS_FOR_TARGET="$(CXXFLAGS_FOR_TARGET)"
+E:=CFLAGS="$(CFLAGS)" CXXFLAGS="$(CXXFLAGS)" LDFLAGS="$(LDFLAGS)" CFLAGS_FOR_BUILD="$(BUILD_CFLAGS)" CXXFLAGS_FOR_BUILD="$(BUILD_CXXFLAGS)" LDFLAGS_FOR_BUILD="$(BUILD_LDFLAGS)" CFLAGS_FOR_TARGET="$(CFLAGS_FOR_TARGET)" CXXFLAGS_FOR_TARGET="$(CXXFLAGS_FOR_TARGET)"
 endif
 
 THREADS ?= no
@@ -231,12 +275,16 @@ endif
 
 # Files for GMP, MPC and MPFR
 
-GMP := gmp-6.1.2
+GMP := gmp-6.2.1
 GMPFILE := $(GMP).tar.bz2
-MPC := mpc-1.0.3
+GMP_SHA256 := eae9326beb4158c386e39a356818031bd28f3124cf915f8c5b1dc4c7a36b4d7c
+MPC := mpc-1.2.1
 MPCFILE := $(MPC).tar.gz
-MPFR := mpfr-3.1.6
+MPC_SHA256 := 17503d2c395dfcf106b622dc142683c1199431d095367c6aacba6eec30340459
+MPFR := mpfr-4.1.0
 MPFRFILE := $(MPFR).tar.bz2
+MPFR_SHA256 := feced2d430dd5a97805fa289fed3fc8ff2b094c02d05287fd6133e7f1f0ec926
+GCC_INFRASTRUCTURE ?= https://gcc.gnu.org/pub/gcc/infrastructure
 
 # =================================================
 # pretty output ^^
@@ -578,13 +626,13 @@ update-netinclude: $(PROJECTS)/amiga-netinclude/README.md
 gcc-prerequisites: $(PROJECTS)/$(GMP)/configure $(PROJECTS)/$(MPFR)/configure $(PROJECTS)/$(MPC)/configure
 
 $(DOWNLOAD)/$(GMPFILE):
-	$(call get-file,gmp,https://ftp.gnu.org/gnu/gmp/$(GMPFILE),$(GMPFILE))
+	$(call get-file,gmp,$(GCC_INFRASTRUCTURE)/$(GMPFILE),$(GMPFILE),$(GMP_SHA256))
 
 $(DOWNLOAD)/$(MPFRFILE):
-	$(call get-file,mpfr,https://ftp.gnu.org/gnu/mpfr/$(MPFRFILE),$(MPFRFILE))
+	$(call get-file,mpfr,$(GCC_INFRASTRUCTURE)/$(MPFRFILE),$(MPFRFILE),$(MPFR_SHA256))
 
 $(DOWNLOAD)/$(MPCFILE):
-	$(call get-file,mpc,https://ftp.gnu.org/gnu/mpc/$(MPCFILE),$(MPCFILE))
+	$(call get-file,mpc,$(GCC_INFRASTRUCTURE)/$(MPCFILE),$(MPCFILE),$(MPC_SHA256))
 
 define extract-gcc-prerequisite
 	@tmp=$$(mktemp -d "$(PROJECTS)/.$(1).XXXXXX"); \
@@ -739,7 +787,14 @@ else
 CONFIG_GCC += --disable-werror
 endif
 ifneq (,$(findstring amigaos,$(HOST)))
-CONFIG_GCC += --disable-lto
+# LTO remains enabled for AmigaOS hosts.  GCC omits only the shared
+# lto-plugin, which AmigaOS cannot load, while retaining lto1/lto-wrapper.
+CONFIG_GCC += --disable-libcc1 --without-static-standard-libraries
+# The bootstrap toolchain may predate C++ linkage fixes in the AmigaOS
+# headers.  Its libnix also declares popen/pclose despite not providing a
+# usable pair.  Keep GCC's optional host probes from enabling those paths;
+# this affects only the compiler executables that run on HOST.
+GCC_HOST_CONFIGURE_ENV := host_configargs="ac_cv_func_clock_gettime=no ac_cv_func_getrlimit=no ac_cv_func_pclose=no ac_cv_func_popen=no ac_cv_func_setrlimit=no"
 GCC_HOST_COMPAT_LIBRARY := $(BUILD)/libamiga-host-compat.a
 GCC_HOST_COMPAT_PREREQ := $(GCC_HOST_COMPAT_LIBRARY)
 # Use a library here rather than adding the object directly: GCC's top-level
@@ -782,7 +837,13 @@ GCC_HOST_TOOLS := AR="$(HOST_TOOL_PREFIX)ar" AS="$(HOST_TOOL_PREFIX)as" \
 	STRIP="$(HOST_TOOL_PREFIX)strip"
 endif
 ifneq (,$(strip $(HOST)))
-GCC_BUILD_MAKE_FLAGS := CFLAGS_FOR_BUILD="$(BUILD_CFLAGS)" CXXFLAGS_FOR_BUILD="$(BUILD_CXXFLAGS)"
+GCC_BUILD_MAKE_FLAGS := CFLAGS_FOR_BUILD="$(BUILD_CFLAGS)" CXXFLAGS_FOR_BUILD="$(BUILD_CXXFLAGS)" LDFLAGS_FOR_BUILD="$(BUILD_LDFLAGS)"
+# GCC's EXTRA_BUILD_FLAGS overrides the host flags propagated through
+# BASE_FLAGS_TO_PASS when recursing into build-machine C++ libraries.  GCC 16
+# otherwise compiles build-libcpp with HOST CXXFLAGS (for example -mcrt=nix20)
+# even though it correctly selects CXX_FOR_BUILD as the compiler.
+GCC_BUILD_MAKE_FLAGS += EXTRA_BUILD_FLAGS='CFLAGS="$(BUILD_CFLAGS)" CXXFLAGS="$(BUILD_CXXFLAGS)" LDFLAGS="$(BUILD_LDFLAGS)"'
+GCC_FOR_TARGET_BUILD := $(TARGET_CC_COMMAND_FOR_BUILD)
 ifneq (,$(strip $(TARGET_RUNNER_WRAPPER_DIR)))
 # GCC's Canadian-cross top-level make defaults GCC_FOR_TARGET to the installed
 # target compiler.  It is not installed until install-gcc, so run the hosted
@@ -790,6 +851,8 @@ ifneq (,$(strip $(TARGET_RUNNER_WRAPPER_DIR)))
 GCC_FOR_TARGET_BUILD := $(HOST_RUNNER) ./xgcc$(EXEEXT) -B./ \
 	-B$(PREFIX)/$(TARGET)/bin/ -isystem $(PREFIX)/$(TARGET)/include \
 	-isystem $(PREFIX)/$(TARGET)/sys-include -L$(BUILD)/gcc/ld
+endif
+ifneq (,$(strip $(GCC_FOR_TARGET_BUILD)))
 GCC_BUILD_MAKE_FLAGS += GCC_FOR_TARGET="$(GCC_FOR_TARGET_BUILD)"
 endif
 ifneq (,$(filter 6.%,$(GCC_VERSION)))
@@ -801,8 +864,15 @@ ifneq (,$(filter 6.%,$(GCC_VERSION)))
 TARGET_CXX_FOR_BUILD ?= $(shell command -v $(TARGET)-c++ 2>/dev/null)
 GCC6_TARGET_CXX_WRAPPER_DIR := $(BUILD_TOOLS)/gcc6/bin
 GCC6_TARGET_CXX_WRAPPER := $(GCC6_TARGET_CXX_WRAPPER_DIR)/$(TARGET)-c++
-GCC_TARGET_MAKE_FLAGS := PATH="$(GCC6_TARGET_CXX_WRAPPER_DIR):$(PATH)"
-GCC_TARGET_PREREQ := $(GCC6_TARGET_CXX_WRAPPER)
+GCC_TARGET_MAKE_FLAGS += PATH="$(GCC6_TARGET_CXX_WRAPPER_DIR):$(PATH)"
+GCC_TARGET_PREREQ += $(GCC6_TARGET_CXX_WRAPPER)
+endif
+GCC_TARGET_PREREQ += $(TARGET_EXEC_WRAPPERS) $(TARGET_COMPILER_WRAPPERS) $(TARGET_PREFIXED_EXEC_WRAPPERS)
+ifneq (,$(strip $(GCC_FOR_TARGET_BUILD)))
+GCC_TARGET_MAKE_FLAGS += GCC_FOR_TARGET="$(GCC_FOR_TARGET_BUILD)" \
+	CC_FOR_TARGET="$(TARGET_CC_COMMAND_FOR_BUILD)" \
+	CXX_FOR_TARGET="$(TARGET_CXX_COMMAND_FOR_BUILD)" \
+	AR_FOR_TARGET="$(TARGET_AR_FOR_BUILD)"
 endif
 endif
 
@@ -841,7 +911,7 @@ ifneq ($(OWNGMP),)
 	@rsync -a --no-group $(PROJECTS)/$(MPC)/* $(PROJECTS)/gcc/mpc
 	@rsync -a --no-group $(PROJECTS)/$(MPFR)/* $(PROJECTS)/gcc/mpfr
 endif
-	$(L0)"configure gcc"$(L1) cd $(BUILD)/gcc && $(E) $(GCC_HOST_TOOLS) $(GCC_HOST_LDFLAGS) $(PROJECTS)/gcc/configure $(CONFIG_GCC) $(L2)
+	$(L0)"configure gcc"$(L1) cd $(BUILD)/gcc && $(E) $(GCC_HOST_TOOLS) $(GCC_HOST_CONFIGURE_ENV) $(GCC_HOST_LDFLAGS) $(PROJECTS)/gcc/configure $(CONFIG_GCC) $(L2)
 
 $(BUILD)/libamiga-host-compat.a: $(BUILD)/gcc-host-compat.o
 	$(L0)"archive Amiga host compatibility library"$(L1) $(GCC_HOST_AR) rcs $@ $< $(L2)

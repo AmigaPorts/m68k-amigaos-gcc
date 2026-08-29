@@ -26,7 +26,7 @@ on:
         default: true
       hosted_gcc_branch:
         description: gcc branch for the AmigaOS and MinGW hosted toolchains
-        default: amiga6
+        default: amiga16.2
   # same inputs again: workflow_call, used by release.yml, does not
   # share the workflow_dispatch input declarations
   workflow_call:
@@ -51,7 +51,7 @@ on:
         default: true
       hosted_gcc_branch:
         type: string
-        default: amiga6
+        default: amiga16.2
   # label a pull request "ci" for a macOS build of its merge commit,
   # "ci-testsuite" for a Linux build with the gcc testsuite, or "ci-cross"
   # for Linux plus the AmigaOS and MinGW hosted toolchains
@@ -224,13 +224,13 @@ jobs:
       HOST: m68k-amigaos
       BUILD_TRIPLET: x86_64-linux-gnu
       HOST_RUNNER: vamos -C 68040 --
-      NDK: "3.9"
+      NDK: "3.2"
       OWNGMP: "1"
       BUILD_CC: x86_64-linux-gnu-gcc -B/opt/build-binutils/
       BUILD_CXX: x86_64-linux-gnu-g++ -B/opt/build-binutils/
       CC_FOR_BUILD: x86_64-linux-gnu-gcc -B/opt/build-binutils/
       CXX_FOR_BUILD: x86_64-linux-gnu-g++ -B/opt/build-binutils/
-      HOSTED_GCC_BRANCH: ${{ inputs.hosted_gcc_branch || 'amiga6' }}
+      HOSTED_GCC_BRANCH: ${{ inputs.hosted_gcc_branch || 'amiga16.2' }}
 
     steps:
       - uses: actions/checkout@v7
@@ -255,7 +255,7 @@ jobs:
           make update
           make gcc-prerequisites
           make -j "$(nproc)" all
-          make -j "$(nproc)" all-sdk
+          make -j 4 all-sdk
 
       - name: Package AmigaOS hosted toolchain
         run: |
@@ -294,13 +294,13 @@ jobs:
       HOST: x86_64-w64-mingw32ucrt
       BUILD_TRIPLET: x86_64-linux-gnu
       HOST_RUNNER: wine
-      NDK: "3.9"
+      NDK: "3.2"
       OWNGMP: "1"
       BUILD_CC: x86_64-linux-gnu-gcc -B/opt/build-binutils/
       BUILD_CXX: x86_64-linux-gnu-g++ -B/opt/build-binutils/
       CC_FOR_BUILD: x86_64-linux-gnu-gcc -B/opt/build-binutils/
       CXX_FOR_BUILD: x86_64-linux-gnu-g++ -B/opt/build-binutils/
-      HOSTED_GCC_BRANCH: ${{ inputs.hosted_gcc_branch || 'amiga6' }}
+      HOSTED_GCC_BRANCH: ${{ inputs.hosted_gcc_branch || 'amiga16.2' }}
 
     steps:
       - uses: actions/checkout@v7
@@ -332,7 +332,7 @@ jobs:
           make branch mod=gcc branch="$HOSTED_GCC_BRANCH"
           make update
           make -j "$(nproc)" all
-          make -j "$(nproc)" all-sdk
+          make -j 4 all-sdk
           package_version=$(cat projects/gcc/gcc/BASE-VER)
           if [[ "$GITHUB_REF" == refs/tags/* ]]; then
             package_version="${GITHUB_REF_NAME#v}"

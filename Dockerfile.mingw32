@@ -21,14 +21,14 @@ COPY ./ ./
 
 ARG PATHPREFIX="m68k-amigaos"
 ARG BINUTILS_BRANCH="amiga-2.46"
-ARG GCC_BRANCH="amiga6"
+ARG GCC_BRANCH="amiga16.2"
 
 ENV PATH="/opt/build-binutils:${PATH}" \
     PREFIX="/opt/${PATHPREFIX}" \
     HOST="x86_64-w64-mingw32ucrt" \
     BUILD_TRIPLET="x86_64-linux-gnu" \
     HOST_RUNNER="wine" \
-    NDK="3.9" \
+    NDK="3.2" \
     OWNGMP="1" \
     BUILD_CC="x86_64-linux-gnu-gcc -B/opt/build-binutils/" \
     BUILD_CXX="x86_64-linux-gnu-g++ -B/opt/build-binutils/"
@@ -55,7 +55,7 @@ RUN echo "BUILD_TARGET: ${BUILD_TARGET}" && \
     echo "SDK_TARGET:   ${SDK_TARGET}" && \
     make -j "$(nproc)" ${BUILD_TARGET} && \
     if [ -n "${SDK_TARGET}" ]; then \
-        make -j "$(nproc)" ${SDK_TARGET}; \
+        make -j 4 ${SDK_TARGET}; \
     fi
 
 ENV PATH="${PREFIX}/bin:${PATH}"
