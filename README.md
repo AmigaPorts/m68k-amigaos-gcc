@@ -58,12 +58,12 @@ AmigaOS-specific changes are maintained in the upstream AmigaPorts repositories.
 ## Prerequisites
 ### Fedora
 ```
-sudo dnf install wget gcc gcc-c++ python git perl-Pod-Simple gperf patch autoconf automake make makedepend bison flex ncurses-devel gmp-devel mpfr-devel libmpc-devel gettext-devel texinfo rsync readline-devel which
+sudo dnf install wget gcc gcc-c++ python git perl-Pod-Simple gperf patch autoconf automake make makedepend bison flex ncurses-devel gmp-devel mpfr-devel libmpc-devel gettext-devel rsync readline-devel which
 ```
 
 ### Ubuntu, Debian
 ```
-sudo apt install make wget git gcc g++ lhasa libgmp-dev libmpfr-dev libmpc-dev flex bison gettext texinfo ncurses-dev autoconf rsync libreadline-dev
+sudo apt install make wget git gcc g++ libgmp-dev libmpfr-dev libmpc-dev flex bison gettext ncurses-dev autoconf rsync libreadline-dev
 ```
 
 If building with a normal user, the `PREFIX` directory must be writable (default is `/opt/amiga`). You can add the user to an appropriate group. 
@@ -72,32 +72,31 @@ If building with a normal user, the `PREFIX` directory must be writable (default
 Install Homebrew (https://brew.sh/) or any other package manager first. The compiler will be installed together with XCode. Once XCode and Homebrew are up install the required packages:
 
 ```
-brew install bash wget make lhasa gmp mpfr libmpc flex gettext gnu-sed texinfo gcc@12 make autoconf bison
+brew install autoconf automake bash bison coreutils flex gettext gmp \
+  gnu-sed gnu-tar grep make libmpc mpfr wget xz
 ```
 
-By default macOS uses an outdated version of bash. Therefore, on macOS host always pass the the SHELL=/usr/local/bin/bash parameter (or any other valid path pointing to bash), e.g.:
+Apple ships old or BSD versions of many of these tools. Put the Homebrew GNU
+versions first on `PATH` under their plain names, so the build machinery does
+not need BSD workarounds (add these lines to your shell profile to make them
+permanent):
 
 ```
-make all SHELL=$(brew --prefix)/bin/bash
-```
-
-On macOS it may be also necessary to point to the brew version of gcc make and autoconf, e.g.:
-
-```
-CC=gcc-12 CXX=g++-12 gmake all SHELL=$(brew --prefix)/bin/bash
+export PATH="$(brew --prefix bison)/bin:$(brew --prefix flex)/bin:$PATH"
+for pkg in coreutils gnu-sed gnu-tar grep make; do
+  export PATH="$(brew --prefix $pkg)/libexec/gnubin:$PATH"
+done
 ```
 
 **NOTE**
 
 * You might need to use the brew version of make when building your projects (e.g.: `gmake`). Link failures are known to happen with GNU Make 3.81, but to succeed with GNU Make 4.4.1 on the same machine and project
-* If you want `m68k-amigaos-gdb` then you have to build it with `gcc`
-* The `gdb` build also needs a more recent `bison` version than the one installed
-  in macOS. Use the version from Homebrew instead. It's keg only so you need
-  to add it to your `PATH` manually:
+* If you want `m68k-amigaos-gdb` then you have to build it with `gcc` rather than the default Apple toolchain, e.g. `brew install gcc@12` and then:
 
 ```
-export PATH=$(brew --prefix bison)/bin:$PATH
+CC=gcc-12 CXX=g++-12 gmake all
 ```
+
 * This version of gcc supports building binaries optimised for the various Motorola 68K series CPUs from the 68000 to the 68060 and also features some optimisations for the Vampire/Apollo 68080.
 
 ### macOS on M1
