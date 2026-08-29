@@ -3,6 +3,7 @@ projects
 download
 Output
 *.log
+*.summary.txt
 .lock
 .state
 .vscode

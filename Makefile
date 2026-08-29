@@ -1581,10 +1581,32 @@ ifeq (,$(board))
 board = amigaos
 endif
 
-.PHONY: check
+# Point dejagnu at the in-repo board descriptions in baseboards/ which wire up
+# vamos as the simulator.
+export DEJAGNU ?= $(CURDIR)/dejagnu-site.exp
+# Directory where dejagnu writes gcc.sum / gcc.log.
+TESTSUITE = $(BUILD)/gcc/gcc/testsuite/gcc
+
+.PHONY: check check-gcc-execute check-gcc-amigaos
+# Run the two sequentially (recipe lines run in order even under make -j): both
+# drive check-gcc-c in the same build tree, sharing gcc.sum and
+# testsuite/gcc-parallel, so they must not run at the same time.
 check:
+	@$(MAKE) --no-print-directory check-gcc-amigaos
+	@$(MAKE) --no-print-directory check-gcc-execute
+
+check-gcc-execute:
 	@ln -sf $(PREFIX)/$(TARGET)/libnix $(BUILD)/gcc/$(TARGET)/libnix
-	$(MAKE) -C $(BUILD)/gcc check-gcc-c "RUNTESTFLAGS=--target_board=$(board) execute.exp=* SIM=vamos" | grep '# of\|PASS\|FAIL\|===\|Running\|Using' 
+	$(L0)"check execute.exp"$(L1)$(MAKE) -C $(BUILD)/gcc check-gcc-c "RUNTESTFLAGS=--target_board=$(board) execute.exp=* SIM=vamos"$(L2)
+	@cp -f $(TESTSUITE)/gcc.sum $(TESTSUITE)/gcc-execute.sum; cp -f $(TESTSUITE)/gcc.log $(TESTSUITE)/gcc-execute.log
+	@{ echo '----- execute.exp -----'; grep '^# of' $(TESTSUITE)/gcc-execute.sum || echo '(no tests run)'; grep -E '^(FAIL|ERROR|XPASS)' $(TESTSUITE)/gcc-execute.sum || true; } | tee $@.summary.txt
+
+# amiga-specific target tests; a no-op on gcc branches that predate them (a .exp filter matching no file runs nothing).
+check-gcc-amigaos:
+	@ln -sf $(PREFIX)/$(TARGET)/libnix $(BUILD)/gcc/$(TARGET)/libnix
+	$(L0)"check amigaos.exp"$(L1)$(MAKE) -C $(BUILD)/gcc check-gcc-c "RUNTESTFLAGS=--target_board=$(board) gcc.target/m68k/amigaos/amigaos.exp SIM=vamos"$(L2)
+	@cp -f $(TESTSUITE)/gcc.sum $(TESTSUITE)/gcc-amigaos.sum; cp -f $(TESTSUITE)/gcc.log $(TESTSUITE)/gcc-amigaos.log
+	@{ echo '----- amigaos.exp -----'; grep '^# of' $(TESTSUITE)/gcc-amigaos.sum || echo '(no tests run)'; grep -E '^(FAIL|ERROR|XPASS)' $(TESTSUITE)/gcc-amigaos.sum || true; } | tee $@.summary.txt
 
 
 # =================================================
