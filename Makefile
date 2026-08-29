@@ -180,6 +180,11 @@ PROJECTS := $(shell pwd)/projects
 DOWNLOAD := $(shell pwd)/download
 __BUILDDIR := $(shell mkdir -p $(BUILD))
 
+# Don't build and install the texinfo documentation, which isn't very
+# useful for a cross toolchain, particularly one that lives in a container.
+export MAKEINFO = true
+MAKEOVERRIDES += MAKEINFO=$(MAKEINFO)
+
 # binutils, gcc and newlib record the prefix in their configured build
 # trees: building the same tree for another PREFIX installs into both
 PREFIX_STAMP := $(BUILD)/.prefix
@@ -671,7 +676,7 @@ update-mpc:
 # =================================================
 # binutils
 # =================================================
-CONFIG_BINUTILS =--prefix=$(PREFIX) --target=$(TARGET) $(HOST_CONFIGURE) --disable-werror --disable-nls
+CONFIG_BINUTILS = --prefix=$(PREFIX) --target=$(TARGET) $(HOST_CONFIGURE) --disable-werror --disable-nls
 
 ifeq (,$(strip $(HOST)))
 CONFIG_BINUTILS += --enable-tui --enable-plugins --without-msgpack
@@ -734,7 +739,7 @@ $(BUILD)/binutils/Makefile: $(PROJECTS)/binutils/configure | $(PREFIX_STAMP)
 # GCC and binutils normally need no local patches: AmigaPorts fixes are
 # maintained upstream.  Their clone rules retain optional downstream hooks.
 $(PROJECTS)/binutils/configure:
-	@cd $(PROJECTS) &&	git clone -b $(binutils_BRANCH) --depth 16 $(binutils_URL) binutils
+	@cd $(PROJECTS) && git clone -b $(binutils_BRANCH) --depth 16 $(binutils_URL) binutils
 	for i in $$(find patches/binutils/ -type f 2>/dev/null); \
 	do if [[ "$$i" == *.diff ]] ; \
 		then j=$${i:8}; patch -N "$(PROJECTS)/$${j%.diff}" "$$i"; fi ; done
