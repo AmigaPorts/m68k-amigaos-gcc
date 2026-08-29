@@ -1591,8 +1591,10 @@ endif
 export DEJAGNU ?= $(CURDIR)/dejagnu-site.exp
 # Directory where dejagnu writes gcc.sum / gcc.log.
 TESTSUITE = $(BUILD)/gcc/gcc/testsuite/gcc
+# The C++ testsuite writes into a separate g++ directory.
+CXXTESTSUITE = $(BUILD)/gcc/gcc/testsuite/g++
 
-.PHONY: check check-gcc-execute check-gcc-amigaos
+.PHONY: check check-gcc-execute check-gcc-amigaos check-gcc-c++
 # Run the two sequentially (recipe lines run in order even under make -j): both
 # drive check-gcc-c in the same build tree, sharing gcc.sum and
 # testsuite/gcc-parallel, so they must not run at the same time.
@@ -1612,6 +1614,13 @@ check-gcc-amigaos:
 	$(L0)"check amigaos.exp"$(L1)$(MAKE) -C $(BUILD)/gcc check-gcc-c "RUNTESTFLAGS=--target_board=$(board) gcc.target/m68k/amigaos/amigaos.exp SIM=vamos"$(L2)
 	@cp -f $(TESTSUITE)/gcc.sum $(TESTSUITE)/gcc-amigaos.sum; cp -f $(TESTSUITE)/gcc.log $(TESTSUITE)/gcc-amigaos.log
 	@{ echo '----- amigaos.exp -----'; grep '^# of' $(TESTSUITE)/gcc-amigaos.sum || echo '(no tests run)'; grep -E '^(FAIL|ERROR|XPASS)' $(TESTSUITE)/gcc-amigaos.sum || true; } | tee $@.summary.txt
+
+# The full C++ testsuite is large and slow under vamos, so it is not part of
+# `check`; run it on demand with `make check-gcc-c++`.
+check-gcc-c++:
+	@ln -sf $(PREFIX)/$(TARGET)/libnix $(BUILD)/gcc/$(TARGET)/libnix
+	$(L0)"check c++"$(L1)$(MAKE) -C $(BUILD)/gcc check-gcc-c++ "RUNTESTFLAGS=--target_board=$(board) SIM=vamos"$(L2)
+	@{ echo '----- c++ -----'; grep '^# of' $(CXXTESTSUITE)/g++.sum || echo '(no tests run)'; grep -E '^(FAIL|ERROR|XPASS)' $(CXXTESTSUITE)/g++.sum || true; } | tee $@.summary.txt
 
 
 # =================================================
