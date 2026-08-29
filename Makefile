@@ -110,6 +110,15 @@ TARGET_RUNNER_WRAPPER_DIR := $(BUILD_TOOLS)/target-runner
 TARGET_RUNNER_TOOL_NAMES := gcc g++ c++ cpp gcc-ar gcc-nm gcc-ranlib \
 	addr2line ar as c++filt elfedit ld ld.bfd nm objcopy objdump ranlib \
 	readelf size strings strip
+TARGET_RUNNER_COMPILER_TOOL_NAMES := gcc g++ c++ cpp
+ifneq (,$(findstring mingw,$(HOST)))
+# The hosted driver relocates its internal include directory to Z:/... under
+# Wine.  Use its Unix spelling while target libraries are built so dependency
+# files remain readable by the build machine's make.
+TARGET_RUNNER_COMPILER_FLAGS = -fno-canonical-system-headers \
+	-isystem "$(PREFIX)/lib/gcc/$(TARGET)/$(GCC_VERSION)/include"
+endif
+TARGET_RUNNER_FLAGS = $(if $(filter $*,$(TARGET_RUNNER_COMPILER_TOOL_NAMES)),$(TARGET_RUNNER_COMPILER_FLAGS))
 TARGET_RUNNER_WRAPPERS := $(patsubst %,$(TARGET_RUNNER_WRAPPER_DIR)/$(TARGET)-%,$(TARGET_RUNNER_TOOL_NAMES))
 TARGET_CC_FOR_BUILD := $(TARGET_RUNNER_WRAPPER_DIR)/$(TARGET)-gcc
 TARGET_AR_FOR_BUILD := $(TARGET_RUNNER_WRAPPER_DIR)/$(TARGET)-ar
@@ -155,7 +164,7 @@ ifneq (,$(strip $(TARGET_RUNNER_WRAPPER_DIR)))
 $(TARGET_RUNNER_WRAPPER_DIR)/$(TARGET)-%:
 	@mkdir -p $(@D)
 	@test -n "$(HOST_RUNNER)" || { echo "HOST_RUNNER is required to execute HOST=$(HOST) tools while building TARGET=$(TARGET) libraries"; exit 1; }
-	@printf '%s\n' '#!/bin/sh' 'exec $(HOST_RUNNER) "$(PREFIX)/bin/$(TARGET)-$*$(EXEEXT)" "$$@"' >$@
+	@printf '%s\n' '#!/bin/sh' 'exec $(HOST_RUNNER) "$(PREFIX)/bin/$(TARGET)-$*$(EXEEXT)" $(TARGET_RUNNER_FLAGS) "$$@"' >$@
 	@chmod +x $@
 endif
 
@@ -784,6 +793,13 @@ CONFIG_GCC = --prefix=$(PREFIX) --target=$(TARGET) $(HOST_CONFIGURE) --enable-la
 
 ifneq ($(strip $(HOST)),$(TARGET))
 CONFIG_GCC += --with-headers=$(PROJECTS)/newlib-cygwin/newlib/libc/sys/amigaos/include/
+endif
+
+ifneq (,$(findstring mingw,$(HOST)))
+# A MinGW-hosted compiler run through Wine canonicalizes Unix system-header
+# paths to Z:/... in dependency files.  Those drive-letter paths are not valid
+# prerequisites for the Unix make process building the target libraries.
+CONFIG_GCC += --disable-canonical-system-headers
 endif
 
 ifeq (,$(strip $(HOST)))
