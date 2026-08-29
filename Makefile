@@ -1592,8 +1592,8 @@ TESTSUITE = $(BUILD)/gcc/gcc/testsuite/gcc
 # drive check-gcc-c in the same build tree, sharing gcc.sum and
 # testsuite/gcc-parallel, so they must not run at the same time.
 check:
-	@$(MAKE) --no-print-directory check-gcc-execute
 	@$(MAKE) --no-print-directory check-gcc-amigaos
+	@$(MAKE) --no-print-directory check-gcc-execute
 
 check-gcc-execute:
 	@ln -sf $(PREFIX)/$(TARGET)/libnix $(BUILD)/gcc/$(TARGET)/libnix

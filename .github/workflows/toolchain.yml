@@ -52,7 +52,7 @@ on:
       hosted_gcc_branch:
         type: string
         default: amiga16.2
-  # label a pull request "ci" for a macOS build of its merge commit,
+  # label a pull request "ci-macos" for a macOS build of its merge commit,
   # "ci-testsuite" for a Linux build with the gcc testsuite, or "ci-cross"
   # for Linux plus the AmigaOS and MinGW hosted toolchains
   pull_request:
@@ -61,7 +61,7 @@ on:
 jobs:
   build:
     if: github.event_name != 'pull_request' || startsWith(github.event.label.name, 'ci')
-    runs-on: ${{ inputs.runner || (github.event.label.name == 'ci' && 'macos-15') || 'ubuntu-24.04' }}
+    runs-on: ${{ inputs.runner || (github.event.label.name == 'ci-macos' && 'macos-15') || 'ubuntu-24.04' }}
     timeout-minutes: 300
     env:
       RUN_TESTSUITE: ${{ inputs.run_testsuite || github.event.label.name == 'ci-testsuite' }}
