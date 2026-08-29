@@ -13,6 +13,21 @@ def notify(status){
 }
 
 @NonCPS
+def jobLabels(jobName) {
+	def parts = jobName.split(/\/{1}/)
+	return [
+		group: parts[0],
+		name: (parts.length > 1 ? parts[1] : parts[0]).replace('%2F', ' ')
+	]
+}
+
+def notifyFailure(labels, target) {
+	currentBuild.result = 'FAILURE'
+	discordSend description: "Build Failed: ${labels.name} #${env.BUILD_NUMBER} Target: ${target}", customUsername: "AmigaDev", customAvatarUrl: "https://avatars.githubusercontent.com/u/34406884?s=400&u=770fb7263ff469e25bb120eb2c0e44a16beda385&v=4", footer: "AmigaDev CI/CD", link: env.BUILD_URL, result: 'FAILURE', title: "[${labels.group}] Build Failed: ${labels.name} #${env.BUILD_NUMBER}", webhookURL: env.AMIGADEV_WEBHOOK
+	notify("Build Failed: ${labels.name} #${env.BUILD_NUMBER} Target: ${target}")
+}
+
+@NonCPS
 def killall_jobs() {
 	def jobname = env.JOB_NAME
 	def buildnum = env.BUILD_NUMBER.toInteger()
@@ -33,54 +48,75 @@ def killall_jobs() {
 	}
 
 	if (killnums != "") {
-		slackSend color: "danger", channel: "#jenkins", message: "Killing task(s) ${fixed_job_name} ${killnums} in favor of #${buildnum}, ignore following failed builds for ${killnums}"
+		//slackSend color: "danger", channel: "#jenkins", message: "Killing task(s) ${fixed_job_name} ${killnums} in favor of #${buildnum}, ignore following failed builds for ${killnums}"
 	}
 	echo "Done killing"
 }
 
-def buildStep(DOCKER_ROOT, DOCKERIMAGE, DOCKERTAG, DOCKERFILE, BUILD_NEXT, BUILD_PARAM) {
-	def fixed_job_name = env.JOB_NAME.replace('%2F','/')
+def buildStep(buildConf, DOCKER_ROOT, DOCKERIMAGE, DOCKERTAG, DOCKERFILE, BUILD_NEXT, BUILD_PARAM) {
+	def labels = jobLabels(env.JOB_NAME)
+	def buildenv = '';
+	def tag = '';
+	def isPullRequest = env.CHANGE_ID?.trim();
+	def branchName = isPullRequest ? env.CHANGE_TARGET : env.BRANCH_NAME;
+
 	try {
 		checkout scm;
 
-		def buildenv = '';
-		def tag = '';
-		if (env.BRANCH_NAME.equals('master')) {
+		if (branchName == 'master') {
 			buildenv = 'production';
 			tag = "${DOCKERTAG}";
-		} else if (env.BRANCH_NAME.equals('dev')) {
+		} else if (branchName == 'gcc10') {
+			buildenv = 'production';
+			tag = "${DOCKERTAG}";
+			if (!isPullRequest) {
+				env.BRANCH_NAME = "master";
+			}
+		} else if (branchName == 'dev') {
 			buildenv = 'development';
 			tag = "${DOCKERTAG}-dev";
 		} else {
 			throw new Exception("Invalid branch, stopping build!");
 		}
 
+		def buildArgs = "--build-arg BUILDENV=${buildenv} --build-arg PATHPREFIX=${buildConf.PathPrefix} --build-arg GCC_BRANCH=${buildConf.GCCBranch} --build-arg BINUTILS_BRANCH=${buildConf.BinutilsBranch} --network=host --pull -f ${DOCKERFILE} .";
 		docker.withRegistry("https://index.docker.io/v1/", "dockerhub") {
 			def customImage
 			stage("Building ${DOCKERIMAGE}:${tag}...") {
-				customImage = docker.build("${DOCKER_ROOT}/${DOCKERIMAGE}:${tag}", "--build-arg BUILDENV=${buildenv} --network=host --pull -f ${DOCKERFILE} .");
+				customImage = docker.build("${DOCKER_ROOT}/${DOCKERIMAGE}:${tag}", buildArgs);
 			}
 
-			stage("Pushing to docker hub registry...") {
-				customImage.push();
+			if (isPullRequest) {
+				stage("Skipping publication of ${DOCKERIMAGE}:${tag}") {
+					echo "PR build completed; no image will be pushed.";
+				}
+			} else {
+				stage("Pushing to docker hub registry...") {
+					customImage.push();
+				}
 			}
 		}
 
 	} catch(err) {
-		slackSend color: "danger", channel: "#jenkins", message: "Build Failed: ${fixed_job_name} #${env.BUILD_NUMBER} Target: ${DOCKER_ROOT}/${DOCKERIMAGE}:${tag} (<${env.BUILD_URL}|Open>)"
-		currentBuild.result = 'FAILURE'
-		notify("Build Failed: ${fixed_job_name} #${env.BUILD_NUMBER} Target: ${DOCKER_ROOT}/${DOCKERIMAGE}:${tag}")
+		notifyFailure(labels, "${DOCKER_ROOT}/${DOCKERIMAGE}:${tag}")
 		throw err
 	}
 }
 
 def buildManifest(DOCKER_ROOT, DOCKERIMAGE, DOCKERTAG, DOCKERFILE, PLATFORMS, BUILD_NEXT, BUILD_PARAM) {
-	def fixed_job_name = env.JOB_NAME.replace('%2F','/')
+	def labels = jobLabels(env.JOB_NAME)
+	def buildenv = ''
+	def tag = ''
 	try {
+		if (env.CHANGE_ID?.trim()) {
+			stage("Skipping ${DOCKERIMAGE}:${DOCKERTAG} manifest publication") {
+				echo "PR platform builds completed; no manifest will be created and no downstream builds will be triggered.";
+			}
+			return;
+		}
+
 		checkout scm;
 
-		def buildenv = '';
-		def tag = '';
 		if (env.BRANCH_NAME.equals('master')) {
 			buildenv = 'production';
 			tag = "${DOCKERTAG}";
@@ -104,7 +140,6 @@ def buildManifest(DOCKER_ROOT, DOCKERIMAGE, DOCKERTAG, DOCKERFILE, PLATFORMS, BU
 				sh("docker manifest push ${DOCKER_ROOT}/${DOCKERIMAGE}:${tag}");
 			}
 		}
-
 		def branches = [:]
 
 		BUILD_NEXT.each { v ->
@@ -115,19 +150,23 @@ def buildManifest(DOCKER_ROOT, DOCKERIMAGE, DOCKERTAG, DOCKERFILE, PLATFORMS, BU
 
 		parallel branches;
 	} catch(err) {
-		slackSend color: "danger", channel: "#jenkins", message: "Build Failed: ${fixed_job_name} #${env.BUILD_NUMBER} Target: ${DOCKER_ROOT}/${DOCKERIMAGE}:${tag} (<${env.BUILD_URL}|Open>)"
-		currentBuild.result = 'FAILURE'
-		notify("Build Failed: ${fixed_job_name} #${env.BUILD_NUMBER} Target: ${DOCKER_ROOT}/${DOCKERIMAGE}:${tag}")
+		notifyFailure(labels, "${DOCKER_ROOT}/${DOCKERIMAGE}:${tag}")
 		throw err
 	}
 }
 
 node('master') {
 	killall_jobs();
-	def fixed_job_name = env.JOB_NAME.replace('%2F','/');
-	slackSend color: "good", channel: "#jenkins", message: "Build Started: ${fixed_job_name} #${env.BUILD_NUMBER} (<${env.BUILD_URL}|Open>)";
+	def labels = jobLabels(env.JOB_NAME)
 	
 	checkout scm;
+	
+	env.COMMIT_MSG = sh (
+		script: 'git log -1 --pretty=%B ${GIT_COMMIT}',
+		returnStdout: true
+	).trim();
+
+	discordSend description: "${env.COMMIT_MSG}", customUsername: "AmigaDev", customAvatarUrl: "https://avatars.githubusercontent.com/u/34406884?s=400&u=770fb7263ff469e25bb120eb2c0e44a16beda385&v=4", footer: "AmigaDev CI/CD", link: env.BUILD_URL, result: currentBuild.currentResult, title: "[${labels.group}] Build Started: ${labels.name} #${env.BUILD_NUMBER}", webhookURL: env.AMIGADEV_WEBHOOK;
 
 	def branches = [:]
 	def project = readJSON file: "JenkinsEnv.json";
@@ -140,7 +179,7 @@ node('master') {
 				platforms["Build ${v.DockerRoot}/${v.DockerImage}:${v.DockerTag}_${p}"] = {
 					stage("Build ${p} version") {
 						node(p) {
-							buildStep(v.DockerRoot, v.DockerImage, "${v.DockerTag}_${p}", v.Dockerfile, [], v.BuildParam);
+							buildStep(v, v.DockerRoot, v.DockerImage, "${v.DockerTag}_${p}", v.Dockerfile, [], v.BuildParam);
 						}
 					}
 				}
@@ -160,4 +199,3 @@ node('master') {
 
 	parallel branches;
 }
-

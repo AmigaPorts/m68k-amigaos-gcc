@@ -1,6 +1,7 @@
 # =================================================
 # Makefile based Amiga compiler setup.
 # (c) Stefan "Bebbo" Franke in 2018
+# (c) Marlon Beijer in 2025-2026
 #
 # Riding a dead horse...
 # =================================================
@@ -13,15 +14,168 @@ include disable_implicite_rules.mk
 # =================================================
 # variables
 # =================================================
-$(eval SHELL = $(shell which bash 2>/dev/null) ) 
+$(eval SHELL = $(shell which bash 2>/dev/null) )
 
 PREFIX ?= /opt/amiga
+HOST ?=
+ifeq (,$(strip $(HOST)))
 export PATH := $(PREFIX)/bin:$(PATH)
+endif
 
 TARGET ?= m68k-amigaos
 
+# Keep native builds identical to the original build.  HOST is only set when
+# building tools that will run on another system (for example MinGW or AmigaOS).
+ifneq (,$(strip $(HOST)))
+  BUILD_TRIPLET ?= $(shell cc -dumpmachine 2>/dev/null)
+  HOST_CONFIGURE := --build=$(BUILD_TRIPLET) --host=$(HOST)
+endif
+
+HOST_RUNNER ?=
+BUILD_CC ?= cc
+BUILD_CXX ?= c++
+HOST_TOOL_PREFIX ?=
+TARGET_TOOL_PREFIX ?=
+
+# Default empty; set to .exe for MinGW targets
+ifneq (,$(findstring mingw,$(HOST)))
+  EXEEXT := .exe
+else
+  EXEEXT :=
+endif
+
+ifneq (,$(findstring amigaos,$(HOST)))
+  HOST_CPU_FLAGS := -mcpu=68040 -mhard-float
+  HOST_CRT_FLAGS := -mcrt=nix20
+  # The AmigaOS libstdc++ supports the old string ABI reliably.  This affects
+  # only GCC executables that run on HOST; target libraries retain their own
+  # configuration and ABI defaults.
+  HOST_CXX_ABI_FLAGS := -D_GLIBCXX_USE_CXX11_ABI=0
+  HOST_LINK_FLAGS := $(HOST_CPU_FLAGS) $(HOST_CRT_FLAGS)
+else
+  HOST_CPU_FLAGS :=
+  HOST_CRT_FLAGS :=
+  HOST_CXX_ABI_FLAGS :=
+  HOST_LINK_FLAGS :=
+endif
+
 UNAME_S := $(shell uname -s)
 BUILD := $(shell pwd)/build-$(UNAME_S)-$(TARGET)
+ifneq (,$(strip $(HOST)))
+  BUILD := $(BUILD)-$(HOST)
+endif
+BUILD_TOOLS := $(BUILD)/build-tools
+# Helpers which must run on the build machine are private build artifacts.
+# Keep them out of PREFIX so they cannot leak into target packages.
+BUILD_TOOLS_PREFIX ?= $(BUILD_TOOLS)/prefix
+
+# GitHub container jobs may provide a HOME owned by a different uid.  Keep
+# Wine's state in the writable build tree and initialize it once before a
+# Windows-hosted compiler can be executed.
+ifneq (,$(findstring mingw,$(HOST)))
+WINEPREFIX ?= $(BUILD)/wine-prefix
+WINEDEBUG ?= -all
+WINEBOOT ?= wineboot
+WINEPATH ?= Z:$(abspath $(PREFIX)/bin)
+WINE_RUNTIME_DIR ?= $(BUILD)/wine-runtime
+XDG_RUNTIME_DIR := $(WINE_RUNTIME_DIR)
+MINGW_HOST_RUNTIME_SOURCE ?= $(shell $(CC) -print-file-name=libwinpthread-1.dll)
+MINGW_HOST_RUNTIME := $(PREFIX)/bin/libwinpthread-1.dll
+export WINEPREFIX WINEDEBUG WINEPATH XDG_RUNTIME_DIR
+HOST_RUNNER_SETUP_PREREQ := $(WINEPREFIX)/.initialized $(MINGW_HOST_RUNTIME)
+endif
+
+# Prefer a build-machine TARGET compiler when the environment already
+# provides one (as it does for an AmigaOS host build).  Otherwise create
+# wrappers that run the newly built HOST tools through HOST_RUNNER.  GCC and
+# binutils themselves are still built only once, for HOST.
+ifneq (,$(strip $(HOST)))
+ifeq (,$(strip $(HOST_TOOL_PREFIX)))
+ifeq ($(strip $(HOST)),$(strip $(TARGET)))
+HOST_TOOL_PREFIX := $(patsubst %gcc,%,$(shell command -v $(HOST)-gcc 2>/dev/null))
+endif
+endif
+ifneq (,$(strip $(TARGET_TOOL_PREFIX)))
+TARGET_CC_FOR_BUILD := $(TARGET_TOOL_PREFIX)gcc
+TARGET_CXX_FOR_BUILD := $(TARGET_TOOL_PREFIX)g++
+TARGET_AR_FOR_BUILD := $(TARGET_TOOL_PREFIX)ar
+TARGET_EXEC_PREFIX_FOR_BUILD := $(TARGET_TOOL_PREFIX)
+else ifneq (,$(strip $(HOST_TOOL_PREFIX)))
+TARGET_CC_FOR_BUILD := $(HOST_TOOL_PREFIX)gcc
+TARGET_CXX_FOR_BUILD := $(HOST_TOOL_PREFIX)g++
+TARGET_AR_FOR_BUILD := $(HOST_TOOL_PREFIX)ar
+TARGET_EXEC_PREFIX_FOR_BUILD := $(HOST_TOOL_PREFIX)
+else
+TARGET_RUNNER_WRAPPER_DIR := $(BUILD_TOOLS)/target-runner
+TARGET_RUNNER_TOOL_NAMES := gcc g++ c++ cpp gcc-ar gcc-nm gcc-ranlib \
+	addr2line ar as c++filt elfedit ld ld.bfd nm objcopy objdump ranlib \
+	readelf size strings strip
+TARGET_RUNNER_WRAPPERS := $(patsubst %,$(TARGET_RUNNER_WRAPPER_DIR)/$(TARGET)-%,$(TARGET_RUNNER_TOOL_NAMES))
+TARGET_CC_FOR_BUILD := $(TARGET_RUNNER_WRAPPER_DIR)/$(TARGET)-gcc
+TARGET_AR_FOR_BUILD := $(TARGET_RUNNER_WRAPPER_DIR)/$(TARGET)-ar
+TARGET_CXX_FOR_BUILD := $(TARGET_RUNNER_WRAPPER_DIR)/$(TARGET)-c++
+export PATH := $(TARGET_RUNNER_WRAPPER_DIR):$(PATH)
+endif
+SDK_CC_FOR_BUILD := $(TARGET_CC_FOR_BUILD)
+SDK_AR_FOR_BUILD := $(TARGET_AR_FOR_BUILD)
+ifneq (,$(strip $(TARGET_EXEC_PREFIX_FOR_BUILD)))
+TARGET_EXEC_WRAPPER_DIR := $(BUILD_TOOLS)/target-exec
+TARGET_EXEC_TOOL_NAMES := ar as ld ld.bfd nm objcopy objdump ranlib strip
+TARGET_EXEC_WRAPPERS := $(patsubst %,$(TARGET_EXEC_WRAPPER_DIR)/%,$(TARGET_EXEC_TOOL_NAMES))
+TARGET_GCC_INCLUDE_FOR_BUILD := $(shell $(TARGET_CC_FOR_BUILD) -print-file-name=include 2>/dev/null)
+TARGET_COMPILER_WRAPPER_DIR := $(BUILD_TOOLS)/target-compiler
+TARGET_COMPILER_TOOL_NAMES := gcc g++ c++ cpp
+TARGET_COMPILER_WRAPPERS := $(patsubst %,$(TARGET_COMPILER_WRAPPER_DIR)/$(TARGET)-%,$(TARGET_COMPILER_TOOL_NAMES))
+TARGET_PREFIXED_EXEC_WRAPPERS := $(patsubst %,$(TARGET_COMPILER_WRAPPER_DIR)/$(TARGET)-%,$(TARGET_EXEC_TOOL_NAMES))
+TARGET_CC_COMMAND_FOR_BUILD := $(TARGET_COMPILER_WRAPPER_DIR)/$(TARGET)-gcc
+TARGET_CXX_COMMAND_FOR_BUILD := $(TARGET_COMPILER_WRAPPER_DIR)/$(TARGET)-g++
+export PATH := $(TARGET_COMPILER_WRAPPER_DIR):$(PATH)
+else
+TARGET_CC_COMMAND_FOR_BUILD := $(TARGET_CC_FOR_BUILD)
+TARGET_CXX_COMMAND_FOR_BUILD := $(TARGET_CXX_FOR_BUILD)
+endif
+else
+TARGET_CC_FOR_BUILD ?= $(shell command -v $(TARGET)-gcc 2>/dev/null)
+TARGET_AR_FOR_BUILD := $(PREFIX)/bin/$(TARGET)-ar
+endif
+
+ifneq (,$(strip $(HOST_RUNNER_SETUP_PREREQ)))
+$(WINEPREFIX)/.initialized:
+	@mkdir -p $(@D) $(WINE_RUNTIME_DIR)
+	@chmod 700 $(WINE_RUNTIME_DIR)
+	@$(WINEBOOT) --init
+	@touch $@
+
+$(MINGW_HOST_RUNTIME): $(MINGW_HOST_RUNTIME_SOURCE)
+	@mkdir -p $(@D)
+	@install -m 755 "$<" "$@"
+endif
+
+ifneq (,$(strip $(TARGET_RUNNER_WRAPPER_DIR)))
+$(TARGET_RUNNER_WRAPPER_DIR)/$(TARGET)-%:
+	@mkdir -p $(@D)
+	@test -n "$(HOST_RUNNER)" || { echo "HOST_RUNNER is required to execute HOST=$(HOST) tools while building TARGET=$(TARGET) libraries"; exit 1; }
+	@printf '%s\n' '#!/bin/sh' 'exec $(HOST_RUNNER) "$(PREFIX)/bin/$(TARGET)-$*$(EXEEXT)" "$$@"' >$@
+	@chmod +x $@
+endif
+
+ifneq (,$(strip $(TARGET_EXEC_WRAPPER_DIR)))
+$(TARGET_EXEC_WRAPPER_DIR)/%:
+	@mkdir -p $(@D)
+	@test -x "$(TARGET_EXEC_PREFIX_FOR_BUILD)$*"
+	@ln -sf "$(TARGET_EXEC_PREFIX_FOR_BUILD)$*" $@
+
+$(TARGET_COMPILER_WRAPPERS): $(TARGET_COMPILER_WRAPPER_DIR)/$(TARGET)-%: $(TARGET_EXEC_WRAPPERS)
+	@mkdir -p $(@D)
+	@test -x "$(TARGET_EXEC_PREFIX_FOR_BUILD)$*"
+	@test -n "$(TARGET_GCC_INCLUDE_FOR_BUILD)"
+	@printf '%s\n' '#!/bin/sh' 'exec "$(TARGET_EXEC_PREFIX_FOR_BUILD)$*" -B"$(TARGET_EXEC_WRAPPER_DIR)/" -isystem "$(TARGET_GCC_INCLUDE_FOR_BUILD)" "$$@"' >$@
+	@chmod +x $@
+
+$(TARGET_PREFIXED_EXEC_WRAPPERS): $(TARGET_COMPILER_WRAPPER_DIR)/$(TARGET)-%: $(TARGET_EXEC_WRAPPER_DIR)/%
+	@mkdir -p $(@D)
+	@ln -sf "$<" $@
+endif
 PROJECTS := $(shell pwd)/projects
 DOWNLOAD := $(shell pwd)/download
 __BUILDDIR := $(shell mkdir -p $(BUILD))
@@ -86,12 +240,28 @@ NDK_FOLDER_NAME_SFD  := NDK_3.9/Include/sfd
 NDK_FOLDER_NAME_LIBS := NDK_3.9/Include/linker_libs
 endif
 
+ifeq (,$(strip $(HOST)))
 CFLAGS ?= -Os
 CXXFLAGS ?= $(CFLAGS)
+BUILD_CFLAGS ?= $(CFLAGS)
+BUILD_CXXFLAGS ?= $(CXXFLAGS)
 CFLAGS_FOR_TARGET ?= -O2 -fomit-frame-pointer
 CXXFLAGS_FOR_TARGET ?= $(CFLAGS_FOR_TARGET) -fno-exceptions -fno-rtti
 
+# Preserve the original native configure environment exactly.
 E:=CFLAGS="$(CFLAGS)" CXXFLAGS="$(CXXFLAGS)" CFLAGS_FOR_BUILD="$(CFLAGS)" CXXFLAGS_FOR_BUILD="$(CXXFLAGS)"  CFLAGS_FOR_TARGET="$(CFLAGS_FOR_TARGET)" CXXFLAGS_FOR_TARGET="$(CFLAGS_FOR_TARGET)"
+else
+CFLAGS ?= -Os $(HOST_CPU_FLAGS) $(HOST_CRT_FLAGS)
+CXXFLAGS ?= $(CFLAGS) $(HOST_CXX_ABI_FLAGS)
+LDFLAGS ?= $(HOST_LINK_FLAGS)
+BUILD_CFLAGS ?= -Os
+BUILD_CXXFLAGS ?= $(BUILD_CFLAGS)
+BUILD_LDFLAGS ?=
+CFLAGS_FOR_TARGET ?= -O2 -fomit-frame-pointer
+CXXFLAGS_FOR_TARGET ?= $(CFLAGS_FOR_TARGET)
+
+E:=CFLAGS="$(CFLAGS)" CXXFLAGS="$(CXXFLAGS)" LDFLAGS="$(LDFLAGS)" CFLAGS_FOR_BUILD="$(BUILD_CFLAGS)" CXXFLAGS_FOR_BUILD="$(BUILD_CXXFLAGS)" LDFLAGS_FOR_BUILD="$(BUILD_LDFLAGS)" CFLAGS_FOR_TARGET="$(CFLAGS_FOR_TARGET)" CXXFLAGS_FOR_TARGET="$(CXXFLAGS_FOR_TARGET)"
+endif
 
 THREADS ?= no
 
@@ -99,16 +269,22 @@ THREADS ?= no
 # determine exe extension for cygwin
 $(eval MYMAKE = $(shell which $(MAKE) 2>/dev/null) )
 $(eval MYMAKEEXE = $(shell which "$(MYMAKE:%=%.exe)" 2>/dev/null) )
-EXEEXT:=$(MYMAKEEXE:%=.exe)
+ifeq (,$(EXEEXT))
+  EXEEXT:=$(MYMAKEEXE:%=.exe)
+endif
 
 # Files for GMP, MPC and MPFR
 
-GMP := gmp-6.1.2
+GMP := gmp-6.2.1
 GMPFILE := $(GMP).tar.bz2
-MPC := mpc-1.0.3
+GMP_SHA256 := eae9326beb4158c386e39a356818031bd28f3124cf915f8c5b1dc4c7a36b4d7c
+MPC := mpc-1.2.1
 MPCFILE := $(MPC).tar.gz
-MPFR := mpfr-3.1.6
+MPC_SHA256 := 17503d2c395dfcf106b622dc142683c1199431d095367c6aacba6eec30340459
+MPFR := mpfr-4.1.0
 MPFRFILE := $(MPFR).tar.bz2
+MPFR_SHA256 := feced2d430dd5a97805fa289fed3fc8ff2b094c02d05287fd6133e7f1f0ec926
+GCC_INFRASTRUCTURE ?= https://gcc.gnu.org/pub/gcc/infrastructure
 
 # =================================================
 # pretty output ^^
@@ -229,7 +405,8 @@ help:
 	@echo "make clean					remove the build folder"
 	@echo "make clean-<target>				remove the target's build folder"
 	@echo "make drop-prefix				remove all content from the prefix folder"
-	@echo "make package					tar up the prefix folder into m68k-amigaos-gcc-<version>-<os>-<arch>.tar.xz"
+	@echo "make package [PACKAGE_FORMAT=tar.xz|lha]	package the prefix folder for the destination host"
+	@echo "make package-lha				package the prefix folder as an .lha archive"
 	@echo "make update					perform git pull for all targets"
 	@echo "make update-<target>				perform git pull for the given target"
 	@echo "make sdk=<sdk>					install the sdk <sdk>"
@@ -246,7 +423,11 @@ help:
 # all
 # =================================================
 .PHONY: all gcc gdb gprof binutils fd2sfd fd2pragma ira sfdc vasm libnix ixemul libgcc clib2 libdebug libpthread ndk ndk13 min libnix4.library
+ifeq (,$(strip $(HOST)))
 all: gcc binutils gdb gprof fd2sfd fd2pragma ira sfdc vasm libnix ixemul libgcc clib2 libdebug libpthread ndk ndk13 libnix4.library
+else
+all: gcc binutils gprof fd2sfd fd2pragma ira sfdc vasm libnix ixemul libgcc clib2 libdebug libpthread ndk ndk13 libnix4.library
+endif
 
 min: binutils gcc gprof libnix libgcc libnix4.library
 
@@ -328,9 +509,11 @@ clean-libpthread:
 clean-newlib:
 	rm -rf $(BUILD)/newlib
 
-# drop-prefix drops the files from prefix folder
+# drop-prefix drops the files from prefix folder.  It also removes
+# build-machine helpers left by versions predating the build-local prefix.
 drop-prefix:
 	rm -rf $(PREFIX)/bin
+	rm -rf $(PREFIX)/build-tools
 	rm -rf $(PREFIX)/etc
 	rm -rf $(PREFIX)/info
 	rm -rf $(PREFIX)/libexec
@@ -340,12 +523,39 @@ drop-prefix:
 	rm -rf $(PREFIX)/share
 	@mkdir -p $(PREFIX)/bin
 
-# package the toolchain prefix into a tarball
-PACKAGE ?= m68k-amigaos-gcc-$(GCC_VERSION)-$(UNAME_S)-$(shell uname -m).tar.xz
-.PHONY: package
+# Package native builds for the build machine and cross builds for the machine
+# on which the produced tools run.  PACKAGE_PLATFORM may be overridden for a
+# more user-facing platform label without changing the configured HOST.
+ifeq (,$(strip $(HOST)))
+PACKAGE_PLATFORM ?= $(UNAME_S)-$(shell uname -m)
+else
+PACKAGE_PLATFORM ?= $(HOST)
+endif
+PACKAGE_FORMAT ?= tar.xz
+PACKAGE_BASENAME ?= m68k-amigaos-gcc-$(GCC_VERSION)-$(PACKAGE_PLATFORM)
+PACKAGE ?= $(PACKAGE_BASENAME).$(PACKAGE_FORMAT)
+PACKAGE_LHA ?= lha
+
+.PHONY: package package-lha
+package-lha: PACKAGE_FORMAT=lha
+package-lha: package
+
 package:
 	@test -n "$(GCC_VERSION)" || { echo "GCC_VERSION is empty - run make update first"; exit 1; }
-	XZ_OPT=-T0 tar -C $(dir $(abspath $(PREFIX))) -cJf $(PACKAGE) $(notdir $(abspath $(PREFIX)))
+	@case "$(PACKAGE_FORMAT)" in \
+	  tar.xz) \
+	    XZ_OPT=-T0 tar -C "$(dir $(abspath $(PREFIX)))" -cJf "$(abspath $(PACKAGE))" "$(notdir $(abspath $(PREFIX)))"; \
+	    ;; \
+	  lha) \
+	    command -v "$(PACKAGE_LHA)" >/dev/null || { echo "$(PACKAGE_LHA) is required for PACKAGE_FORMAT=lha"; exit 1; }; \
+	    rm -f "$(abspath $(PACKAGE))"; \
+	    cd "$(dir $(abspath $(PREFIX)))" && "$(PACKAGE_LHA)" aq "$(abspath $(PACKAGE))" "$(notdir $(abspath $(PREFIX)))"; \
+	    ;; \
+	  *) \
+	    echo "unsupported PACKAGE_FORMAT=$(PACKAGE_FORMAT); use tar.xz or lha"; \
+	    exit 2; \
+	    ;; \
+	esac
 
 # =================================================
 # update all projects
@@ -412,26 +622,47 @@ update-newlib: $(PROJECTS)/newlib-cygwin/newlib/configure
 update-netinclude: $(PROJECTS)/amiga-netinclude/README.md
 	@cd $(PROJECTS)/amiga-netinclude && git pull
 
-update-gmp:
-	if [ -a $(DOWNLOAD)/$(GMPFILE) ]; \
-	then rm -rf $(PROJECTS)/$(GMP); rm -rf $(PROJECTS)/gcc/gmp; \
-	else cd $(DOWNLOAD) && wget ftp://ftp.gnu.org/gnu/gmp/$(GMPFILE); \
-	fi;
-	@cd $(PROJECTS) && tar xf $(DOWNLOAD)/$(GMPFILE)
+.PHONY: gcc-prerequisites update-gmp update-mpc update-mpfr
+gcc-prerequisites: $(PROJECTS)/$(GMP)/configure $(PROJECTS)/$(MPFR)/configure $(PROJECTS)/$(MPC)/configure
 
-update-mpc:
-	if [ -a $(DOWNLOAD)/$(MPCFILE) ]; \
-	then rm -rf projcts/$(MPC); rm -rf $(PROJECTS)/gcc/mpc; \
-	else cd $(DOWNLOAD) && wget ftp://ftp.gnu.org/gnu/mpc/$(MPCFILE); \
-	fi;
-	@cd $(PROJECTS) && tar xf $(DOWNLOAD)/$(MPCFILE)
+$(DOWNLOAD)/$(GMPFILE):
+	$(call get-file,gmp,$(GCC_INFRASTRUCTURE)/$(GMPFILE),$(GMPFILE),$(GMP_SHA256))
+
+$(DOWNLOAD)/$(MPFRFILE):
+	$(call get-file,mpfr,$(GCC_INFRASTRUCTURE)/$(MPFRFILE),$(MPFRFILE),$(MPFR_SHA256))
+
+$(DOWNLOAD)/$(MPCFILE):
+	$(call get-file,mpc,$(GCC_INFRASTRUCTURE)/$(MPCFILE),$(MPCFILE),$(MPC_SHA256))
+
+define extract-gcc-prerequisite
+	@tmp=$$(mktemp -d "$(PROJECTS)/.$(1).XXXXXX"); \
+	trap 'rm -rf "$$tmp"' EXIT; \
+	tar -C "$$tmp" -xf $<; \
+	if ! mv "$$tmp/$(1)" "$(PROJECTS)/$(1)" 2>/dev/null; then \
+		test -x "$(PROJECTS)/$(1)/configure"; \
+	fi
+endef
+
+$(PROJECTS)/$(GMP)/configure: $(DOWNLOAD)/$(GMPFILE)
+	$(call extract-gcc-prerequisite,$(GMP))
+
+$(PROJECTS)/$(MPFR)/configure: $(DOWNLOAD)/$(MPFRFILE)
+	$(call extract-gcc-prerequisite,$(MPFR))
+
+$(PROJECTS)/$(MPC)/configure: $(DOWNLOAD)/$(MPCFILE)
+	$(call extract-gcc-prerequisite,$(MPC))
+
+update-gmp:
+	@rm -rf $(PROJECTS)/$(GMP) $(PROJECTS)/gcc/gmp
+	@$(MAKE) $(PROJECTS)/$(GMP)/configure
 
 update-mpfr:
-	if [ -a $(DOWNLOAD)/$(MPFRFILE) ]; \
-	then rm -rf $(PROJECTS)/$(MPFR); rm -rf $(PROJECTS)/gcc/mpfr; \
-	else cd $(DOWNLOAD) && wget ftp://ftp.gnu.org/gnu/mpfr/$(MPFRFILE); \
-	fi;
-	@cd $(PROJECTS) && tar xf $(DOWNLOAD)/$(MPFRFILE)
+	@rm -rf $(PROJECTS)/$(MPFR) $(PROJECTS)/gcc/mpfr
+	@$(MAKE) $(PROJECTS)/$(MPFR)/configure
+
+update-mpc:
+	@rm -rf $(PROJECTS)/$(MPC) $(PROJECTS)/gcc/mpc
+	@$(MAKE) $(PROJECTS)/$(MPC)/configure
 
 # =================================================
 # B I N
@@ -440,15 +671,17 @@ update-mpfr:
 # =================================================
 # binutils
 # =================================================
-CONFIG_BINUTILS =--prefix=$(PREFIX) --target=$(TARGET) --disable-werror --enable-tui --disable-nls
+CONFIG_BINUTILS =--prefix=$(PREFIX) --target=$(TARGET) $(HOST_CONFIGURE) --disable-werror --disable-nls
 
-CONFIG_BINUTILS += --enable-plugins
+ifeq (,$(strip $(HOST)))
+CONFIG_BINUTILS += --enable-tui --enable-plugins --without-msgpack
+else
+CONFIG_BINUTILS += --disable-doc --disable-plugins --disable-gdb --disable-gdbserver --without-msgpack
+LD_CROSS_MAKE_ENV := bfdplugin_LTLIBRARIES= noinst_LTLIBRARIES=
+LD_CROSS_MAKE_FLAGS := -e
+endif
 
-# readelf's optional msgpack note decoding is useless here, and its
-# autodetection has produced readelf link failures on some hosts.
-CONFIG_BINUTILS += --without-msgpack
-
-# FreeBSD, OSX : libs added by the command brew install gmp mpfr
+# FreeBSD, OSX : libs added by the command brew install gmp
 ifeq (Darwin, $(findstring Darwin, $(UNAME_S)))
 	BREW_PREFIX := $$(brew --prefix)
 	CONFIG_BINUTILS += --with-gmp=$(BREW_PREFIX) --with-mpfr=$(BREW_PREFIX)
@@ -463,6 +696,11 @@ BINUTILS_CMD := $(TARGET)-addr2line $(TARGET)-ar $(TARGET)-as $(TARGET)-c++filt 
 	$(TARGET)-ld $(TARGET)-nm $(TARGET)-objcopy $(TARGET)-objdump $(TARGET)-ranlib \
 	$(TARGET)-readelf $(TARGET)-size $(TARGET)-strings $(TARGET)-strip
 BINUTILS := $(patsubst %,$(PREFIX)/bin/%$(EXEEXT), $(BINUTILS_CMD))
+ifneq (,$(strip $(HOST)))
+ifeq ($(strip $(HOST)),$(TARGET))
+BINUTILS_HOST_ALIAS_CMD := addr2line ar as c++filt elfedit ld ld.bfd nm objcopy objdump ranlib readelf size strings strip
+endif
+endif
 
 BINUTILS_DIR := . bfd gas ld binutils opcodes
 BINUTILSD := $(patsubst %,$(PROJECTS)/binutils/%, $(BINUTILS_DIR))
@@ -480,8 +718,12 @@ $(BUILD)/binutils/_done: $(BUILD)/binutils/Makefile $(shell find 2>/dev/null $(P
 	$(L0)"make binutils bfd"$(L1)$(MAKE) -C $(BUILD)/binutils all-bfd $(L2)
 	$(L0)"make binutils gas"$(L1)$(MAKE) -C $(BUILD)/binutils all-gas $(L2)
 	$(L0)"make binutils binutils"$(L1)$(MAKE) -C $(BUILD)/binutils all-binutils $(L2)
-	$(L0)"make binutils ld"$(L1)$(MAKE) -C $(BUILD)/binutils all-ld $(L2)
-	$(L0)"install binutils"$(L1)$(MAKE) -C $(BUILD)/binutils install-gas install-binutils install-ld $(L2)
+	$(L0)"make binutils ld"$(L1)$(LD_CROSS_MAKE_ENV) $(MAKE) $(LD_CROSS_MAKE_FLAGS) -C $(BUILD)/binutils all-ld $(L2)
+	$(L0)"install binutils"$(L1)$(MAKE) -C $(BUILD)/binutils install-gas install-binutils $(L2)
+	$(L0)"install binutils ld"$(L1)$(LD_CROSS_MAKE_ENV) $(MAKE) $(LD_CROSS_MAKE_FLAGS) -C $(BUILD)/binutils install-ld $(L2)
+	@for tool in $(BINUTILS_HOST_ALIAS_CMD); do \
+		ln -f "$(PREFIX)/bin/$$tool$(EXEEXT)" "$(PREFIX)/bin/$(TARGET)-$$tool$(EXEEXT)"; \
+	done
 	@echo "done" >$@
 
 $(BUILD)/binutils/Makefile: $(PROJECTS)/binutils/configure | $(PREFIX_STAMP)
@@ -489,15 +731,20 @@ $(BUILD)/binutils/Makefile: $(PROJECTS)/binutils/configure | $(PREFIX_STAMP)
 	$(L0)"configure binutils"$(L1) cd $(BUILD)/binutils && $(E) $(PROJECTS)/binutils/configure $(CONFIG_BINUTILS) $(L2)
 
 
+# GCC and binutils normally need no local patches: AmigaPorts fixes are
+# maintained upstream.  Their clone rules retain optional downstream hooks.
 $(PROJECTS)/binutils/configure:
 	@cd $(PROJECTS) &&	git clone -b $(binutils_BRANCH) --depth 16 $(binutils_URL) binutils
+	for i in $$(find patches/binutils/ -type f 2>/dev/null); \
+	do if [[ "$$i" == *.diff ]] ; \
+		then j=$${i:8}; patch -N "$(PROJECTS)/$${j%.diff}" "$$i"; fi ; done
 
 # =================================================
 # gdb
 # =================================================
 
-GDB_CC ?= gcc
-GDB_CXX ?= g++
+GDB_CC ?= $(if $(strip $(HOST)),$(CC),gcc)
+GDB_CXX ?= $(if $(strip $(HOST)),$(CXX),g++)
 
 gdb: $(BUILD)/binutils/_gdb
 
@@ -511,7 +758,7 @@ $(BUILD)/binutils/_gdb: $(BUILD)/binutils/_done
 # =================================================
 # gprof
 # =================================================
-CONFIG_GRPOF := --prefix=$(PREFIX) --target=$(TARGET) --disable-werror
+CONFIG_GRPOF := --prefix=$(PREFIX) --target=$(TARGET) $(HOST_CONFIGURE) --disable-werror
 
 gprof: $(BUILD)/binutils/_gprof
 
@@ -527,9 +774,35 @@ $(BUILD)/binutils/gprof/Makefile: $(PROJECTS)/binutils/configure $(BUILD)/binuti
 # =================================================
 # gcc
 # =================================================
-CONFIG_GCC = --prefix=$(PREFIX) --target=$(TARGET) --enable-languages=c,c++,objc,$(ADDLANG) --enable-version-specific-runtime-libs --disable-libssp --disable-nls --without-zstd \
-	--with-headers=$(PROJECTS)/newlib-cygwin/newlib/libc/sys/amigaos/include/ --disable-shared --enable-threads=$(THREADS) \
-	--with-stage1-ldflags="-dynamic-libgcc -dynamic-libstdc++" --with-boot-ldflags="-dynamic-libgcc -dynamic-libstdc++"
+CONFIG_GCC = --prefix=$(PREFIX) --target=$(TARGET) $(HOST_CONFIGURE) --enable-languages=c,c++,objc,$(ADDLANG) --enable-version-specific-runtime-libs --disable-libssp --disable-nls --without-zstd  \
+	--disable-shared --enable-threads=$(THREADS)
+
+ifneq ($(strip $(HOST)),$(TARGET))
+CONFIG_GCC += --with-headers=$(PROJECTS)/newlib-cygwin/newlib/libc/sys/amigaos/include/
+endif
+
+ifeq (,$(strip $(HOST)))
+CONFIG_GCC += --with-stage1-ldflags="-dynamic-libgcc -dynamic-libstdc++" --with-boot-ldflags="-dynamic-libgcc -dynamic-libstdc++"
+else
+CONFIG_GCC += --disable-werror
+endif
+ifneq (,$(findstring amigaos,$(HOST)))
+# LTO remains enabled for AmigaOS hosts.  GCC omits only the shared
+# lto-plugin, which AmigaOS cannot load, while retaining lto1/lto-wrapper.
+CONFIG_GCC += --disable-libcc1 --without-static-standard-libraries
+# The bootstrap toolchain may predate C++ linkage fixes in the AmigaOS
+# headers.  Its libnix also declares popen/pclose despite not providing a
+# usable pair.  Keep GCC's optional host probes from enabling those paths;
+# this affects only the compiler executables that run on HOST.
+GCC_HOST_CONFIGURE_ENV := host_configargs="ac_cv_func_clock_gettime=no ac_cv_func_getrlimit=no ac_cv_func_pclose=no ac_cv_func_popen=no ac_cv_func_setrlimit=no"
+GCC_HOST_COMPAT_LIBRARY := $(BUILD)/libamiga-host-compat.a
+GCC_HOST_COMPAT_PREREQ := $(GCC_HOST_COMPAT_LIBRARY)
+# Use a library here rather than adding the object directly: GCC's top-level
+# LDFLAGS are also inherited by libbacktrace's libtool link, and libtool does
+# not permit an ordinary non-libtool object in a .la library.
+GCC_HOST_LDFLAGS := LDFLAGS="$(LDFLAGS) -Wl,--whole-archive -L$(BUILD) -lamiga-host-compat -Wl,--no-whole-archive"
+GCC_HOST_AR := $(if $(strip $(HOST_TOOL_PREFIX)),$(HOST_TOOL_PREFIX)ar,$(TARGET)-ar)
+endif
 
 # FreeBSD, OSX : libs added by the command brew install gmp mpfr libmpc
 ifeq (Darwin, $(findstring Darwin, $(UNAME_S)))
@@ -550,18 +823,85 @@ GCC_CMD := $(TARGET)-c++ $(TARGET)-g++ $(TARGET)-gcc-$(GCC_VERSION) $(TARGET)-gc
 	$(TARGET)-gcov $(TARGET)-gcov-tool $(TARGET)-cpp $(TARGET)-gcc $(TARGET)-gcc-ar \
 	$(TARGET)-gcc-ranlib $(TARGET)-gcov-dump
 GCC := $(patsubst %,$(PREFIX)/bin/%$(EXEEXT), $(GCC_CMD))
+ifneq (,$(strip $(HOST)))
+ifeq ($(strip $(HOST)),$(TARGET))
+GCC_HOST_ALIAS_CMD := c++ g++ cpp gcc gcc-ar gcc-nm gcc-ranlib gcov gcov-dump gcov-tool
+endif
+endif
+
+ifneq (,$(strip $(HOST_TOOL_PREFIX)))
+GCC_HOST_TOOLS := AR="$(HOST_TOOL_PREFIX)ar" AS="$(HOST_TOOL_PREFIX)as" \
+	LD="$(HOST_TOOL_PREFIX)ld" NM="$(HOST_TOOL_PREFIX)nm" \
+	OBJCOPY="$(HOST_TOOL_PREFIX)objcopy" OBJDUMP="$(HOST_TOOL_PREFIX)objdump" \
+	RANLIB="$(HOST_TOOL_PREFIX)ranlib" READELF="$(HOST_TOOL_PREFIX)readelf" \
+	STRIP="$(HOST_TOOL_PREFIX)strip"
+endif
+ifneq (,$(strip $(HOST)))
+GCC_BUILD_MAKE_FLAGS := CFLAGS_FOR_BUILD="$(BUILD_CFLAGS)" CXXFLAGS_FOR_BUILD="$(BUILD_CXXFLAGS)" LDFLAGS_FOR_BUILD="$(BUILD_LDFLAGS)"
+# GCC's EXTRA_BUILD_FLAGS overrides the host flags propagated through
+# BASE_FLAGS_TO_PASS when recursing into build-machine C++ libraries.  GCC 16
+# otherwise compiles build-libcpp with HOST CXXFLAGS (for example -mcrt=nix20)
+# even though it correctly selects CXX_FOR_BUILD as the compiler.
+GCC_BUILD_MAKE_FLAGS += EXTRA_BUILD_FLAGS='CFLAGS="$(BUILD_CFLAGS)" CXXFLAGS="$(BUILD_CXXFLAGS)" LDFLAGS="$(BUILD_LDFLAGS)"'
+GCC_FOR_TARGET_BUILD := $(TARGET_CC_COMMAND_FOR_BUILD)
+ifneq (,$(strip $(TARGET_RUNNER_WRAPPER_DIR)))
+# GCC's Canadian-cross top-level make defaults GCC_FOR_TARGET to the installed
+# target compiler.  It is not installed until install-gcc, so run the hosted
+# driver from GCC's build directory while all-gcc creates its specs instead.
+GCC_FOR_TARGET_BUILD := $(HOST_RUNNER) ./xgcc$(EXEEXT) -B./ \
+	-B$(PREFIX)/$(TARGET)/bin/ -isystem $(PREFIX)/$(TARGET)/include \
+	-isystem $(PREFIX)/$(TARGET)/sys-include -L$(BUILD)/gcc/ld
+endif
+ifneq (,$(strip $(GCC_FOR_TARGET_BUILD)))
+GCC_BUILD_MAKE_FLAGS += GCC_FOR_TARGET="$(GCC_FOR_TARGET_BUILD)"
+endif
+ifneq (,$(filter 6.%,$(GCC_VERSION)))
+# GCC 16 defaults to C++17, which cannot parse GCC 6's libstdc++ headers.
+# Put a same-named wrapper first in PATH only while building target libraries.
+# Supplying -std=gnu++98 in CXX_FOR_TARGET makes GCC move it to the end of
+# CXXFLAGS_FOR_TARGET, after libstdc++'s per-directory -std=gnu++11.  A PATH
+# wrapper supplies the baseline first, so those later source-specific flags win.
+TARGET_CXX_FOR_BUILD ?= $(shell command -v $(TARGET)-c++ 2>/dev/null)
+GCC6_TARGET_CXX_WRAPPER_DIR := $(BUILD_TOOLS)/gcc6/bin
+GCC6_TARGET_CXX_WRAPPER := $(GCC6_TARGET_CXX_WRAPPER_DIR)/$(TARGET)-c++
+GCC_TARGET_MAKE_FLAGS += PATH="$(GCC6_TARGET_CXX_WRAPPER_DIR):$(PATH)"
+GCC_TARGET_PREREQ += $(GCC6_TARGET_CXX_WRAPPER)
+endif
+GCC_TARGET_PREREQ += $(TARGET_EXEC_WRAPPERS) $(TARGET_COMPILER_WRAPPERS) $(TARGET_PREFIXED_EXEC_WRAPPERS)
+ifneq (,$(strip $(GCC_FOR_TARGET_BUILD)))
+GCC_TARGET_MAKE_FLAGS += GCC_FOR_TARGET="$(GCC_FOR_TARGET_BUILD)" \
+	CC_FOR_TARGET="$(TARGET_CC_COMMAND_FOR_BUILD)" \
+	CXX_FOR_TARGET="$(TARGET_CXX_COMMAND_FOR_BUILD)" \
+	AR_FOR_TARGET="$(TARGET_AR_FOR_BUILD)"
+endif
+endif
+
+ifneq (,$(strip $(GCC6_TARGET_CXX_WRAPPER)))
+$(GCC6_TARGET_CXX_WRAPPER): $(BUILD)/gcc/_done
+	@mkdir -p $(@D)
+	@test -n "$(TARGET_CXX_FOR_BUILD)"
+	@printf '%s\n' '#!/bin/sh' 'exec "$(TARGET_CXX_FOR_BUILD)" -std=gnu++98 "$$@"' > $@
+	@chmod +x $@
+endif
 
 GCC_DIR := . gcc gcc/c gcc/c-family gcc/cp gcc/objc gcc/config/m68k libiberty libcpp libdecnumber
 GCCD := $(patsubst %,$(PROJECTS)/gcc/%, $(GCC_DIR))
 
 gcc: $(BUILD)/gcc/_done
 
-$(BUILD)/gcc/_done: $(BUILD)/gcc/Makefile $(shell find 2>/dev/null $(GCCD) -maxdepth 1 -type f )
-	$(L0)"make gcc"$(L1) $(MAKE) -C $(BUILD)/gcc all-gcc $(L2)
-	$(L0)"install gcc"$(L1) $(MAKE) -C $(BUILD)/gcc install-gcc $(L2)
+$(BUILD)/gcc/_done: $(BUILD)/gcc/Makefile $(shell find 2>/dev/null $(GCCD) -maxdepth 1 -type f ) $(HOST_RUNNER_SETUP_PREREQ) $(TARGET_RUNNER_WRAPPERS)
+	$(L0)"make gcc"$(L1) $(MAKE) -C $(BUILD)/gcc $(GCC_HOST_TOOLS) $(GCC_BUILD_MAKE_FLAGS) $(GCC_HOST_LDFLAGS) all-gcc $(L2)
+	$(L0)"install gcc"$(L1) $(MAKE) -C $(BUILD)/gcc $(GCC_HOST_TOOLS) $(GCC_BUILD_MAKE_FLAGS) $(GCC_HOST_LDFLAGS) install-gcc $(L2)
+	@for tool in $(GCC_HOST_ALIAS_CMD); do \
+		ln -f "$(PREFIX)/bin/$$tool$(EXEEXT)" "$(PREFIX)/bin/$(TARGET)-$$tool$(EXEEXT)"; \
+	done
 	@echo "done" >$@
 
-$(BUILD)/gcc/Makefile: $(PROJECTS)/gcc/configure $(BUILD)/binutils/_done | $(PREFIX_STAMP)
+ifneq ($(OWNGMP),)
+GCC_PREREQUISITE_SOURCES := $(PROJECTS)/$(GMP)/configure $(PROJECTS)/$(MPFR)/configure $(PROJECTS)/$(MPC)/configure
+endif
+
+$(BUILD)/gcc/Makefile: $(PROJECTS)/gcc/configure $(BUILD)/binutils/_done $(GCC_PREREQUISITE_SOURCES) $(GCC_HOST_COMPAT_PREREQ) | $(PREFIX_STAMP)
 	@mkdir -p $(BUILD)/gcc
 ifneq ($(OWNGMP),)
 	@mkdir -p $(PROJECTS)/gcc/gmp
@@ -571,29 +911,55 @@ ifneq ($(OWNGMP),)
 	@rsync -a --no-group $(PROJECTS)/$(MPC)/* $(PROJECTS)/gcc/mpc
 	@rsync -a --no-group $(PROJECTS)/$(MPFR)/* $(PROJECTS)/gcc/mpfr
 endif
-	$(L0)"configure gcc"$(L1) cd $(BUILD)/gcc && $(E) $(PROJECTS)/gcc/configure $(CONFIG_GCC) $(L2)
+	$(L0)"configure gcc"$(L1) cd $(BUILD)/gcc && $(E) $(GCC_HOST_TOOLS) $(GCC_HOST_CONFIGURE_ENV) $(GCC_HOST_LDFLAGS) $(PROJECTS)/gcc/configure $(CONFIG_GCC) $(L2)
+
+$(BUILD)/libamiga-host-compat.a: $(BUILD)/gcc-host-compat.o
+	$(L0)"archive Amiga host compatibility library"$(L1) $(GCC_HOST_AR) rcs $@ $< $(L2)
+
+$(BUILD)/gcc-host-compat.o: support/amiga-host-compat.c
+	@mkdir -p $(@D)
+	$(L0)"make Amiga host compatibility object"$(L1) $(CC) $(CFLAGS) -c $< -o $@ $(L2)
 
 $(PROJECTS)/gcc/configure:
 	@cd $(PROJECTS) &&	git clone -b $(gcc_BRANCH) --depth 16 $(gcc_URL)
+	for i in $$(find patches/gcc/ -type f 2>/dev/null); \
+	do if [[ "$$i" == *.diff ]] ; \
+		then j=$${i:8}; patch -N "$(PROJECTS)/$${j%.diff}" "$$i"; fi ; done
 
 # =================================================
 # fd2sfd
 # =================================================
-CONFIG_FD2SFD := --prefix=$(PREFIX) --target=$(TARGET)
+CONFIG_FD2SFD := --prefix=$(PREFIX) --target=$(TARGET) $(HOST_CONFIGURE)
+ifneq (,$(strip $(HOST)))
+FD2SFD_INSTALL_ARGS := INSTALL_PROGRAM="install --strip-program=$(HOST)-strip"
+FD2SFD_BUILD_PREREQ := $(BUILD_TOOLS)/fd2sfd/_done
+endif
 
-fd2sfd: $(BUILD)/fd2sfd/_done
+fd2sfd: $(BUILD)/fd2sfd/_done $(FD2SFD_BUILD_PREREQ)
 
-$(BUILD)/fd2sfd/_done: $(PREFIX)/bin/fd2sfd
+$(BUILD)/fd2sfd/_done: $(PREFIX)/bin/fd2sfd$(EXEEXT)
 	@echo "done" >$@
 
-$(PREFIX)/bin/fd2sfd: $(BUILD)/fd2sfd/Makefile $(shell find 2>/dev/null $(PROJECTS)/fd2sfd -not \( -path $(PROJECTS)/fd2sfd/.git -prune \) -type f)
+$(PREFIX)/bin/fd2sfd$(EXEEXT): $(BUILD)/fd2sfd/Makefile $(shell find 2>/dev/null $(PROJECTS)/fd2sfd -not \( -path $(PROJECTS)/fd2sfd/.git -prune \) -type f)
 	$(L0)"make fd2sfd"$(L1) $(MAKE) -C $(BUILD)/fd2sfd all $(L2)
 	@mkdir -p $(PREFIX)/bin/
-	$(L0)"install fd2sfd"$(L1) $(MAKE) -C $(BUILD)/fd2sfd install $(L2)
+	$(L0)"install fd2sfd"$(L1) $(MAKE) -C $(BUILD)/fd2sfd install $(FD2SFD_INSTALL_ARGS) $(L2)
 
 $(BUILD)/fd2sfd/Makefile: $(PROJECTS)/fd2sfd/configure
 	@mkdir -p $(BUILD)/fd2sfd
 	$(L0)"configure fd2sfd"$(L1) cd $(BUILD)/fd2sfd && $(E) $(PROJECTS)/fd2sfd/configure $(CONFIG_FD2SFD) $(L2)
+
+$(BUILD_TOOLS)/fd2sfd/_done: $(BUILD_TOOLS_PREFIX)/bin/fd2sfd
+	@echo "done" >$@
+
+$(BUILD_TOOLS_PREFIX)/bin/fd2sfd: $(BUILD_TOOLS)/fd2sfd/Makefile $(shell find 2>/dev/null $(PROJECTS)/fd2sfd -not \( -path $(PROJECTS)/fd2sfd/.git -prune \) -type f)
+	$(L0)"make fd2sfd for the build machine"$(L1) $(MAKE) -C $(BUILD_TOOLS)/fd2sfd all $(L2)
+	@mkdir -p $(BUILD_TOOLS_PREFIX)/bin
+	$(L0)"install build-machine fd2sfd"$(L1) $(MAKE) -C $(BUILD_TOOLS)/fd2sfd install $(L2)
+
+$(BUILD_TOOLS)/fd2sfd/Makefile: $(PROJECTS)/fd2sfd/configure
+	@mkdir -p $(BUILD_TOOLS)/fd2sfd
+	$(L0)"configure fd2sfd for the build machine"$(L1) cd $(BUILD_TOOLS)/fd2sfd && CC="$(BUILD_CC)" CFLAGS="$(BUILD_CFLAGS)" $(PROJECTS)/fd2sfd/configure --prefix=$(BUILD_TOOLS_PREFIX) --target=$(TARGET) $(L2)
 
 $(PROJECTS)/fd2sfd/configure:
 	@cd $(PROJECTS) &&	git clone -b $(fd2sfd_BRANCH) --depth 4 $(fd2sfd_URL)
@@ -604,18 +970,35 @@ $(PROJECTS)/fd2sfd/configure:
 # =================================================
 # fd2pragma
 # =================================================
-fd2pragma: $(BUILD)/fd2pragma/_done
+ifneq (,$(findstring amigaos,$(HOST)))
+FD2PRAGMA_TARGET_CFLAGS := -DFD2PRAGMA_READARGS
+endif
 
-$(BUILD)/fd2pragma/_done: $(PREFIX)/bin/fd2pragma
+ifneq (,$(strip $(HOST)))
+FD2PRAGMA_BUILD_PREREQ := $(BUILD_TOOLS)/fd2pragma/_done
+endif
+
+fd2pragma: $(BUILD)/fd2pragma/_done $(FD2PRAGMA_BUILD_PREREQ)
+
+$(BUILD)/fd2pragma/_done: $(PREFIX)/bin/fd2pragma$(EXEEXT)
 	@echo "done" >$@
 
-$(PREFIX)/bin/fd2pragma: $(BUILD)/fd2pragma/fd2pragma
+$(PREFIX)/bin/fd2pragma$(EXEEXT): $(BUILD)/fd2pragma/fd2pragma$(EXEEXT)
 	@mkdir -p $(PREFIX)/bin/
-	$(L0)"install fd2sfd"$(L1) install $(BUILD)/fd2pragma/fd2pragma $(PREFIX)/bin/ $(L2)
+	$(L0)"install fd2pragma"$(L1) install $(BUILD)/fd2pragma/fd2pragma$(EXEEXT) $(PREFIX)/bin/ $(L2)
 
-$(BUILD)/fd2pragma/fd2pragma: $(PROJECTS)/fd2pragma/makefile $(shell find 2>/dev/null $(PROJECTS)/fd2pragma -not \( -path $(PROJECTS)/fd2pragma/.git -prune \) -type f)
+$(BUILD)/fd2pragma/fd2pragma$(EXEEXT): $(PROJECTS)/fd2pragma/makefile $(shell find 2>/dev/null $(PROJECTS)/fd2pragma -not \( -path $(PROJECTS)/fd2pragma/.git -prune \) -type f)
 	@mkdir -p $(BUILD)/fd2pragma
-	$(L0)"make fd2sfd"$(L1) cd $(PROJECTS)/fd2pragma && $(CC) -o $@ $(CFLAGS) fd2pragma.c $(L2)
+	$(L0)"make fd2pragma for $(if $(HOST),$(HOST),the build host)"$(L1) cd $(PROJECTS)/fd2pragma && $(CC) -o $@ $(CFLAGS) $(FD2PRAGMA_TARGET_CFLAGS) fd2pragma.c $(LDFLAGS) $(L2)
+
+$(BUILD_TOOLS)/fd2pragma/_done: $(BUILD_TOOLS)/fd2pragma/fd2pragma
+	@mkdir -p $(BUILD_TOOLS_PREFIX)/bin
+	$(L0)"install build-machine fd2pragma"$(L1) install $< $(BUILD_TOOLS_PREFIX)/bin/ $(L2)
+	@echo "done" >$@
+
+$(BUILD_TOOLS)/fd2pragma/fd2pragma: $(PROJECTS)/fd2pragma/makefile $(shell find 2>/dev/null $(PROJECTS)/fd2pragma -not \( -path $(PROJECTS)/fd2pragma/.git -prune \) -type f)
+	@mkdir -p $(@D)
+	$(L0)"make fd2pragma for the build machine"$(L1) cd $(PROJECTS)/fd2pragma && $(BUILD_CC) -o $@ $(BUILD_CFLAGS) fd2pragma.c $(L2)
 
 $(PROJECTS)/fd2pragma/makefile:
 	@cd $(PROJECTS) &&	git clone -b $(fd2pragma_BRANCH) --depth 4 $(fd2pragma_URL)
@@ -625,16 +1008,16 @@ $(PROJECTS)/fd2pragma/makefile:
 # =================================================
 ira: $(BUILD)/ira/_done
 
-$(BUILD)/ira/_done: $(PREFIX)/bin/ira
+$(BUILD)/ira/_done: $(PREFIX)/bin/ira$(EXEEXT)
 	@echo "done" >$@
 
-$(PREFIX)/bin/ira: $(BUILD)/ira/ira
+$(PREFIX)/bin/ira$(EXEEXT): $(BUILD)/ira/ira$(EXEEXT)
 	@mkdir -p $(PREFIX)/bin/
-	$(L0)"install ira"$(L1) install $(BUILD)/ira/ira $(PREFIX)/bin/ $(L2)
+	$(L0)"install ira"$(L1) install $(BUILD)/ira/ira$(EXEEXT) $(PREFIX)/bin/ $(L2)
 
-$(BUILD)/ira/ira: $(PROJECTS)/ira/Makefile $(shell find 2>/dev/null $(PROJECTS)/ira -not \( -path $(PROJECTS)/ira/.git -prune \) -type f)
+$(BUILD)/ira/ira$(EXEEXT): $(PROJECTS)/ira/Makefile $(shell find 2>/dev/null $(PROJECTS)/ira -not \( -path $(PROJECTS)/ira/.git -prune \) -type f)
 	@mkdir -p $(BUILD)/ira
-	$(L0)"make ira"$(L1) cd $(PROJECTS)/ira && $(CC) -o $@ $(CFLAGS) *.c -std=c99 $(L2)
+	$(L0)"make ira"$(L1) cd $(PROJECTS)/ira && $(CC) -o $@ $(CFLAGS) *.c -std=c99 $(LDFLAGS) $(L2)
 
 $(PROJECTS)/ira/Makefile:
 	@cd $(PROJECTS) &&	git clone -b $(ira_BRANCH) --depth 4 $(ira_URL)
@@ -666,19 +1049,47 @@ $(PROJECTS)/sfdc/configure:
 # =================================================
 VASM_CMD := vasmm68k_mot
 VASM := $(patsubst %,$(PREFIX)/bin/%$(EXEEXT), $(VASM_CMD))
+VASM_OUTFMTS := -DOUTAOUT -DOUTBIN -DOUTELF -DOUTGST -DOUTHANS -DOUTHUNK -DOUTIHEX -DOUTO65 -DOUTPAP -DOUTSREC -DOUTTOS -DOUTVOBJ -DOUTWOZ -DOUTXFIL
 
-vasm: $(BUILD)/vasm/_done
+ifneq (,$(findstring amigaos,$(HOST)))
+VASM_TARGET_MAKEFILE := Makefile.68k
+VASM_TARGET_MAKE_ARGS := CC="$(CC)" LD="$(CC)" CCOUT="-o " CFLAGS="-c -O2 $(HOST_CPU_FLAGS) $(HOST_CRT_FLAGS) -DAMIGA $(VASM_OUTFMTS)" LDFLAGS="-lm $(LDFLAGS)" TARGET= TARGETEXTENSION=$(EXEEXT)
+else ifneq (,$(strip $(HOST)))
+VASM_TARGET_MAKEFILE := Makefile
+VASM_TARGET_MAKE_ARGS := CC="$(CC)" LD="$(CC)"
+else
+VASM_TARGET_MAKEFILE := Makefile
+VASM_TARGET_MAKE_ARGS :=
+endif
+
+ifneq (,$(strip $(HOST)))
+VASM_BUILD_PREREQ := $(BUILD_TOOLS)/vasm/_done
+endif
+
+vasm: $(BUILD)/vasm/_done $(VASM_BUILD_PREREQ)
 
 $(BUILD)/vasm/_done: $(BUILD)/vasm/Makefile
-	$(L0)"make vasm"$(L1) $(MAKE) -C $(BUILD)/vasm CPU=m68k SYNTAX=mot $(L2)
+	$(L0)"make vasm for $(if $(HOST),$(HOST),the build host)"$(L1) $(MAKE) -C $(BUILD)/vasm -f $(VASM_TARGET_MAKEFILE) CPU=m68k SYNTAX=mot $(VASM_TARGET_MAKE_ARGS) $(L2)
 	@mkdir -p $(PREFIX)/bin/
-	$(L0)"install vasm"$(L1) install $(BUILD)/vasm/vasmm68k_mot $(PREFIX)/bin/ ;\
-	install $(BUILD)/vasm/vobjdump $(PREFIX)/bin/ $(L2)
+	$(L0)"install vasm"$(L1) install $(BUILD)/vasm/vasmm68k_mot$(EXEEXT) $(PREFIX)/bin/ ;\
+	install $(BUILD)/vasm/vobjdump$(EXEEXT) $(PREFIX)/bin/ $(L2)
 	@echo "done" >$@
 
 $(BUILD)/vasm/Makefile: $(PROJECTS)/vasm/Makefile $(shell find 2>/dev/null $(PROJECTS)/vasm -not \( -path $(PROJECTS)/vasm/.git -prune \) -type f)
 	@rsync -a --no-group $(PROJECTS)/vasm $(BUILD)/ --exclude .git
 	@touch $(BUILD)/vasm/Makefile
+
+$(BUILD_TOOLS)/vasm/_done: $(BUILD_TOOLS)/vasm/Makefile
+	$(L0)"make vasm for the build machine"$(L1) $(MAKE) -C $(BUILD_TOOLS)/vasm CPU=m68k SYNTAX=mot CC="$(BUILD_CC)" LD="$(BUILD_CC)" $(L2)
+	@mkdir -p $(BUILD_TOOLS_PREFIX)/bin
+	$(L0)"install build-machine vasm"$(L1) install $(BUILD_TOOLS)/vasm/vasmm68k_mot $(BUILD_TOOLS_PREFIX)/bin/ ;\
+	install $(BUILD_TOOLS)/vasm/vobjdump $(BUILD_TOOLS_PREFIX)/bin/ $(L2)
+	@echo "done" >$@
+
+$(BUILD_TOOLS)/vasm/Makefile: $(PROJECTS)/vasm/Makefile $(shell find 2>/dev/null $(PROJECTS)/vasm -not \( -path $(PROJECTS)/vasm/.git -prune \) -type f)
+	@mkdir -p $(BUILD_TOOLS)
+	@rsync -a --no-group $(PROJECTS)/vasm $(BUILD_TOOLS)/ --exclude .git
+	@touch $(BUILD_TOOLS)/vasm/Makefile
 
 $(PROJECTS)/vasm/Makefile:
 	@cd $(PROJECTS) &&	git clone -b $(vasm_BRANCH) --depth 4 $(vasm_URL)
@@ -733,6 +1144,19 @@ $(PROJECTS)/vlink/Makefile:
 # on the host: brew only has lhasa, which cannot create archives and
 # parses some options differently
 LHA := $(PREFIX)/bin/lha$(EXEEXT)
+ifeq (,$(strip $(HOST)))
+LHA_PREREQ := $(LHA)
+LHA_FOR_BUILD ?= $(LHA)
+else
+LHA_PREREQ :=
+LHA_FOR_BUILD ?= $(shell command -v lha 2>/dev/null)
+endif
+ifneq (,$(strip $(HOST)))
+FD2SFD_FOR_BUILD ?= $(BUILD_TOOLS_PREFIX)/bin/fd2sfd
+else
+FD2SFD_FOR_BUILD ?= $(PREFIX)/bin/fd2sfd$(EXEEXT)
+endif
+SFDC_FOR_BUILD ?= $(PREFIX)/bin/sfdc
 
 .PHONY: lha
 lha: $(LHA)
@@ -740,7 +1164,7 @@ lha: $(LHA)
 $(LHA):
 	@mkdir -p $(BUILD) && rm -rf $(BUILD)/lha
 	$(L0)"clone lha"$(L1) cd $(BUILD) && git clone -b $(lha_BRANCH) --depth 1 $(lha_URL) $(L2)
-	$(L0)"configure lha"$(L1) cd $(BUILD)/lha && autoreconf -fi && ./configure $(L2)
+	$(L0)"configure lha"$(L1) cd $(BUILD)/lha && autoreconf -fi && ./configure $(HOST_CONFIGURE) $(L2)
 	$(L0)"make lha"$(L1) cd $(BUILD)/lha && $(MAKE) all $(L2)
 	$(L0)"install lha"$(L1) mkdir -p $(PREFIX)/bin && install $(BUILD)/lha/src/lha$(EXEEXT) $(LHA) $(L2)
 
@@ -773,12 +1197,12 @@ $(BUILD)/vbcc_target_m68k-amigaos/_done: $(BUILD)/vbcc_target_m68k-amigaos.info 
 	@echo "done" >$@
 
 
-$(BUILD)/vbcc_target_m68k-kick13.info: $(DOWNLOAD)/vbcc_target_m68k-kick13.lha $(LHA)
-	$(L0)"unpack vbcc_target_m68k-kick13"$(L1) cd $(BUILD) && lha xf $(DOWNLOAD)/vbcc_target_m68k-kick13.lha $(L2)
+$(BUILD)/vbcc_target_m68k-kick13.info: $(DOWNLOAD)/vbcc_target_m68k-kick13.lha $(LHA_PREREQ)
+	$(L0)"unpack vbcc_target_m68k-kick13"$(L1) cd $(BUILD) && $(LHA_FOR_BUILD) xf $(DOWNLOAD)/vbcc_target_m68k-kick13.lha $(L2)
 	@touch $(BUILD)/vbcc_target_m68k-kick13.info
 
-$(BUILD)/vbcc_target_m68k-amigaos.info: $(DOWNLOAD)/vbcc_target_m68k-amigaos.lha $(LHA)
-	$(L0)"unpack vbcc_target_m68k-amigaos"$(L1) cd $(BUILD) && lha xf $(DOWNLOAD)/vbcc_target_m68k-amigaos.lha $(L2)
+$(BUILD)/vbcc_target_m68k-amigaos.info: $(DOWNLOAD)/vbcc_target_m68k-amigaos.lha $(LHA_PREREQ)
+	$(L0)"unpack vbcc_target_m68k-amigaos"$(L1) cd $(BUILD) && $(LHA_FOR_BUILD) xf $(DOWNLOAD)/vbcc_target_m68k-amigaos.lha $(L2)
 	@touch $(BUILD)/vbcc_target_m68k-amigaos.info
 
 $(DOWNLOAD)/vbcc_target_m68k-kick13.lha:
@@ -796,6 +1220,12 @@ $(DOWNLOAD)/vbcc_target_m68k-amigaos.lha:
 
 NDK_INCLUDE = $(shell find 2>/dev/null $(PROJECTS)/$(NDK_FOLDER_NAME_H) -type f)
 NDK_INCLUDE_SFD = $(shell find 2>/dev/null $(PROJECTS)/$(NDK_FOLDER_NAME_SFD) -type f -name *.sfd)
+NDK_FD2PRAGMA_PREREQ := $(BUILD)/fd2pragma/_done
+ifneq (,$(strip $(HOST)))
+NDK_FD2SFD_PREREQ := $(BUILD_TOOLS)/fd2sfd/_done
+else
+NDK_FD2SFD_PREREQ := $(BUILD)/fd2sfd/_done
+endif
 NDK_INCLUDE_INLINE = $(patsubst $(PROJECTS)/$(NDK_FOLDER_NAME_SFD)/%_lib.sfd,$(PREFIX)/$(TARGET)/ndk-include/inline/%.h,$(NDK_INCLUDE_SFD))
 NDK_INCLUDE_INLINE_VBCC = $(patsubst $(PROJECTS)/$(NDK_FOLDER_NAME_SFD)/%_lib.sfd,$(PREFIX)/$(TARGET)/ndk-include/inline/%_protos.h,$(NDK_INCLUDE_SFD))
 NDK_INCLUDE_LVO    = $(patsubst $(PROJECTS)/$(NDK_FOLDER_NAME_SFD)/%_lib.sfd,$(PREFIX)/$(TARGET)/ndk-include/lvo/%_lib.i,$(NDK_INCLUDE_SFD))
@@ -811,7 +1241,7 @@ $(BUILD)/ndk-include_ndk: $(BUILD)/ndk-include_ndk0 $(NDK_INCLUDE_INLINE) $(NDK_
 	@mkdir -p $(BUILD)/ndk-include/
 	@echo "done" >$@
 
-$(BUILD)/ndk-include_ndk0: $(PROJECTS)/$(NDK_FOLDER_NAME).info $(NDK_INCLUDE) $(BUILD)/fd2sfd/_done $(BUILD)/fd2pragma/_done
+$(BUILD)/ndk-include_ndk0: $(PROJECTS)/$(NDK_FOLDER_NAME).info $(NDK_INCLUDE) $(NDK_FD2SFD_PREREQ) $(NDK_FD2PRAGMA_PREREQ)
 	@mkdir -p $(PREFIX)/$(TARGET)/ndk-include
 	@rsync -a --no-group $(PROJECTS)/$(NDK_FOLDER_NAME_H)/* $(PREFIX)/$(TARGET)/ndk-include --exclude proto --exclude inline
 	$(L0)"STDARGing ndk"$(L1) for i in $$(find $(PREFIX)/$(TARGET)/ndk-include/clib/*protos.h -type f); do \
@@ -837,19 +1267,19 @@ $(BUILD)/ndk-include_ndk0: $(PROJECTS)/$(NDK_FOLDER_NAME).info $(NDK_INCLUDE) $(
 
 ndk-inline: $(NDK_INCLUDE_INLINE) sfdc $(BUILD)/ndk-include_inline
 $(NDK_INCLUDE_INLINE): $(PREFIX)/bin/sfdc $(NDK_INCLUDE_SFD) $(BUILD)/ndk-include_inline $(BUILD)/ndk-include_lvo $(BUILD)/ndk-include_proto $(BUILD)/ndk-include_ndk0
-	$(L0)"sfdc inline $(@F)"$(L1) sfdc --target=m68k-gcc-amigaos --mode=macros --output=$@ $(patsubst $(PREFIX)/$(TARGET)/ndk-include/inline/%.h,$(PROJECTS)/$(NDK_FOLDER_NAME_SFD)/%_lib.sfd,$@) $(L2)
+	$(L0)"sfdc inline $(@F)"$(L1) $(SFDC_FOR_BUILD) --target=m68k-gcc-amigaos --mode=macros --output=$@ $(patsubst $(PREFIX)/$(TARGET)/ndk-include/inline/%.h,$(PROJECTS)/$(NDK_FOLDER_NAME_SFD)/%_lib.sfd,$@) $(L2)
 
 ndk-inline-vbcc: $(NDK_INCLUDE_INLINE_VBCC) sfdc $(BUILD)/ndk-include_inline
 $(NDK_INCLUDE_INLINE_VBCC): $(PREFIX)/bin/sfdc $(NDK_INCLUDE_SFD) $(BUILD)/ndk-include_inline $(BUILD)/ndk-include_lvo $(BUILD)/ndk-include_proto $(BUILD)/ndk-include_ndk0
-	$(L0)"sfdc inline vbcc $(@F)"$(L1) sfdc --target=m68kvbcc-amigaos --mode=macros --output=$@ $(patsubst $(PREFIX)/$(TARGET)/ndk-include/inline/%_protos.h,$(PROJECTS)/$(NDK_FOLDER_NAME_SFD)/%_lib.sfd,$@) $(L2)
+	$(L0)"sfdc inline vbcc $(@F)"$(L1) $(SFDC_FOR_BUILD) --target=m68kvbcc-amigaos --mode=macros --output=$@ $(patsubst $(PREFIX)/$(TARGET)/ndk-include/inline/%_protos.h,$(PROJECTS)/$(NDK_FOLDER_NAME_SFD)/%_lib.sfd,$@) $(L2)
 
 ndk-lvo: $(NDK_INCLUDE_LVO) sfdc
 $(NDK_INCLUDE_LVO): $(PREFIX)/bin/sfdc $(NDK_INCLUDE_SFD) $(BUILD)/ndk-include_lvo $(BUILD)/ndk-include_ndk0
-	$(L0)"sfdc lvo $(@F)"$(L1) sfdc --target=m68k-amigaos --mode=lvo --output=$@ $(patsubst $(PREFIX)/$(TARGET)/ndk-include/lvo/%_lib.i,$(PROJECTS)/$(NDK_FOLDER_NAME_SFD)/%_lib.sfd,$@) $(L2)
+	$(L0)"sfdc lvo $(@F)"$(L1) $(SFDC_FOR_BUILD) --target=m68k-amigaos --mode=lvo --output=$@ $(patsubst $(PREFIX)/$(TARGET)/ndk-include/lvo/%_lib.i,$(PROJECTS)/$(NDK_FOLDER_NAME_SFD)/%_lib.sfd,$@) $(L2)
 
 ndk-proto: $(NDK_INCLUDE_PROTO) sfdc
 $(NDK_INCLUDE_PROTO): $(PREFIX)/bin/sfdc $(NDK_INCLUDE_SFD)	$(BUILD)/ndk-include_proto $(BUILD)/ndk-include_ndk0
-	$(L0)"sfdc proto $(@F)"$(L1) sfdc --target=m68k-amigaos --mode=proto --output=$@ $(patsubst $(PREFIX)/$(TARGET)/ndk-include/proto/%.h,$(PROJECTS)/$(NDK_FOLDER_NAME_SFD)/%_lib.sfd,$@) $(L2)
+	$(L0)"sfdc proto $(@F)"$(L1) $(SFDC_FOR_BUILD) --target=m68k-amigaos --mode=proto --output=$@ $(patsubst $(PREFIX)/$(TARGET)/ndk-include/proto/%.h,$(PROJECTS)/$(NDK_FOLDER_NAME_SFD)/%_lib.sfd,$@) $(L2)
 
 $(BUILD)/ndk-include_inline: $(PROJECTS)/$(NDK_FOLDER_NAME).info
 	@mkdir -p $(PREFIX)/$(TARGET)/ndk-include/inline
@@ -868,10 +1298,10 @@ $(BUILD)/ndk-include_proto: $(PROJECTS)/$(NDK_FOLDER_NAME).info
 	@mkdir -p $(BUILD)/ndk-include/
 	@echo "done" >$@
 
-$(PROJECTS)/$(NDK_FOLDER_NAME).info: $(LHA) $(DOWNLOAD)/$(NDK_ARC_NAME).lha $(shell find 2>/dev/null patches/$(NDK_FOLDER_NAME)/ -type f)
+$(PROJECTS)/$(NDK_FOLDER_NAME).info: $(LHA_PREREQ) $(DOWNLOAD)/$(NDK_ARC_NAME).lha $(shell find 2>/dev/null patches/$(NDK_FOLDER_NAME)/ -type f)
 	$(L0)"unpack ndk"$(L1) cd $(PROJECTS) && if [[ $(NDK_ARC_NAME) == "NDK3.2" ]] ; \
 	   then mkdir NDK3.2 ; cd NDK3.2 ; fi ; \
-	   lha xf $(DOWNLOAD)/$(NDK_ARC_NAME).lha $(L2)
+	   $(LHA_FOR_BUILD) xf $(DOWNLOAD)/$(NDK_ARC_NAME).lha $(L2)
 	@touch -t 0001010000 $(DOWNLOAD)/$(NDK_ARC_NAME).lha
 	$(L0)"patch ndk"$(L1) for i in $$(find patches/$(NDK_FOLDER_NAME)/ -type f); do \
 	   if [[ "$$i" == *.diff ]] ; \
@@ -889,7 +1319,7 @@ $(DOWNLOAD)/$(NDK_ARC_NAME).lha:
 .PHONY: ndk_13
 ndk13: $(BUILD)/ndk-include_ndk13
 
-$(BUILD)/ndk-include_ndk13: $(BUILD)/ndk-include_ndk $(BUILD)/fd2sfd/_done $(BUILD)/sfdc/_done
+$(BUILD)/ndk-include_ndk13: $(BUILD)/ndk-include_ndk $(NDK_FD2SFD_PREREQ) $(BUILD)/sfdc/_done
 	@while read p; do p=$$(echo $$p|tr -d '\n'); mkdir -p $(PREFIX)/$(TARGET)/ndk13-include/$$(dirname $$p); cp $(PREFIX)/$(TARGET)/ndk-include/$$p $(PREFIX)/$(TARGET)/ndk13-include/$$p; done < patches/ndk13/hfiles
 	$(L0)"extract ndk13"$(L1) while read p; do p=$$(echo $$p|tr -d '\n'); \
 	  mkdir -p $(PREFIX)/$(TARGET)/ndk13-include/$$(dirname $$p); \
@@ -904,10 +1334,10 @@ $(BUILD)/ndk-include_ndk13: $(BUILD)/ndk-include_ndk $(BUILD)/fd2sfd/_done $(BUI
 	@mkdir -p $(PREFIX)/$(TARGET)/ndk/lib/fd13
 	@while read p; do p=$$(echo $$p|tr -d '\n'); LC_CTYPE=C $(SED) -n -e '/##base/,/V36/P'  $(PREFIX)/$(TARGET)/ndk/lib/fd/$$p >$(PREFIX)/$(TARGET)/ndk/lib/fd13/$$p; done < patches/ndk13/fdfiles
 	@mkdir -p $(PREFIX)/$(TARGET)/ndk/lib/sfd13
-	@for i in $(PREFIX)/$(TARGET)/ndk/lib/fd13/*; do fd2sfd $$i $(PREFIX)/$(TARGET)/ndk13-include/clib/$$(basename $$i _lib.fd)_protos.h > $(PREFIX)/$(TARGET)/ndk/lib/sfd13/$$(basename $$i .fd).sfd; done
+	@for i in $(PREFIX)/$(TARGET)/ndk/lib/fd13/*; do $(FD2SFD_FOR_BUILD) $$i $(PREFIX)/$(TARGET)/ndk13-include/clib/$$(basename $$i _lib.fd)_protos.h > $(PREFIX)/$(TARGET)/ndk/lib/sfd13/$$(basename $$i .fd).sfd; done
 	$(L0)"macros+protos ndk13"$(L1) for i in $(PREFIX)/$(TARGET)/ndk/lib/sfd13/*; do \
-	  sfdc --target=m68k-gcc-amigaos --mode=macros --output=$(PREFIX)/$(TARGET)/ndk13-include/inline/$$(basename $$i _lib.sfd).h $$i; \
-	  sfdc --target=m68k-amigaos --mode=proto --output=$(PREFIX)/$(TARGET)/ndk13-include/proto/$$(basename $$i _lib.sfd).h $$i; \
+	  $(SFDC_FOR_BUILD) --target=m68k-gcc-amigaos --mode=macros --output=$(PREFIX)/$(TARGET)/ndk13-include/inline/$$(basename $$i _lib.sfd).h $$i; \
+	  $(SFDC_FOR_BUILD) --target=m68k-amigaos --mode=proto --output=$(PREFIX)/$(TARGET)/ndk13-include/proto/$$(basename $$i _lib.sfd).h $$i; \
 	done $(L2)
 	$(L0)"STDARGing ndk13"$(L1) for i in $$(find $(PREFIX)/$(TARGET)/ndk13-include/clib/*protos.h -type f); do \
 	echo $$i; \
@@ -959,7 +1389,7 @@ $(BUILD)/libnix/_done: $(BUILD)/newlib/_done $(BUILD)/ndk-include_ndk $(BUILD)/n
 	@mkdir -p $(PREFIX)/$(TARGET)/libnix/lib/libnix
 	@mkdir -p $(BUILD)/libnix
 	@mkdir -p $(PREFIX)/lib/gcc/$(TARGET)/$(GCC_VERSION)
-	@if [ ! -e $(PREFIX)/lib/gcc/$(TARGET)/$(GCC_VERSION)/libgcc.a ]; then $(PREFIX)/bin/$(TARGET)-ar rcs $(PREFIX)/lib/gcc/$(TARGET)/$(GCC_VERSION)/libgcc.a; fi
+	@if [ ! -e $(PREFIX)/lib/gcc/$(TARGET)/$(GCC_VERSION)/libgcc.a ]; then $(TARGET_AR_FOR_BUILD) rcs $(PREFIX)/lib/gcc/$(TARGET)/$(GCC_VERSION)/libgcc.a; fi
 	$(L0)"make libnix"$(L1) CFLAGS="$(CFLAGS_FOR_TARGET)" $(MAKE) -C $(BUILD)/libnix -f $(PROJECTS)/libnix/Makefile.gcc6 root=$(PROJECTS)/libnix all $(L2)
 	$(L0)"install libnix"$(L1) $(MAKE) -C $(BUILD)/libnix -f $(PROJECTS)/libnix/Makefile.gcc6 root=$(PROJECTS)/libnix install $(L2)
 	@rsync --delete -a --no-group $(PROJECTS)/libnix/sources/headers/* $(PREFIX)/$(TARGET)/libnix/include/
@@ -976,9 +1406,9 @@ LIBGCCS := $(patsubst %,$(PREFIX)/lib/gcc/$(TARGET)/$(GCC_VERSION)/%,$(LIBGCCS_N
 
 libgcc: $(BUILD)/gcc/_libgcc_done
 
-$(BUILD)/gcc/_libgcc_done: $(BUILD)/libnix/_done $(BUILD)/libpthread/_done $(LIBAMIGA) $(shell find 2>/dev/null $(PROJECTS)/gcc/libgcc -type f)
-	$(L0)"make libgcc"$(L1) $(MAKE) -C $(BUILD)/gcc all-target $(L2)
-	$(L0)"install libgcc"$(L1) $(MAKE) -C $(BUILD)/gcc install-target $(L2)
+$(BUILD)/gcc/_libgcc_done: $(BUILD)/libnix/_done $(BUILD)/libpthread/_done $(LIBAMIGA) $(GCC_TARGET_PREREQ) $(shell find 2>/dev/null $(PROJECTS)/gcc/libgcc -type f)
+	$(L0)"make libgcc"$(L1) $(MAKE) -C $(BUILD)/gcc $(GCC_TARGET_MAKE_FLAGS) all-target $(L2)
+	$(L0)"install libgcc"$(L1) $(MAKE) -C $(BUILD)/gcc $(GCC_TARGET_MAKE_FLAGS) install-target $(L2)
 	@echo "done" >$@
 
 # =================================================
@@ -1064,7 +1494,13 @@ newlib: $(BUILD)/newlib/_done
 $(BUILD)/newlib/_done: $(BUILD)/newlib/newlib/libc.a
 	@echo "done" >$@
 
-$(BUILD)/newlib/newlib/libc.a: $(BUILD)/newlib/newlib/Makefile $(BUILD)/binutils/_gdb $(NEWLIB_FILES)
+ifeq (,$(strip $(HOST)))
+NEWLIB_BINUTILS_PREREQ := $(BUILD)/binutils/_gdb
+else
+NEWLIB_BINUTILS_PREREQ := $(BUILD)/binutils/_done
+endif
+
+$(BUILD)/newlib/newlib/libc.a: $(BUILD)/newlib/newlib/Makefile $(NEWLIB_BINUTILS_PREREQ) $(NEWLIB_FILES)
 	@rsync -a --no-group $(PROJECTS)/newlib-cygwin/newlib/libc/include/ $(PREFIX)/$(TARGET)/sys-include
 	@rsync -a --no-group $(PROJECTS)/newlib-cygwin/newlib/libc/sys/amigaos/include/ $(PREFIX)/$(TARGET)/sys-include
 	$(L0)"make newlib"$(L1) $(MAKE) -C $(BUILD)/newlib/newlib $(L2)
@@ -1094,9 +1530,9 @@ $(PREFIX)/$(TARGET)/ixemul/lib/libc.a: $(BUILD)/ixemul/lib/libc.a
 	$(L0)"installing ixemul-sdk"$(L1) rsync -a --no-group $(BUILD)/ixemul/* $(PREFIX)/$(TARGET)/ixemul/ $(L2)
 
 
-$(BUILD)/ixemul/lib/libc.a: $(DOWNLOAD)/ixemul-sdk.lha $(LHA)
+$(BUILD)/ixemul/lib/libc.a: $(DOWNLOAD)/ixemul-sdk.lha $(LHA_PREREQ)
 	@mkdir -p $(BUILD)/ixemul
-	$(L0)"unpacking ixemul-sdk.lha"$(L1) cd $(BUILD)/ixemul && lha xf $(DOWNLOAD)/ixemul-sdk.lha $(L2)
+	$(L0)"unpacking ixemul-sdk.lha"$(L1) cd $(BUILD)/ixemul && $(LHA_FOR_BUILD) xf $(DOWNLOAD)/ixemul-sdk.lha $(L2)
 
 $(DOWNLOAD)/ixemul-sdk.lha:
 	$(call get-file,ixemul-sdk,https://aminet.net/util/libs/ixemul-sdk.lha,ixemul-sdk.lha)
@@ -1105,15 +1541,15 @@ $(DOWNLOAD)/ixemul-sdk.lha:
 # sdk installation
 # =================================================
 .PHONY: sdk all-sdk
-sdk: libnix $(LHA)
-	$(L0)"sdk $(sdk)"$(L1) $(PWD)/sdk/install install $(sdk) $(PREFIX) $(L2)
+sdk: libnix $(LHA_PREREQ)
+	$(L0)"sdk $(sdk)"$(L1) TOOL_RUNNER="$(HOST_RUNNER)" HOST_EXEEXT="$(EXEEXT)" CC_FOR_SDK="$(SDK_CC_FOR_BUILD)" AR_FOR_SDK="$(SDK_AR_FOR_BUILD)" FD2SFD_FOR_BUILD="$(FD2SFD_FOR_BUILD)" SFDC_FOR_BUILD="$(SFDC_FOR_BUILD)" LHA_FOR_BUILD="$(LHA_FOR_BUILD)" $(PWD)/sdk/install install $(sdk) $(PREFIX) $(L2)
 
 SDKS0=$(shell find sdk/*.sdk)
 SDKS=$(patsubst sdk/%.sdk,%,$(SDKS0))
 .PHONY: $(SDKS)
 all-sdk: $(SDKS)
 
-$(SDKS): libnix lha
+$(SDKS): libnix $(LHA_PREREQ)
 	$(MAKE) sdk sdk=$@
 
 # =================================================
@@ -1145,10 +1581,32 @@ ifeq (,$(board))
 board = amigaos
 endif
 
-.PHONY: check
+# Point dejagnu at the in-repo board descriptions in baseboards/ which wire up
+# vamos as the simulator.
+export DEJAGNU ?= $(CURDIR)/dejagnu-site.exp
+# Directory where dejagnu writes gcc.sum / gcc.log.
+TESTSUITE = $(BUILD)/gcc/gcc/testsuite/gcc
+
+.PHONY: check check-gcc-execute check-gcc-amigaos
+# Run the two sequentially (recipe lines run in order even under make -j): both
+# drive check-gcc-c in the same build tree, sharing gcc.sum and
+# testsuite/gcc-parallel, so they must not run at the same time.
 check:
+	@$(MAKE) --no-print-directory check-gcc-amigaos
+	@$(MAKE) --no-print-directory check-gcc-execute
+
+check-gcc-execute:
 	@ln -sf $(PREFIX)/$(TARGET)/libnix $(BUILD)/gcc/$(TARGET)/libnix
-	$(MAKE) -C $(BUILD)/gcc check-gcc-c "RUNTESTFLAGS=--target_board=$(board) execute.exp=* SIM=vamos" | grep '# of\|PASS\|FAIL\|===\|Running\|Using' 
+	$(L0)"check execute.exp"$(L1)$(MAKE) -C $(BUILD)/gcc check-gcc-c "RUNTESTFLAGS=--target_board=$(board) execute.exp=* SIM=vamos"$(L2)
+	@cp -f $(TESTSUITE)/gcc.sum $(TESTSUITE)/gcc-execute.sum; cp -f $(TESTSUITE)/gcc.log $(TESTSUITE)/gcc-execute.log
+	@{ echo '----- execute.exp -----'; grep '^# of' $(TESTSUITE)/gcc-execute.sum || echo '(no tests run)'; grep -E '^(FAIL|ERROR|XPASS)' $(TESTSUITE)/gcc-execute.sum || true; } | tee $@.summary.txt
+
+# amiga-specific target tests; a no-op on gcc branches that predate them (a .exp filter matching no file runs nothing).
+check-gcc-amigaos:
+	@ln -sf $(PREFIX)/$(TARGET)/libnix $(BUILD)/gcc/$(TARGET)/libnix
+	$(L0)"check amigaos.exp"$(L1)$(MAKE) -C $(BUILD)/gcc check-gcc-c "RUNTESTFLAGS=--target_board=$(board) gcc.target/m68k/amigaos/amigaos.exp SIM=vamos"$(L2)
+	@cp -f $(TESTSUITE)/gcc.sum $(TESTSUITE)/gcc-amigaos.sum; cp -f $(TESTSUITE)/gcc.log $(TESTSUITE)/gcc-amigaos.log
+	@{ echo '----- amigaos.exp -----'; grep '^# of' $(TESTSUITE)/gcc-amigaos.sum || echo '(no tests run)'; grep -E '^(FAIL|ERROR|XPASS)' $(TESTSUITE)/gcc-amigaos.sum || true; } | tee $@.summary.txt
 
 
 # =================================================
@@ -1211,7 +1669,7 @@ v:
 
 # change version to the given branch
 branch:
-	@if [ "" != "$(branch)" ] && [ "1" == "$$(grep -c '^$(mod)[[:blank:]]' .repos)" ]; then \
+	@set -e; if [ "" != "$(branch)" ] && [ "1" == "$$(grep -c '^$(mod)[[:blank:]]' .repos)" ]; then \
 		echo $(mod) $(branch) ; \
 	    url=$$(grep '^$(mod)[[:blank:]]' .repos | $(SED) -e 's/[[:blank:]]\+/ /g' | cut -d' ' -f2); \
 	    mv .repos .repos.bak; \
@@ -1219,9 +1677,8 @@ branch:
 	    echo "$(mod) $$url $(branch)" >> .repos; \
 	    if [ -d  projects/$(mod) ]; then \
 	      pushd projects/$(mod); \
-	      git fetch origin $(branch):$(branch); \
-	      git checkout $(branch); \
-	      git branch --set-upstream-to=origin/$(branch) $(branch); \
+	      git fetch origin +refs/heads/$(branch):refs/remotes/origin/$(branch); \
+	      git checkout -B $(branch) refs/remotes/origin/$(branch); \
 	      popd ; \
 	   fi \
 	else \

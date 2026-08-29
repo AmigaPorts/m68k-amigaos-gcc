@@ -1,15 +1,16 @@
 @echo off
-for /f %%i in ('cd') do @set PREFIX=%%i
-path %path%;%prefix%\bin\
-if not exist bin\make.exe (copy /y bin\bat2exe.exe bin\make.exe >NUL: & echo %prefix%\bin\_make.exe >>bin\make.exe & echo %prefix%\bin\_make.exe SHELL=%prefix%\bin\sh.exe >>bin\make.exe)
-if not exist ..\tmp mkdir ..\tmp
+set "PREFIX=%~dp0"
+set "PATH=%PATH%;%PREFIX%bin"
+set "WORKDIR=%TEMP%\amiga-gcc"
+if not exist "%WORKDIR%" mkdir "%WORKDIR%"
+cd /d "%WORKDIR%"
 
 echo *******************************************************************************
 echo *                              Welcome to amiga-gcc                           *
 echo *******************************************************************************
-dir bin\*.exe /w
+dir "%PREFIX%bin\*.exe" /w
 @echo on
 
-m68k-amigaos-gcc hello.c -o hello -Os -noixemul
+if exist "%PREFIX%hello.c" m68k-amigaos-gcc "%PREFIX%hello.c" -o hello -Os -mcpu=68040 -mhard-float -mcrt=nix20
 
 @cmd /k

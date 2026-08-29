@@ -23,11 +23,11 @@ Currently, these tools are built:
 
 # Branches
 ## Notable branches of gcc
-* `amiga6`: The default branch providing gcc-6.5.0b with a lot of hacks^^
+* `amiga6`: The legacy gcc-6.5.0b branch
 * `amiga10.4`: gcc-10.4.0  supports register parameters
 * `amiga13.4`: gcc-13.4.0  supports register parameters
 * `amiga15.2`: gcc-15.2.0  supports register parameters
-* `amiga16.2`: gcc-16.2.0  the current development branch, built and tested by CI
+* `amiga16.2`: gcc-16.2.0, the default branch, built and tested by CI
 
 ## Notable branches of binutils
 * `amiga-2.46`: binutils 2.46 with amigaos support and dwarf2 debugging (the default)
@@ -53,7 +53,7 @@ Currently, these tools are built:
 
 There are also libraries (SDKs) which can be downloaded and installed. These libraries can all be built from source. All of these libraries are provided under their respective licenses.
 
-Various AmigaOS-specific patches have been applied to this version of gcc. None if these changes modify the original copyright in any way. All other changes are published under the terms of the GNU GENERAL PUBLIC LICENSE V2.
+AmigaOS-specific changes are maintained in the upstream AmigaPorts repositories. The optional `patches/<module>/` directories can still be used for downstream patches, but no GCC or binutils patches are required by default. None of these changes modify the original copyright in any way. All other changes are published under the terms of the GNU GENERAL PUBLIC LICENSE V2.
 
 ## Prerequisites
 ### Fedora
@@ -130,11 +130,8 @@ cd m68k-amigaos-gcc
 make update
 ```
 
-To build the current gcc 16.2 instead of the default gcc 6.5.0b,
-switch the gcc module before building:
-```
-make branch branch=amiga16.2 mod=gcc
-```
+The default configuration builds GCC 16.2. Use `make branch` as described
+under Version management if you need a different GCC branch.
 
 ## Overview
 ```
@@ -148,7 +145,8 @@ make <target>		      builds a target: binutils, gcc, fd2sfd, fd2pragma, ira, sfd
 make clean		        remove the build folder
 make clean-<target>	  remove the target's build folder
 make drop-prefix	    remove all content from the prefix folder, beware!
-make package		      tar up the prefix folder into m68k-amigaos-gcc-<version>-<os>-<arch>.tar.xz
+make package		      package the prefix folder as .tar.xz (default) or .lha
+make package-lha	      package the prefix folder as .lha
 make check		        run the gcc testsuite against the built toolchain, using vamos as simulator
 make update		        perform git pull for all targets
 make update-<target>	perform git pull for the given target
@@ -189,28 +187,40 @@ A full bootstrap takes roughly 10 to 30 minutes on current Linux
 hardware, dominated by serial configure and multilib phases.
 
 ## Packaging
-`make package` tars up the PREFIX folder into `m68k-amigaos-gcc-<version>-<os>-<arch>.tar.xz`. Override the output path with `PACKAGE=`:
+`make package` packages the PREFIX folder as `.tar.xz` by default. Native
+builds use the build machine's OS and architecture in the filename. Cross
+builds use `HOST`, so their filenames identify the system on which the tools
+will run rather than the build machine.
+
+Select an LHA archive with `PACKAGE_FORMAT=lha` or the `package-lha`
+convenience target:
+
+```
+make package PACKAGE_FORMAT=lha
+make package-lha
+```
+
+For example, `HOST=m68k-amigaos` produces a filename ending in
+`-m68k-amigaos.tar.xz` or `-m68k-amigaos.lha`. Override the platform label
+with `PACKAGE_PLATFORM=` and the complete output path with `PACKAGE=`:
+
 ```
 make package PREFIX=/opt/amiga PACKAGE=/tmp/toolchain.tar.xz
+make package-lha PREFIX=/opt/amiga PACKAGE_PLATFORM=AmigaOS-m68k
 ```
 
 ## Continuous integration and releases
 The GitHub Actions workflow in `.github/workflows/toolchain.yml`
 bootstraps the toolchain from scratch, optionally runs the gcc
-testsuite under vamos, and uploads the packaged tarball as a build
-artifact. It can be dispatched manually against any gcc branch.
-
-To test a change to one of the module repositories (sfdc, binutils,
-libnix, ...) before it is merged, dispatch the workflow with the
-`repos` input set to the module and branch, or `URL#branch` for a
-fork; several overrides are separated by spaces:
-
-```
-gh workflow run toolchain.yml --repo AmigaPorts/m68k-amigaos-gcc \
-    -f repos="sfdc=fix-nolibbase-tag-wrappers binutils=https://github.com/user/binutils-gdb#my-fix"
-```
-
-The module names are the first column of `.repos`.
+testsuite under vamos, and uploads the native `.tar.xz` packages as build
+artifacts. By default it also Canadian-cross-builds the `amiga16.2` compiler
+for AmigaOS and MinGW hosts, using the published
+`amigadev/crosstools:m68k-amigaos-gcc10` and
+`amigadev/crosstools:x86_64-w64-mingw32` build environments. The local hosted
+build Dockerfiles are not rebuilt by CI. The AmigaOS package is an `.lha`; the
+Windows runner uses the files in `setup/` to compile an Inno Setup installer
+without running the generated installer. If installer compilation fails, the
+workflow uploads a portable `.zip` instead.
 
 Pushing a tag matching `v*` additionally publishes the tarball as a
 GitHub release, with the gcc testsuite as a release gate.
@@ -238,23 +248,23 @@ You can select one of the various runtimes. My favorite is `libnix` which is sel
 ## Checking gcc
 
 To check the built toolchain, run the gcc dejagnu execution tests.
+
 This does not cover everything but it's a start. The tests run each
-compiled testcase under vamos (from
-https://github.com/AmigaPorts/amitools) to emulate the AmigaOS APIs,
-so `vamos` must be on the PATH.
+compiled testcase under [vamos](https://github.com/AmigaPorts/amitools)
+to emulate the AmigaOS APIs, so `vamos` must be on the PATH.
 
 Install dejagnu (`sudo apt install dejagnu` on Debian/Ubuntu,
 `brew install dejagnu` on macOS) and amitools, in a venv to keep it
 out of the system Python:
-```
+```shell
 python3 -m venv .venv
 .venv/bin/pip install "amitools[vamos] @ git+https://github.com/AmigaPorts/amitools.git"
+source .venv/bin/activate
 ```
 
-Then run the suite with the site file from this repo, which points
-dejagnu at the board descriptions in `baseboards/`:
-```
-DEJAGNU=$PWD/dejagnu-site.exp PATH="$PWD/.venv/bin:$PATH" make -j$(nproc) check
+Then run the testsuite:
+```shell
+make -j$(nproc) check
 ```
 
 ## Version management
@@ -283,16 +293,14 @@ make branch mod=binutils branch=devel1
 ```
 The default branches and repositories are in the file **default-repos**, the local state is managed in the file **.repos**.
 
-The gcc default branch is `amiga6`; see the Branches section above
-for the alternatives. If you start from scratch, switch gcc as soon
-as possible, e.g.:
+The default GCC branch is `amiga16.2`; see the Branches section above
+for the alternatives. A fresh build can therefore be started directly:
 ```
 sudo mkdir -p /opt/amiga16
 sudo chown $USER /opt/amiga16
 git clone https://github.com/AmigaPorts/m68k-amigaos-gcc
 cd m68k-amigaos-gcc
 export PREFIX=/opt/amiga16
-make branch branch=amiga16.2 mod=gcc
 make all -j$(nproc)
 ```
 

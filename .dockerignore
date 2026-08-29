@@ -1,3 +1,9 @@
+.git/
+.lock
+.state
+.vscode/
 build*/
 download/
+log/
 projects/
+.tmp-*

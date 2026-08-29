@@ -6,8 +6,8 @@ on:
       - 'v*'
 
 jobs:
-  # Bootstrap the toolchain and run the gcc testsuite as a release gate;
-  # the tarballs are uploaded as the workflow artifacts we publish below.
+  # Bootstrap the toolchain and run the gcc testsuite as a release gate.
+  # This invocation also creates the AmigaOS and Windows hosted packages.
   build-linux:
     uses: ./.github/workflows/toolchain.yml
     with:
@@ -18,6 +18,7 @@ jobs:
     uses: ./.github/workflows/toolchain.yml
     with:
       runner: macos-15
+      build_hosted: false
 
   release:
     needs: [build-linux, build-macos]
@@ -31,7 +32,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Download toolchain tarballs
+      - name: Download toolchain packages
         uses: actions/download-artifact@v7
         with:
           pattern: m68k-amigaos-gcc-*
@@ -66,5 +67,5 @@ jobs:
             echo
             git log --pretty=format:"- %h: %s" "$RANGE"
           } > notes.md
-          gh release create "$TAG" m68k-amigaos-gcc-*.tar.xz \
+          gh release create "$TAG" m68k-amigaos-gcc-* \
             --title "Release ${TAG#v}" --notes-file notes.md

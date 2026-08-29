@@ -50,8 +50,7 @@ cp /usr/bin/uname.exe /opt/amiga/bin
 cp /usr/bin/which.exe /opt/amiga/bin
 cp /usr/bin/make.exe /opt/amiga/bin/_make.exe
 
-/c/Program\ Files\ \(x86\)/Inno\ Setup\ 5/ISCC.exe build/setup2.iss
+/c/Program\ Files\ \(x86\)/Inno\ Setup\ 6/ISCC.exe build/setup2.iss
 
 date
 exit
-

@@ -20,6 +20,13 @@ on:
       repos:
         description: "module overrides, space separated: sfdc=branch or sfdc=URL#branch"
         default: ""
+      build_hosted:
+        description: build AmigaOS and MinGW hosted toolchains
+        type: boolean
+        default: true
+      hosted_gcc_branch:
+        description: gcc branch for the AmigaOS and MinGW hosted toolchains
+        default: amiga16.2
   # same inputs again: workflow_call, used by release.yml, does not
   # share the workflow_dispatch input declarations
   workflow_call:
@@ -39,15 +46,22 @@ on:
       repos:
         type: string
         default: ""
-  # label a pull request "ci" for a macOS build of its merge commit, or
-  # "ci-testsuite" for a Linux build with the gcc testsuite
+      build_hosted:
+        type: boolean
+        default: true
+      hosted_gcc_branch:
+        type: string
+        default: amiga16.2
+  # label a pull request "ci-macos" for a macOS build of its merge commit,
+  # "ci-testsuite" for a Linux build with the gcc testsuite, or "ci-cross"
+  # for Linux plus the AmigaOS and MinGW hosted toolchains
   pull_request:
     types: [labeled]
 
 jobs:
   build:
     if: github.event_name != 'pull_request' || startsWith(github.event.label.name, 'ci')
-    runs-on: ${{ inputs.runner || (github.event.label.name == 'ci' && 'macos-15') || 'ubuntu-24.04' }}
+    runs-on: ${{ inputs.runner || (github.event.label.name == 'ci-macos' && 'macos-15') || 'ubuntu-24.04' }}
     timeout-minutes: 300
     env:
       RUN_TESTSUITE: ${{ inputs.run_testsuite || github.event.label.name == 'ci-testsuite' }}
@@ -170,18 +184,11 @@ jobs:
       - name: Run the gcc testsuite
         if: env.RUN_TESTSUITE == 'true' && runner.os == 'Linux'
         run: |
-          env DEJAGNU=$PWD/dejagnu-site.exp PATH="$HOME/amitools-venv/bin:$PATH" \
-            make -j $NPROC check MAKEINFO=true
-
-      - name: Testsuite summary
-        if: always() && env.RUN_TESTSUITE == 'true' && runner.os == 'Linux'
-        run: |
-          sum=$(ls build-*/gcc/gcc/testsuite/gcc/gcc.sum) || exit 0
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          grep -A6 "=== gcc Summary ===" "$sum" >> $GITHUB_STEP_SUMMARY
-          echo >> $GITHUB_STEP_SUMMARY
-          grep "^FAIL\|^ERROR" "$sum" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
+          set +e
+          PATH="$HOME/amitools-venv/bin:$PATH" make -j $NPROC check
+          rc=$?
+          { echo '```'; cat check-gcc-execute.summary.txt check-gcc-amigaos.summary.txt 2>/dev/null; echo '```'; } >> $GITHUB_STEP_SUMMARY
+          exit $rc
 
       - name: Upload testsuite results
         if: always() && env.RUN_TESTSUITE == 'true' && runner.os == 'Linux'
@@ -189,6 +196,240 @@ jobs:
         with:
           name: testsuite-results
           path: |
-            build-*/gcc/gcc/testsuite/gcc/gcc.sum
-            build-*/gcc/gcc/testsuite/gcc/gcc.log
+            build-*/gcc/gcc/testsuite/gcc/gcc-execute.sum
+            build-*/gcc/gcc/testsuite/gcc/gcc-execute.log
+            build-*/gcc/gcc/testsuite/gcc/gcc-amigaos.sum
+            build-*/gcc/gcc/testsuite/gcc/gcc-amigaos.log
           if-no-files-found: ignore
+
+  build_amigaos:
+    name: Build AmigaOS hosted toolchain
+    if: >-
+      (github.event_name != 'pull_request' && inputs.build_hosted) ||
+      github.event.label.name == 'ci-cross'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 300
+    container:
+      image: amigadev/crosstools:m68k-amigaos-gcc10
+    defaults:
+      run:
+        shell: bash
+    env:
+      PREFIX: ${{ github.workspace }}/output/amigaos/m68k-amigaos-native
+      HOST: m68k-amigaos
+      BUILD_TRIPLET: x86_64-linux-gnu
+      HOST_RUNNER: vamos -C 68040 --
+      NDK: "3.2"
+      OWNGMP: "1"
+      BUILD_CC: x86_64-linux-gnu-gcc -B/opt/build-binutils/
+      BUILD_CXX: x86_64-linux-gnu-g++ -B/opt/build-binutils/
+      CC_FOR_BUILD: x86_64-linux-gnu-gcc -B/opt/build-binutils/
+      CXX_FOR_BUILD: x86_64-linux-gnu-g++ -B/opt/build-binutils/
+      HOSTED_GCC_BRANCH: ${{ inputs.hosted_gcc_branch || 'amiga16.2' }}
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Prepare native build tools
+        run: |
+          mkdir -p /opt/build-binutils
+          for tool in as ld gcc g++ ar ranlib strip; do
+            ln -sf "/usr/bin/x86_64-linux-gnu-$tool" "/opt/build-binutils/$tool"
+          done
+          ln -sf /usr/bin/x86_64-linux-gnu-gcc /opt/build-binutils/cc
+          ln -sf /usr/bin/x86_64-linux-gnu-g++ /opt/build-binutils/c++
+          echo "/opt/build-binutils" >> "$GITHUB_PATH"
+          test "$($CC -dumpmachine)" = "$HOST"
+          test "$(x86_64-linux-gnu-gcc -dumpmachine)" = "$BUILD_TRIPLET"
+          command -v vamos
+          command -v lha
+
+      - name: Build AmigaOS hosted toolchain
+        run: |
+          make branch mod=gcc branch="$HOSTED_GCC_BRANCH"
+          make update
+          make gcc-prerequisites
+          make -j "$(nproc)" all
+          make -j 4 all-sdk
+
+      - name: Package AmigaOS hosted toolchain
+        run: |
+          package_version=$(cat projects/gcc/gcc/BASE-VER)
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            package_version="${GITHUB_REF_NAME#v}"
+          fi
+          archive="m68k-amigaos-gcc-${package_version}-m68k-amigaos.lha"
+          make package-lha PACKAGE="$GITHUB_WORKSPACE/$archive"
+          test -s "$archive"
+
+      - name: Upload AmigaOS package
+        uses: actions/upload-artifact@v7
+        with:
+          name: m68k-amigaos-gcc-hosted-AmigaOS
+          path: m68k-amigaos-gcc-*-m68k-amigaos.lha
+          compression-level: 0
+          if-no-files-found: error
+
+  build_mingw:
+    name: Build MinGW hosted toolchain
+    if: >-
+      (github.event_name != 'pull_request' && inputs.build_hosted) ||
+      github.event.label.name == 'ci-cross'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 300
+    container:
+      image: amigadev/crosstools:x86_64-w64-mingw32
+    defaults:
+      run:
+        shell: bash
+    outputs:
+      package_version: ${{ steps.version.outputs.package_version }}
+    env:
+      PREFIX: ${{ github.workspace }}/output/mingw/m68k-amigaos
+      HOST: x86_64-w64-mingw32ucrt
+      BUILD_TRIPLET: x86_64-linux-gnu
+      HOST_RUNNER: wine
+      NDK: "3.2"
+      OWNGMP: "1"
+      BUILD_CC: x86_64-linux-gnu-gcc -B/opt/build-binutils/
+      BUILD_CXX: x86_64-linux-gnu-g++ -B/opt/build-binutils/
+      CC_FOR_BUILD: x86_64-linux-gnu-gcc -B/opt/build-binutils/
+      CXX_FOR_BUILD: x86_64-linux-gnu-g++ -B/opt/build-binutils/
+      HOSTED_GCC_BRANCH: ${{ inputs.hosted_gcc_branch || 'amiga16.2' }}
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install host runner
+        run: |
+          export DEBIAN_FRONTEND=noninteractive
+          apt-get update
+          apt-get install -y --no-install-recommends wine wine64
+          rm -rf /var/lib/apt/lists/*
+
+      - name: Prepare native build tools
+        run: |
+          mkdir -p /opt/build-binutils
+          for tool in as ld gcc g++ ar ranlib strip; do
+            ln -sf "/usr/bin/x86_64-linux-gnu-$tool" "/opt/build-binutils/$tool"
+          done
+          ln -sf /usr/bin/x86_64-linux-gnu-gcc /opt/build-binutils/cc
+          ln -sf /usr/bin/x86_64-linux-gnu-g++ /opt/build-binutils/c++
+          echo "/opt/build-binutils" >> "$GITHUB_PATH"
+          test "$($CC -dumpmachine)" = "$HOST"
+          test "$(x86_64-linux-gnu-gcc -dumpmachine)" = "$BUILD_TRIPLET"
+          command -v wine
+          command -v lha
+
+      - name: Build MinGW hosted toolchain
+        id: version
+        run: |
+          make branch mod=gcc branch="$HOSTED_GCC_BRANCH"
+          make update
+          make -j "$(nproc)" all
+          make -j 4 all-sdk
+          package_version=$(cat projects/gcc/gcc/BASE-VER)
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            package_version="${GITHUB_REF_NAME#v}"
+          fi
+          echo "package_version=$package_version" >> "$GITHUB_OUTPUT"
+
+      # Dereference links before crossing the Linux/Windows artifact boundary;
+      # the installed Windows tree must contain ordinary files, not Unix links.
+      - name: Export Windows toolchain tree
+        run: |
+          tar --dereference -C "$(dirname "$PREFIX")" -cf mingw-prefix.tar "$(basename "$PREFIX")"
+          test -s mingw-prefix.tar
+
+      - name: Upload Windows toolchain tree
+        uses: actions/upload-artifact@v7
+        with:
+          name: mingw-prefix-staging
+          path: mingw-prefix.tar
+          if-no-files-found: error
+
+  package_windows:
+    name: Create Windows installer
+    needs: build_mingw
+    runs-on: windows-2025
+    timeout-minutes: 30
+    env:
+      PACKAGE_VERSION: ${{ needs.build_mingw.outputs.package_version }}
+      PACKAGE_BASENAME: m68k-amigaos-gcc-${{ needs.build_mingw.outputs.package_version }}-x86_64-w64-mingw32ucrt
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Download Windows toolchain tree
+        uses: actions/download-artifact@v7
+        with:
+          name: mingw-prefix-staging
+          path: incoming
+
+      - name: Prepare installer tree
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force staging, packages | Out-Null
+          tar -xf incoming/mingw-prefix.tar -C staging
+          $prefix = (Resolve-Path staging/m68k-amigaos).Path
+          Copy-Item setup/cmdline.bat, setup/hello.c $prefix
+
+      # ISCC creates the installer; the generated installer is never executed.
+      # Keep a portable zip as a fallback if the hosted runner cannot compile it.
+      - name: Compile Windows installer
+        id: installer
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          $iscc = Get-Command ISCC.exe -ErrorAction SilentlyContinue
+          if ($null -ne $iscc) {
+            $iscc = $iscc.Source
+          } else {
+            $iscc = @(
+              "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+              "$env:ProgramFiles\Inno Setup 6\ISCC.exe"
+            ) | Where-Object { Test-Path $_ } | Select-Object -First 1
+          }
+          if (-not $iscc) {
+            throw "ISCC.exe was not found"
+          }
+          $env:AMIGA_GCC_VERSION = $env:PACKAGE_VERSION
+          $env:AMIGA_GCC_SOURCE_DIR = (Resolve-Path staging/m68k-amigaos).Path
+          $output = (Resolve-Path packages).Path
+          & $iscc `
+            "--output-dir=$output" `
+            "--output-filename=$env:PACKAGE_BASENAME-setup" `
+            setup/setup2.iss
+          if ($LASTEXITCODE -ne 0) {
+            throw "ISCC failed with exit code $LASTEXITCODE"
+          }
+          if (-not (Test-Path "packages/$env:PACKAGE_BASENAME-setup.exe")) {
+            throw "ISCC did not create the expected installer"
+          }
+
+      - name: Create portable zip fallback
+        if: steps.installer.outcome == 'failure'
+        shell: pwsh
+        run: |
+          Remove-Item packages/*.exe -Force -ErrorAction SilentlyContinue
+          Compress-Archive -Path staging/m68k-amigaos `
+            -DestinationPath "packages/$env:PACKAGE_BASENAME.zip" `
+            -CompressionLevel Optimal
+          "Inno Setup failed; publishing the portable zip fallback." >> $env:GITHUB_STEP_SUMMARY
+
+      - name: Verify Windows package
+        shell: pwsh
+        run: |
+          $packages = @(Get-ChildItem packages -File)
+          if ($packages.Count -ne 1 -or $packages[0].Length -eq 0) {
+            throw "Expected one non-empty Windows package, found $($packages.Count)"
+          }
+          $packages[0].FullName
+
+      - name: Upload Windows package
+        uses: actions/upload-artifact@v7
+        with:
+          name: m68k-amigaos-gcc-hosted-Windows
+          path: packages/*
+          compression-level: 0
+          if-no-files-found: error
