@@ -326,7 +326,7 @@ jobs:
         run: |
           make branch mod=gcc branch="$HOSTED_GCC_BRANCH"
           make update
-          make -j 4 all
+          make -j "$(nproc)" all
           make -j 4 all-sdk
           package_version=$(cat projects/gcc/gcc/BASE-VER)
           if [[ "$GITHUB_REF" == refs/tags/* ]]; then

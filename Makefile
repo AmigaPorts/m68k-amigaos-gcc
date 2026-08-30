@@ -711,12 +711,12 @@ update-mpc:
 # =================================================
 # binutils
 # =================================================
-CONFIG_BINUTILS = --prefix=$(PREFIX) --target=$(TARGET) $(HOST_CONFIGURE) --disable-werror --disable-nls
+CONFIG_BINUTILS = --prefix=$(PREFIX) --target=$(TARGET) $(HOST_CONFIGURE) --disable-werror --disable-nls --without-msgpack
 
 ifeq (,$(strip $(HOST)))
-CONFIG_BINUTILS += --enable-tui --enable-plugins --without-msgpack
+CONFIG_BINUTILS += --enable-tui
 else
-CONFIG_BINUTILS += --disable-doc --disable-gdb --disable-gdbserver --without-msgpack
+CONFIG_BINUTILS += --disable-gdb --disable-gdbserver
 ifneq (,$(findstring mingw,$(HOST)))
 CONFIG_BINUTILS += --enable-plugins
 else
