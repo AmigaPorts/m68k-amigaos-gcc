@@ -99,11 +99,13 @@ ifneq (,$(strip $(TARGET_TOOL_PREFIX)))
 TARGET_CC_FOR_BUILD := $(TARGET_TOOL_PREFIX)gcc
 TARGET_CXX_FOR_BUILD := $(TARGET_TOOL_PREFIX)g++
 TARGET_AR_FOR_BUILD := $(TARGET_TOOL_PREFIX)ar
+TARGET_RANLIB_FOR_BUILD := $(TARGET_TOOL_PREFIX)ranlib
 TARGET_EXEC_PREFIX_FOR_BUILD := $(TARGET_TOOL_PREFIX)
 else ifneq (,$(strip $(HOST_TOOL_PREFIX)))
 TARGET_CC_FOR_BUILD := $(HOST_TOOL_PREFIX)gcc
 TARGET_CXX_FOR_BUILD := $(HOST_TOOL_PREFIX)g++
 TARGET_AR_FOR_BUILD := $(HOST_TOOL_PREFIX)ar
+TARGET_RANLIB_FOR_BUILD := $(HOST_TOOL_PREFIX)ranlib
 TARGET_EXEC_PREFIX_FOR_BUILD := $(HOST_TOOL_PREFIX)
 else
 TARGET_RUNNER_WRAPPER_DIR := $(BUILD_TOOLS)/target-runner
@@ -122,6 +124,7 @@ TARGET_RUNNER_FLAGS = $(if $(filter $*,$(TARGET_RUNNER_COMPILER_TOOL_NAMES)),$(T
 TARGET_RUNNER_WRAPPERS := $(patsubst %,$(TARGET_RUNNER_WRAPPER_DIR)/$(TARGET)-%,$(TARGET_RUNNER_TOOL_NAMES))
 TARGET_CC_FOR_BUILD := $(TARGET_RUNNER_WRAPPER_DIR)/$(TARGET)-gcc
 TARGET_AR_FOR_BUILD := $(TARGET_RUNNER_WRAPPER_DIR)/$(TARGET)-ar
+TARGET_RANLIB_FOR_BUILD := $(TARGET_RUNNER_WRAPPER_DIR)/$(TARGET)-ranlib
 TARGET_CXX_FOR_BUILD := $(TARGET_RUNNER_WRAPPER_DIR)/$(TARGET)-c++
 export PATH := $(TARGET_RUNNER_WRAPPER_DIR):$(PATH)
 endif
@@ -146,6 +149,7 @@ endif
 else
 TARGET_CC_FOR_BUILD ?= $(shell command -v $(TARGET)-gcc 2>/dev/null)
 TARGET_AR_FOR_BUILD := $(PREFIX)/bin/$(TARGET)-ar
+TARGET_RANLIB_FOR_BUILD := $(PREFIX)/bin/$(TARGET)-ranlib
 endif
 
 ifneq (,$(strip $(HOST_RUNNER_SETUP_PREREQ)))
@@ -164,7 +168,29 @@ ifneq (,$(strip $(TARGET_RUNNER_WRAPPER_DIR)))
 $(TARGET_RUNNER_WRAPPER_DIR)/$(TARGET)-%:
 	@mkdir -p $(@D)
 	@test -n "$(HOST_RUNNER)" || { echo "HOST_RUNNER is required to execute HOST=$(HOST) tools while building TARGET=$(TARGET) libraries"; exit 1; }
+ifneq (,$(findstring wine,$(HOST_RUNNER)))
+	@printf '%s\n' '#!/bin/sh' \
+		'attempt=1' \
+		'while :; do' \
+		'  stdout_file=$$(mktemp)' \
+		'  stderr_file=$$(mktemp)' \
+		'  $(HOST_RUNNER) "$(PREFIX)/bin/$(TARGET)-$*$(EXEEXT)" $(TARGET_RUNNER_FLAGS) "$$@" >"$$stdout_file" 2>"$$stderr_file"' \
+		'  status=$$?' \
+		'  if [ "$$status" -ne 0 ] && [ "$$attempt" -lt 3 ] && grep -Eq "wine client error:.*(Connection reset by peer|Broken pipe)|wineserver.*(crash|terminated)" "$$stderr_file"; then' \
+		'    cat "$$stderr_file" >&2' \
+		'    rm -f "$$stdout_file" "$$stderr_file"' \
+		'    attempt=$$((attempt + 1))' \
+		'    sleep 1' \
+		'    continue' \
+		'  fi' \
+		'  cat "$$stdout_file"' \
+		'  cat "$$stderr_file" >&2' \
+		'  rm -f "$$stdout_file" "$$stderr_file"' \
+		'  exit "$$status"' \
+		'done' >$@
+else
 	@printf '%s\n' '#!/bin/sh' 'exec $(HOST_RUNNER) "$(PREFIX)/bin/$(TARGET)-$*$(EXEEXT)" $(TARGET_RUNNER_FLAGS) "$$@"' >$@
+endif
 	@chmod +x $@
 endif
 
@@ -690,7 +716,12 @@ CONFIG_BINUTILS = --prefix=$(PREFIX) --target=$(TARGET) $(HOST_CONFIGURE) --disa
 ifeq (,$(strip $(HOST)))
 CONFIG_BINUTILS += --enable-tui --enable-plugins --without-msgpack
 else
-CONFIG_BINUTILS += --disable-doc --disable-plugins --disable-gdb --disable-gdbserver --without-msgpack
+CONFIG_BINUTILS += --disable-doc --disable-gdb --disable-gdbserver --without-msgpack
+ifneq (,$(findstring mingw,$(HOST)))
+CONFIG_BINUTILS += --enable-plugins
+else
+CONFIG_BINUTILS += --disable-plugins
+endif
 LD_CROSS_MAKE_ENV := bfdplugin_LTLIBRARIES= noinst_LTLIBRARIES=
 LD_CROSS_MAKE_FLAGS := -e
 endif
@@ -1428,6 +1459,13 @@ LIBGCCS := $(patsubst %,$(PREFIX)/lib/gcc/$(TARGET)/$(GCC_VERSION)/%,$(LIBGCCS_N
 libgcc: $(BUILD)/gcc/_libgcc_done
 
 $(BUILD)/gcc/_libgcc_done: $(BUILD)/libnix/_done $(BUILD)/libpthread/_done $(LIBAMIGA) $(GCC_TARGET_PREREQ) $(shell find 2>/dev/null $(PROJECTS)/gcc/libgcc -type f)
+ifneq (,$(strip $(HOST)))
+	# Hosted target compilers do not search GCC's build-tree include directory.
+	# Install libgcc first so libstdc++ can find generated headers such as
+	# unwind.h through the installed compiler include directory.
+	$(L0)"make target libgcc"$(L1) $(MAKE) -C $(BUILD)/gcc $(GCC_TARGET_MAKE_FLAGS) all-target-libgcc $(L2)
+	$(L0)"install target libgcc"$(L1) $(MAKE) -C $(BUILD)/gcc $(GCC_TARGET_MAKE_FLAGS) install-target-libgcc $(L2)
+endif
 	$(L0)"make libgcc"$(L1) $(MAKE) -C $(BUILD)/gcc $(GCC_TARGET_MAKE_FLAGS) all-target $(L2)
 	$(L0)"install libgcc"$(L1) $(MAKE) -C $(BUILD)/gcc $(GCC_TARGET_MAKE_FLAGS) install-target $(L2)
 	@echo "done" >$@
@@ -1507,6 +1545,12 @@ $(PROJECTS)/aros-stuff/pthreads/Makefile:
 # newlib
 # =================================================
 NEWLIB_CONFIG := CC=$(TARGET)-gcc CXX=$(TARGET)-g++
+ifneq (,$(strip $(HOST)))
+# A Canadian-cross build inherits HOST binutils from the environment.  Newlib
+# contains TARGET objects, so its archives must instead be created and indexed
+# by the newly built TARGET tools running through the appropriate runner.
+NEWLIB_CONFIG += AR=$(TARGET_AR_FOR_BUILD) RANLIB=$(TARGET_RANLIB_FOR_BUILD)
+endif
 NEWLIB_FILES = $(shell find 2>/dev/null $(PROJECTS)/newlib-cygwin/newlib -type f)
 
 .PHONY: newlib
