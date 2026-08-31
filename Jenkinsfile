@@ -28,6 +28,11 @@ def notifyFailure(labels, target) {
 }
 
 @NonCPS
+def shouldPublish(branchName, isPullRequest) {
+	return !isPullRequest && ['master', 'gcc10', 'dev'].contains(branchName)
+}
+
+@NonCPS
 def killall_jobs() {
 	def jobname = env.JOB_NAME
 	def buildnum = env.BUILD_NUMBER.toInteger()
@@ -59,6 +64,7 @@ def buildStep(buildConf, DOCKER_ROOT, DOCKERIMAGE, DOCKERTAG, DOCKERFILE, BUILD_
 	def tag = '';
 	def isPullRequest = env.CHANGE_ID?.trim();
 	def branchName = isPullRequest ? env.CHANGE_TARGET : env.BRANCH_NAME;
+	def publish = shouldPublish(branchName, isPullRequest);
 
 	try {
 		checkout scm;
@@ -76,7 +82,8 @@ def buildStep(buildConf, DOCKER_ROOT, DOCKERIMAGE, DOCKERTAG, DOCKERFILE, BUILD_
 			buildenv = 'development';
 			tag = "${DOCKERTAG}-dev";
 		} else {
-			throw new Exception("Invalid branch, stopping build!");
+			buildenv = 'production';
+			tag = "${DOCKERTAG}";
 		}
 
 		def buildArgs = "--build-arg BUILDENV=${buildenv} --build-arg PATHPREFIX=${buildConf.PathPrefix} --build-arg GCC_BRANCH=${buildConf.GCCBranch} --build-arg BINUTILS_BRANCH=${buildConf.BinutilsBranch} --network=host --pull -f ${DOCKERFILE} .";
@@ -86,9 +93,9 @@ def buildStep(buildConf, DOCKER_ROOT, DOCKERIMAGE, DOCKERTAG, DOCKERFILE, BUILD_
 				customImage = docker.build("${DOCKER_ROOT}/${DOCKERIMAGE}:${tag}", buildArgs);
 			}
 
-			if (isPullRequest) {
+			if (!publish) {
 				stage("Skipping publication of ${DOCKERIMAGE}:${tag}") {
-					echo "PR build completed; no image will be pushed.";
+					echo "Unpublished branch or PR build completed; no image will be pushed.";
 				}
 			} else {
 				stage("Pushing to docker hub registry...") {
@@ -107,24 +114,25 @@ def buildManifest(DOCKER_ROOT, DOCKERIMAGE, DOCKERTAG, DOCKERFILE, PLATFORMS, BU
 	def labels = jobLabels(env.JOB_NAME)
 	def buildenv = ''
 	def tag = ''
+	def isPullRequest = env.CHANGE_ID?.trim()
+	def branchName = isPullRequest ? env.CHANGE_TARGET : env.BRANCH_NAME
+	def publish = shouldPublish(branchName, isPullRequest)
 	try {
-		if (env.CHANGE_ID?.trim()) {
+		if (!publish) {
 			stage("Skipping ${DOCKERIMAGE}:${DOCKERTAG} manifest publication") {
-				echo "PR platform builds completed; no manifest will be created and no downstream builds will be triggered.";
+				echo "Unpublished branch or PR platform builds completed; no manifest will be created and no downstream builds will be triggered.";
 			}
 			return;
 		}
 
 		checkout scm;
 
-		if (env.BRANCH_NAME.equals('master')) {
+		if (branchName == 'master' || branchName == 'gcc10') {
 			buildenv = 'production';
 			tag = "${DOCKERTAG}";
-		} else if (env.BRANCH_NAME.equals('dev')) {
+		} else if (branchName == 'dev') {
 			buildenv = 'development';
 			tag = "${DOCKERTAG}-dev";
-		} else {
-			throw new Exception("Invalid branch, stopping build!");
 		}
 
 		docker.withRegistry("https://index.docker.io/v1/", "dockerhub") {

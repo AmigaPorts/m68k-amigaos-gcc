@@ -24,9 +24,6 @@ on:
         description: build AmigaOS and MinGW hosted toolchains
         type: boolean
         default: true
-      hosted_gcc_branch:
-        description: gcc branch for the AmigaOS and MinGW hosted toolchains
-        default: amiga16.2
   # same inputs again: workflow_call, used by release.yml, does not
   # share the workflow_dispatch input declarations
   workflow_call:
@@ -49,18 +46,18 @@ on:
       build_hosted:
         type: boolean
         default: true
-      hosted_gcc_branch:
-        type: string
-        default: amiga16.2
-  # label a pull request "ci-macos" for a macOS build of its merge commit,
-  # "ci-testsuite" for a Linux build with the gcc testsuite, or "ci-cross"
-  # for Linux plus the AmigaOS and MinGW hosted toolchains
+  # Every new pull request revision builds the Linux, AmigaOS-hosted and
+  # MinGW-hosted toolchains. Labels can request an additional specialized
+  # run: "ci-macos", "ci-testsuite", or "ci-cross" to rerun hosted builds.
   pull_request:
-    types: [labeled]
+    types: [opened, reopened, synchronize, labeled]
 
 jobs:
   build:
-    if: github.event_name != 'pull_request' || startsWith(github.event.label.name, 'ci')
+    if: >-
+      github.event_name != 'pull_request' ||
+      github.event.action != 'labeled' ||
+      startsWith(github.event.label.name, 'ci')
     runs-on: ${{ inputs.runner || (github.event.label.name == 'ci-macos' && 'macos-15') || 'ubuntu-24.04' }}
     timeout-minutes: 300
     env:
@@ -205,8 +202,9 @@ jobs:
   build_amigaos:
     name: Build AmigaOS hosted toolchain
     if: >-
-      (github.event_name != 'pull_request' && inputs.build_hosted) ||
-      github.event.label.name == 'ci-cross'
+      (github.event_name == 'pull_request' &&
+        (github.event.action != 'labeled' || github.event.label.name == 'ci-cross')) ||
+      (github.event_name != 'pull_request' && inputs.build_hosted)
     runs-on: ubuntu-24.04
     timeout-minutes: 300
     container:
@@ -225,7 +223,7 @@ jobs:
       BUILD_CXX: x86_64-linux-gnu-g++ -B/opt/build-binutils/
       CC_FOR_BUILD: x86_64-linux-gnu-gcc -B/opt/build-binutils/
       CXX_FOR_BUILD: x86_64-linux-gnu-g++ -B/opt/build-binutils/
-      HOSTED_GCC_BRANCH: ${{ inputs.hosted_gcc_branch || 'amiga16.2' }}
+      GCC_VER: ${{ inputs.gcc_version || '16.2' }}
 
     steps:
       - uses: actions/checkout@v7
@@ -246,7 +244,7 @@ jobs:
 
       - name: Build AmigaOS hosted toolchain
         run: |
-          make branch mod=gcc branch="$HOSTED_GCC_BRANCH"
+          make branch mod=gcc branch="amiga$GCC_VER"
           make update
           make gcc-prerequisites
           make -j "$(nproc)" all
@@ -273,8 +271,9 @@ jobs:
   build_mingw:
     name: Build MinGW hosted toolchain
     if: >-
-      (github.event_name != 'pull_request' && inputs.build_hosted) ||
-      github.event.label.name == 'ci-cross'
+      (github.event_name == 'pull_request' &&
+        (github.event.action != 'labeled' || github.event.label.name == 'ci-cross')) ||
+      (github.event_name != 'pull_request' && inputs.build_hosted)
     runs-on: ubuntu-24.04
     timeout-minutes: 300
     container:
@@ -295,7 +294,7 @@ jobs:
       BUILD_CXX: x86_64-linux-gnu-g++ -B/opt/build-binutils/
       CC_FOR_BUILD: x86_64-linux-gnu-gcc -B/opt/build-binutils/
       CXX_FOR_BUILD: x86_64-linux-gnu-g++ -B/opt/build-binutils/
-      HOSTED_GCC_BRANCH: ${{ inputs.hosted_gcc_branch || 'amiga16.2' }}
+      GCC_VER: ${{ inputs.gcc_version || '16.2' }}
 
     steps:
       - uses: actions/checkout@v7
@@ -324,7 +323,7 @@ jobs:
       - name: Build MinGW hosted toolchain
         id: version
         run: |
-          make branch mod=gcc branch="$HOSTED_GCC_BRANCH"
+          make branch mod=gcc branch="amiga$GCC_VER"
           make update
           make -j "$(nproc)" all
           make -j 4 all-sdk
