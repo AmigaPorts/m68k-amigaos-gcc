@@ -20,7 +20,7 @@ set_board_info ldflags "-lpthread"
 set_board_info ldscript "";
 
 set_board_info sim vamos
-set_board_info sim,options "-C 68020 -s 4096 -m 8192"
+set_board_info sim,options "-C 68020 -s 4096 -m 11264"
 set_board_info gcc,stack_size 4096
 set_board_info isremote 0
 set_board_info slow_simulator 0
