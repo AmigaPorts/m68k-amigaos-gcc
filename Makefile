@@ -176,7 +176,7 @@ ifneq (,$(findstring wine,$(HOST_RUNNER)))
 		'  stderr_file=$$(mktemp)' \
 		'  $(HOST_RUNNER) "$(PREFIX)/bin/$(TARGET)-$*$(EXEEXT)" $(TARGET_RUNNER_FLAGS) "$$@" >"$$stdout_file" 2>"$$stderr_file"' \
 		'  status=$$?' \
-		'  if [ "$$status" -ne 0 ] && [ "$$attempt" -lt 3 ] && grep -Eq "wine client error:.*(Connection reset by peer|Broken pipe)|wineserver.*(crash|terminated)" "$$stderr_file"; then' \
+		'  if [ "$$status" -ne 0 ] && [ "$$attempt" -lt 3 ] && grep -Eq "wine client error:.*(Connection reset by peer|Broken pipe)|wineserver.*(crash|terminated)|fatal error: cannot execute .*: CreateProcess: No such file or directory" "$$stderr_file"; then' \
 		'    cat "$$stderr_file" >&2' \
 		'    rm -f "$$stdout_file" "$$stderr_file"' \
 		'    attempt=$$((attempt + 1))' \
