@@ -80,6 +80,8 @@ WINEDEBUG ?= -all
 WINEBOOT ?= wineboot
 WINEPATH ?= Z:$(abspath $(PREFIX)/bin)
 WINE_RUNTIME_DIR ?= /tmp/m68k-amigaos-gcc-wine-$(shell id -u)
+WINE_RUNNER_LOCK ?= $(BUILD_TOOLS)/wine-runner.lock
+WINE_RUNNER_SERIAL ?= $(BUILD_TOOLS)/wine-runner.serial
 XDG_RUNTIME_DIR := $(WINE_RUNTIME_DIR)
 MINGW_HOST_RUNTIME_SOURCE ?= $(shell $(CC) -print-file-name=libwinpthread-1.dll)
 MINGW_HOST_RUNTIME := $(PREFIX)/bin/libwinpthread-1.dll
@@ -190,10 +192,15 @@ ifneq (,$(findstring wine,$(HOST_RUNNER)))
 		'while :; do' \
 		'  stdout_file=$$(mktemp)' \
 		'  stderr_file=$$(mktemp)' \
-		'  $(HOST_RUNNER) "$(PREFIX)/bin/$(TARGET)-$*$(EXEEXT)" $(TARGET_RUNNER_FLAGS) "$$@" >"$$stdout_file" 2>"$$stderr_file"' \
+		'  if [ -e "$(WINE_RUNNER_SERIAL)" ]; then' \
+		'    /usr/bin/flock "$(WINE_RUNNER_LOCK)" $(HOST_RUNNER) "$(PREFIX)/bin/$(TARGET)-$*$(EXEEXT)" $(TARGET_RUNNER_FLAGS) "$$@" >"$$stdout_file" 2>"$$stderr_file"' \
+		'  else' \
+		'    $(HOST_RUNNER) "$(PREFIX)/bin/$(TARGET)-$*$(EXEEXT)" $(TARGET_RUNNER_FLAGS) "$$@" >"$$stdout_file" 2>"$$stderr_file"' \
+		'  fi' \
 		'  status=$$?' \
 		'  if [ "$$status" -ne 0 ] && [ "$$attempt" -lt 3 ] && grep -Eq "wine client error:.*(Connection reset by peer|Broken pipe)|wineserver.*(crash|terminated)|fatal error: cannot execute .*: CreateProcess: No such file or directory" "$$stderr_file"; then' \
 		'    cat "$$stderr_file" >&2' \
+		'    : >"$(WINE_RUNNER_SERIAL)"' \
 		'    rm -f "$$stdout_file" "$$stderr_file"' \
 		'    attempt=$$((attempt + 1))' \
 		'    sleep 1' \
