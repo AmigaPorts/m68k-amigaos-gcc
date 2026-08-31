@@ -172,14 +172,25 @@ $(TARGET_RUNNER_WRAPPER_DIR)/$(TARGET)-%: Makefile
 	@test -n "$(HOST_RUNNER)" || { echo "HOST_RUNNER is required to execute HOST=$(HOST) tools while building TARGET=$(TARGET) libraries"; exit 1; }
 ifneq (,$(findstring wine,$(HOST_RUNNER)))
 	@printf '%s\n' '#!/bin/sh' \
-		'response_file=$$(mktemp .m68k-amigaos-tool-XXXXXX.rsp)' \
-		'trap '\''rm -f "$$response_file"'\'' EXIT HUP INT TERM' \
-		'printf '\''%s\n'\'' "$$@" | tr -d '\''\r'\'' | sed '\''s/\\/\\\\/g; s/"/\\"/g; s/^/"/; s/$$/"/'\'' >"$$response_file"' \
+		'response_file=' \
+		'case "$*" in' \
+		'  ar|gcc-ar)' \
+		'    arg_bytes=0' \
+		'    for arg do arg_bytes=$$((arg_bytes + $${#arg} + 1)); done' \
+		'    if [ "$$arg_bytes" -gt 16000 ]; then' \
+		'      response_file=.m68k-amigaos-tool-$$$$.rsp' \
+		'      cr=$$(printf '\''\r'\'')' \
+		'      for arg do arg=$${arg%"$$cr"}; printf '\''"%s"\n'\'' "$$arg"; done >"$$response_file"' \
+		'      set -- "@$$response_file"' \
+		'    fi' \
+		'    ;;' \
+		'esac' \
+		'trap '\''[ -z "$$response_file" ] || rm -f "$$response_file"'\'' EXIT HUP INT TERM' \
 		'attempt=1' \
 		'while :; do' \
 		'  stdout_file=$$(mktemp)' \
 		'  stderr_file=$$(mktemp)' \
-		'  $(HOST_RUNNER) "$(PREFIX)/bin/$(TARGET)-$*$(EXEEXT)" $(TARGET_RUNNER_FLAGS) "@$$response_file" >"$$stdout_file" 2>"$$stderr_file"' \
+		'  $(HOST_RUNNER) "$(PREFIX)/bin/$(TARGET)-$*$(EXEEXT)" $(TARGET_RUNNER_FLAGS) "$$@" >"$$stdout_file" 2>"$$stderr_file"' \
 		'  status=$$?' \
 		'  if [ "$$status" -ne 0 ] && [ "$$attempt" -lt 3 ] && grep -Eq "wine client error:.*(Connection reset by peer|Broken pipe)|wineserver.*(crash|terminated)|fatal error: cannot execute .*: CreateProcess: No such file or directory" "$$stderr_file"; then' \
 		'    cat "$$stderr_file" >&2' \
