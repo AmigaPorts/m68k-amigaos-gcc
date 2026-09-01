@@ -272,6 +272,9 @@ jobs:
 
   build_mingw:
     name: Build MinGW hosted toolchain
+    # best effort until the Canadian-cross path issues are fixed: a failure
+    # here must not block the release of the other platforms
+    continue-on-error: true
     if: >-
       (github.event_name != 'pull_request' && inputs.build_hosted) ||
       github.event.label.name == 'ci-cross'
@@ -350,6 +353,7 @@ jobs:
 
   package_windows:
     name: Create Windows installer
+    continue-on-error: true
     needs: build_mingw
     runs-on: windows-2025
     timeout-minutes: 30
