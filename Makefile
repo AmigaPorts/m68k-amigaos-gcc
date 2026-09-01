@@ -1434,7 +1434,7 @@ $(BUILD)/clib2/_done: $(PROJECTS)/clib2/LICENSE $(shell find 2>/dev/null $(PROJE
 	@mkdir -p $(BUILD)/clib2/
 	@rsync -a --no-group $(PROJECTS)/clib2/library/* $(BUILD)/clib2
 	@cd $(BUILD)/clib2 && find * -name lib\*.a -delete
-	$(L0)"make clib2"$(L1) $(MAKE) -C $(BUILD)/clib2 -f GNUmakefile.68k -j1 $(L2)
+	$(L0)"make clib2"$(L1) $(MAKE) -C $(BUILD)/clib2 -f GNUmakefile.68k$(L2)
 	@mkdir -p $(PREFIX)/$(TARGET)/clib2
 	@rsync -a --no-group $(BUILD)/clib2/include $(PREFIX)/$(TARGET)/clib2
 	@rsync -a --no-group $(BUILD)/clib2/lib $(PREFIX)/$(TARGET)/clib2
