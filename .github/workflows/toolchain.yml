@@ -353,6 +353,14 @@ jobs:
             "$smoke_src" -o "$smoke_out"
           test -s "$smoke_dir/smoke"
 
+      - name: Free build space
+        run: |
+          make clean
+          rm -rf projects download \
+            "$RUNNER_TEMP/mingw-smoke" \
+            "$RUNNER_TEMP/wine-home" \
+            "$RUNNER_TEMP/wine-runtime"
+
       # Dereference links before crossing the Linux/Windows artifact boundary;
       # the installed Windows tree must contain ordinary files, not Unix links.
       - name: Export Windows toolchain tree
