@@ -43,44 +43,12 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ github.ref_name }}
         run: |
-          # search from the tag itself, excluding it: "$TAG^" would only
-          # walk the first-parent lineage and miss the previous tag when
-          # the release commit is a merge
-          PREV_TAG=$(git describe --tags --abbrev=0 --match='v*' --exclude="$TAG" "$TAG" 2>/dev/null || true)
-          if [ -n "$PREV_TAG" ]; then
-            RANGE="$PREV_TAG..$TAG"
-          else
-            RANGE="$TAG"
-          fi
-          # --notes-file, so a tag message or commit subject can never be read
-          # as workflow syntax the way a $GITHUB_OUTPUT heredoc can.
-          #
-          # The tag's message body, if it has one, becomes the prose at the top
-          # of the release; write it with "git tag -a -e". --generate-notes
-          # appends the GitHub "What's Changed" section listing the pull
-          # requests merged since the previous tag; commits pushed directly
-          # to a branch do not appear there, so the full commit list is kept
-          # in a collapsed section below it.
-          {
-            NOTES=$(git tag -l --format='%(contents:body)' "$TAG")
-            if [ -n "$NOTES" ]; then
-              printf '%s\n\n' "$NOTES"
-            fi
-          } > notes.md
+          # The tag's message body becomes the prose at the top of the
+          # release; write it with "git tag -a -e". The script appends the
+          # "What's Changed" PR list and the collapsed commit list, and can
+          # be run locally to preview the notes before pushing a tag.
+          # --notes-file, so a tag message or commit subject can never be
+          # read as workflow syntax the way a $GITHUB_OUTPUT heredoc can.
+          .github/scripts/gen-release-notes.sh "$TAG" > notes.md
           gh release create "$TAG" m68k-amigaos-gcc-* \
-            --title "Release ${TAG#v}" --notes-file notes.md --generate-notes
-          {
-            echo
-            echo "<details><summary>All commits</summary>"
-            echo
-            git log --pretty=format:"- %h: %s" "$RANGE"
-            echo
-            echo
-            echo "</details>"
-          } > commits.md
-          gh release view "$TAG" --json body -q .body > body.md
-          # Reformat the generated PR bullets to the house style: "- Change summary (#nn by @author)"
-          sed -E 's|^\* (.*) by @([A-Za-z0-9-]+) in https://github\.com/[^ ]+/pull/([0-9]+)\r?$|- \1 (#\3 by @\2)|' \
-            body.md > body-fmt.md
-          cat body-fmt.md commits.md > full.md
-          gh release edit "$TAG" --notes-file full.md
+            --title "Release ${TAG#v}" --notes-file notes.md
