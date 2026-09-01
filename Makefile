@@ -81,7 +81,11 @@ WINEBOOT ?= wineboot
 WINEPATH ?= Z:$(abspath $(PREFIX)/bin)
 WINE_RUNTIME_DIR ?= /tmp/m68k-amigaos-gcc-wine-$(shell id -u)
 WINE_RUNNER_LOCK ?= $(BUILD_TOOLS)/wine-runner.lock
-WINE_RUNNER_SERIAL ?= $(BUILD_TOOLS)/wine-runner.serial
+# Wine becomes unreliable when several Windows-hosted GCC drivers launch
+# cc1/as at once.  Bound only those Wine invocations; the rest of the build
+# keeps the parallelism requested from make.  Two slots avoid the runtime
+# failures without reducing a Canadian cross build to fully serial execution.
+WINE_RUNNER_SLOTS ?= 2
 XDG_RUNTIME_DIR := $(WINE_RUNTIME_DIR)
 MINGW_HOST_RUNTIME_SOURCE ?= $(shell $(CC) -print-file-name=libwinpthread-1.dll)
 MINGW_HOST_RUNTIME := $(PREFIX)/bin/libwinpthread-1.dll
@@ -188,19 +192,22 @@ ifneq (,$(findstring wine,$(HOST_RUNNER)))
 		'    ;;' \
 		'esac' \
 		'trap '\''[ -z "$$response_file" ] || rm -f "$$response_file"'\'' EXIT HUP INT TERM' \
+		'slot=1' \
+		'while :; do' \
+		'  exec 9>"$(WINE_RUNNER_LOCK).$$slot"' \
+		'  if /usr/bin/flock -n 9; then break; fi' \
+		'  exec 9>&-' \
+		'  slot=$$((slot + 1))' \
+		'  if [ "$$slot" -gt "$(WINE_RUNNER_SLOTS)" ]; then slot=1; sleep 0.05; fi' \
+		'done' \
 		'attempt=1' \
 		'while :; do' \
 		'  stdout_file=$$(mktemp)' \
 		'  stderr_file=$$(mktemp)' \
-		'  if [ -e "$(WINE_RUNNER_SERIAL)" ]; then' \
-		'    /usr/bin/flock "$(WINE_RUNNER_LOCK)" $(HOST_RUNNER) "$(PREFIX)/bin/$(TARGET)-$*$(EXEEXT)" $(TARGET_RUNNER_FLAGS) "$$@" >"$$stdout_file" 2>"$$stderr_file"' \
-		'  else' \
-		'    $(HOST_RUNNER) "$(PREFIX)/bin/$(TARGET)-$*$(EXEEXT)" $(TARGET_RUNNER_FLAGS) "$$@" >"$$stdout_file" 2>"$$stderr_file"' \
-		'  fi' \
+		'  $(HOST_RUNNER) "$(PREFIX)/bin/$(TARGET)-$*$(EXEEXT)" $(TARGET_RUNNER_FLAGS) "$$@" >"$$stdout_file" 2>"$$stderr_file"' \
 		'  status=$$?' \
 		'  if [ "$$status" -ne 0 ] && [ "$$attempt" -lt 3 ] && grep -Eq "wine client error:.*(Connection reset by peer|Broken pipe)|wineserver.*(crash|terminated)|fatal error: cannot execute .*: CreateProcess: No such file or directory" "$$stderr_file"; then' \
 		'    cat "$$stderr_file" >&2' \
-		'    : >"$(WINE_RUNNER_SERIAL)"' \
 		'    rm -f "$$stdout_file" "$$stderr_file"' \
 		'    attempt=$$((attempt + 1))' \
 		'    sleep 1' \
