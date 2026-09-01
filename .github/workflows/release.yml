@@ -56,16 +56,28 @@ jobs:
           # as workflow syntax the way a $GITHUB_OUTPUT heredoc can.
           #
           # The tag's message body, if it has one, becomes the prose at the top
-          # of the release; write it with "git tag -a -e". A tag with only a
-          # subject line leaves just the commit list.
+          # of the release; write it with "git tag -a -e". --generate-notes
+          # appends the GitHub "What's Changed" section listing the pull
+          # requests merged since the previous tag; commits pushed directly
+          # to a branch do not appear there, so the full commit list is kept
+          # in a collapsed section below it.
           {
             NOTES=$(git tag -l --format='%(contents:body)' "$TAG")
             if [ -n "$NOTES" ]; then
               printf '%s\n\n' "$NOTES"
             fi
-            echo "## Changes"
-            echo
-            git log --pretty=format:"- %h: %s" "$RANGE"
           } > notes.md
           gh release create "$TAG" m68k-amigaos-gcc-* \
-            --title "Release ${TAG#v}" --notes-file notes.md
+            --title "Release ${TAG#v}" --notes-file notes.md --generate-notes
+          {
+            echo
+            echo "<details><summary>All commits</summary>"
+            echo
+            git log --pretty=format:"- %h: %s" "$RANGE"
+            echo
+            echo
+            echo "</details>"
+          } > commits.md
+          gh release view "$TAG" --json body -q .body > body.md
+          cat body.md commits.md > full.md
+          gh release edit "$TAG" --notes-file full.md
