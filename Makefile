@@ -69,6 +69,20 @@ BUILD_TOOLS := $(BUILD)/build-tools
 # Keep them out of PREFIX so they cannot leak into target packages.
 BUILD_TOOLS_PREFIX ?= $(BUILD_TOOLS)/prefix
 
+# A Canadian cross needs a compiler which runs on BUILD and emits TARGET
+# objects.  Using the newly built MinGW compiler through Wine for every target
+# library source eventually exhausts Wine's process launcher.  Build the
+# build-to-target tools privately instead; GCC and binutils for HOST are still
+# built once and only the private bootstrap compiler is duplicated.
+ifneq (,$(findstring mingw,$(HOST)))
+ifeq (,$(strip $(TARGET_TOOL_PREFIX)))
+TARGET_BUILD_TOOLS_PREFIX := $(BUILD_TOOLS)/target-cross/prefix
+TARGET_BUILD_TOOLS_BUILD := $(BUILD_TOOLS)/target-cross/build
+TARGET_BUILD_TOOLS_PREREQ := $(TARGET_BUILD_TOOLS_BUILD)/_done
+TARGET_TOOL_PREFIX := $(TARGET_BUILD_TOOLS_PREFIX)/bin/$(TARGET)-
+endif
+endif
+
 # GitHub container jobs may provide a HOME owned by a different uid.  Keep
 # Wine's prefix in the writable build tree and initialize it once before a
 # Windows-hosted compiler can be executed.  XDG_RUNTIME_DIR must stay short:
@@ -142,7 +156,7 @@ ifneq (,$(strip $(TARGET_EXEC_PREFIX_FOR_BUILD)))
 TARGET_EXEC_WRAPPER_DIR := $(BUILD_TOOLS)/target-exec
 TARGET_EXEC_TOOL_NAMES := ar as ld ld.bfd nm objcopy objdump ranlib strip
 TARGET_EXEC_WRAPPERS := $(patsubst %,$(TARGET_EXEC_WRAPPER_DIR)/%,$(TARGET_EXEC_TOOL_NAMES))
-TARGET_GCC_INCLUDE_FOR_BUILD := $(shell $(TARGET_CC_FOR_BUILD) -print-file-name=include 2>/dev/null)
+TARGET_GCC_INCLUDE_FOR_BUILD = $(shell $(TARGET_CC_FOR_BUILD) -print-file-name=include 2>/dev/null)
 TARGET_COMPILER_WRAPPER_DIR := $(BUILD_TOOLS)/target-compiler
 TARGET_COMPILER_TOOL_NAMES := gcc g++ c++ cpp
 TARGET_COMPILER_WRAPPERS := $(patsubst %,$(TARGET_COMPILER_WRAPPER_DIR)/$(TARGET)-%,$(TARGET_COMPILER_TOOL_NAMES))
@@ -225,16 +239,18 @@ endif
 endif
 
 ifneq (,$(strip $(TARGET_EXEC_WRAPPER_DIR)))
+$(TARGET_EXEC_WRAPPERS): $(TARGET_BUILD_TOOLS_PREREQ)
+
 $(TARGET_EXEC_WRAPPER_DIR)/%:
 	@mkdir -p $(@D)
 	@test -x "$(TARGET_EXEC_PREFIX_FOR_BUILD)$*"
 	@ln -sf "$(TARGET_EXEC_PREFIX_FOR_BUILD)$*" $@
 
-$(TARGET_COMPILER_WRAPPERS): $(TARGET_COMPILER_WRAPPER_DIR)/$(TARGET)-%: $(TARGET_EXEC_WRAPPERS)
+$(TARGET_COMPILER_WRAPPERS): $(TARGET_COMPILER_WRAPPER_DIR)/$(TARGET)-%: $(TARGET_EXEC_WRAPPERS) Makefile
 	@mkdir -p $(@D)
 	@test -x "$(TARGET_EXEC_PREFIX_FOR_BUILD)$*"
 	@test -n "$(TARGET_GCC_INCLUDE_FOR_BUILD)"
-	@printf '%s\n' '#!/bin/sh' 'exec "$(TARGET_EXEC_PREFIX_FOR_BUILD)$*" -B"$(TARGET_EXEC_WRAPPER_DIR)/" -isystem "$(TARGET_GCC_INCLUDE_FOR_BUILD)" "$$@"' >$@
+	@printf '%s\n' '#!/bin/sh' 'exec "$(TARGET_EXEC_PREFIX_FOR_BUILD)$*" -B"$(TARGET_EXEC_WRAPPER_DIR)/" -B"$(PREFIX)/lib/gcc/$(TARGET)/$(GCC_VERSION)/" -B"$(PREFIX)/$(TARGET)/lib/" -isystem "$(TARGET_GCC_INCLUDE_FOR_BUILD)" "$$@"' >$@
 	@chmod +x $@
 
 $(TARGET_PREFIXED_EXEC_WRAPPERS): $(TARGET_COMPILER_WRAPPER_DIR)/$(TARGET)-%: $(TARGET_EXEC_WRAPPER_DIR)/%
@@ -492,7 +508,7 @@ help:
 # =================================================
 # all
 # =================================================
-.PHONY: all gcc gdb gprof binutils fd2sfd fd2pragma ira sfdc vasm libnix ixemul libgcc clib2 libdebug libpthread ndk ndk13 min libnix4.library
+.PHONY: all gcc gdb gprof binutils build-target-tools fd2sfd fd2pragma ira sfdc vasm libnix ixemul libgcc clib2 libdebug libpthread ndk ndk13 min libnix4.library
 ifeq (,$(strip $(HOST)))
 all: gcc binutils gdb gprof fd2sfd fd2pragma ira sfdc vasm libnix ixemul libgcc clib2 libdebug libpthread ndk ndk13 libnix4.library
 else
@@ -500,6 +516,8 @@ all: gcc binutils gprof fd2sfd fd2pragma ira sfdc vasm libnix ixemul libgcc clib
 endif
 
 min: binutils gcc gprof libnix libgcc libnix4.library
+
+build-target-tools: $(TARGET_BUILD_TOOLS_PREREQ)
 
 # =================================================
 # clean
@@ -1015,7 +1033,7 @@ ifneq ($(OWNGMP),)
 GCC_PREREQUISITE_SOURCES := $(PROJECTS)/$(GMP)/configure $(PROJECTS)/$(MPFR)/configure $(PROJECTS)/$(MPC)/configure
 endif
 
-$(BUILD)/gcc/Makefile: Makefile $(PROJECTS)/gcc/configure $(BUILD)/binutils/_done $(GCC_PREREQUISITE_SOURCES) $(GCC_HOST_COMPAT_PREREQ) $(TARGET_RUNNER_WRAPPERS) | $(PREFIX_STAMP)
+$(BUILD)/gcc/Makefile: Makefile $(PROJECTS)/gcc/configure $(BUILD)/binutils/_done $(GCC_PREREQUISITE_SOURCES) $(GCC_HOST_COMPAT_PREREQ) $(TARGET_RUNNER_WRAPPERS) $(TARGET_BUILD_TOOLS_PREREQ) $(TARGET_EXEC_WRAPPERS) $(TARGET_COMPILER_WRAPPERS) $(TARGET_PREFIXED_EXEC_WRAPPERS) | $(PREFIX_STAMP)
 	@mkdir -p $(BUILD)/gcc
 ifneq ($(OWNGMP),)
 	@mkdir -p $(PROJECTS)/gcc/gmp
@@ -1039,6 +1057,59 @@ $(PROJECTS)/gcc/configure:
 	for i in $$(find patches/gcc/ -type f 2>/dev/null); \
 	do if [[ "$$i" == *.diff ]] ; \
 		then j=$${i:8}; patch -N "$(PROJECTS)/$${j%.diff}" "$$i"; fi ; done
+
+ifneq (,$(strip $(TARGET_BUILD_TOOLS_PREREQ)))
+TARGET_BUILD_MACHINE := $(if $(strip $(BUILD_TRIPLET)),$(BUILD_TRIPLET),$(shell $(BUILD_CC) -dumpmachine 2>/dev/null))
+TARGET_BUILD_TOOL_PREFIX := $(TARGET_BUILD_MACHINE)-
+TARGET_BUILD_TOOLS_ENV := CC="$(BUILD_CC)" CXX="$(BUILD_CXX)" \
+	CC_FOR_BUILD="$(BUILD_CC)" CXX_FOR_BUILD="$(BUILD_CXX)" \
+	AR="$(TARGET_BUILD_TOOL_PREFIX)ar" AS="$(TARGET_BUILD_TOOL_PREFIX)as" \
+	LD="$(TARGET_BUILD_TOOL_PREFIX)ld" NM="$(TARGET_BUILD_TOOL_PREFIX)nm" \
+	OBJCOPY="$(TARGET_BUILD_TOOL_PREFIX)objcopy" OBJDUMP="$(TARGET_BUILD_TOOL_PREFIX)objdump" \
+	RANLIB="$(TARGET_BUILD_TOOL_PREFIX)ranlib" READELF="$(TARGET_BUILD_TOOL_PREFIX)readelf" \
+	STRIP="$(TARGET_BUILD_TOOL_PREFIX)strip" \
+	PATH="$(TARGET_BUILD_TOOLS_PREFIX)/bin:$(PATH)"
+TARGET_BUILD_BINUTILS_CONFIG := --prefix=$(TARGET_BUILD_TOOLS_PREFIX) \
+	--build=$(TARGET_BUILD_MACHINE) --host=$(TARGET_BUILD_MACHINE) \
+	--target=$(TARGET) --disable-werror --disable-nls --without-msgpack \
+	--disable-gdb --disable-gdbserver --enable-plugins
+TARGET_BUILD_GCC_CONFIG := --prefix=$(TARGET_BUILD_TOOLS_PREFIX) \
+	--build=$(TARGET_BUILD_MACHINE) --host=$(TARGET_BUILD_MACHINE) \
+	--target=$(TARGET) --enable-languages=c,c++,objc,$(ADDLANG) \
+	--enable-version-specific-runtime-libs --enable-lto \
+	--disable-bootstrap --disable-libssp --disable-nls --without-zstd \
+	--disable-shared --disable-werror --enable-threads=$(THREADS) \
+	--with-headers=$(PROJECTS)/newlib-cygwin/newlib/libc/sys/amigaos/include/ \
+	--with-build-time-tools=$(TARGET_BUILD_TOOLS_PREFIX)/$(TARGET)/bin \
+	--with-gmp=/usr --with-mpfr=/usr --with-mpc=/usr
+
+$(TARGET_BUILD_TOOLS_PREREQ): $(TARGET_BUILD_TOOLS_BUILD)/gcc/_done
+	@touch $@
+
+$(TARGET_BUILD_TOOLS_BUILD)/binutils/_done: $(TARGET_BUILD_TOOLS_BUILD)/binutils/Makefile
+	$(L0)"make build-to-target binutils"$(L1) $(TARGET_BUILD_TOOLS_ENV) $(MAKE) -C $(TARGET_BUILD_TOOLS_BUILD)/binutils all-gas all-binutils all-ld $(L2)
+	$(L0)"install build-to-target binutils"$(L1) $(TARGET_BUILD_TOOLS_ENV) $(MAKE) -C $(TARGET_BUILD_TOOLS_BUILD)/binutils install-gas install-binutils install-ld $(L2)
+	@touch $@
+
+$(TARGET_BUILD_TOOLS_BUILD)/binutils/Makefile: Makefile $(PROJECTS)/binutils/configure
+	@mkdir -p $(@D)
+	$(L0)"configure build-to-target binutils"$(L1) cd $(@D) && $(E) $(TARGET_BUILD_TOOLS_ENV) $(PROJECTS)/binutils/configure $(TARGET_BUILD_BINUTILS_CONFIG) $(L2)
+
+$(TARGET_BUILD_TOOLS_BUILD)/gcc/_done: $(TARGET_BUILD_TOOLS_BUILD)/gcc/Makefile $(TARGET_BUILD_TOOLS_BUILD)/binutils/_done
+	$(L0)"make build-to-target gcc"$(L1) $(TARGET_BUILD_TOOLS_ENV) $(MAKE) -C $(TARGET_BUILD_TOOLS_BUILD)/gcc all-gcc $(L2)
+	$(L0)"install build-to-target gcc"$(L1) $(TARGET_BUILD_TOOLS_ENV) $(MAKE) -C $(TARGET_BUILD_TOOLS_BUILD)/gcc install-gcc $(L2)
+	@if [ -d "$(TARGET_BUILD_TOOLS_PREFIX)/$(TARGET)/sys-include" ] && [ ! -L "$(TARGET_BUILD_TOOLS_PREFIX)/$(TARGET)/sys-include" ]; then \
+		mv "$(TARGET_BUILD_TOOLS_PREFIX)/$(TARGET)/sys-include" "$(TARGET_BUILD_TOOLS_PREFIX)/$(TARGET)/bootstrap-sys-include"; \
+	fi
+	@for dir in include sys-include ndk-include ndk13-include libnix ixemul clib2; do \
+		ln -sfn "$(PREFIX)/$(TARGET)/$$dir" "$(TARGET_BUILD_TOOLS_PREFIX)/$(TARGET)/$$dir"; \
+	done
+	@touch $@
+
+$(TARGET_BUILD_TOOLS_BUILD)/gcc/Makefile: Makefile $(PROJECTS)/gcc/configure $(PROJECTS)/newlib-cygwin/newlib/configure $(TARGET_BUILD_TOOLS_BUILD)/binutils/_done
+	@mkdir -p $(@D)
+	$(L0)"configure build-to-target gcc"$(L1) cd $(@D) && $(E) $(TARGET_BUILD_TOOLS_ENV) $(PROJECTS)/gcc/configure $(TARGET_BUILD_GCC_CONFIG) $(L2)
+endif
 
 # =================================================
 # fd2sfd

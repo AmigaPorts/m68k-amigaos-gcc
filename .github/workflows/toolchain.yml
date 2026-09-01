@@ -333,6 +333,26 @@ jobs:
           fi
           echo "package_version=$package_version" >> "$GITHUB_OUTPUT"
 
+      - name: Test MinGW hosted compiler
+        run: |
+          smoke_dir="$RUNNER_TEMP/mingw-smoke"
+          wine_home="$RUNNER_TEMP/wine-home"
+          wine_runtime="$RUNNER_TEMP/wine-runtime"
+          mkdir -p "$smoke_dir" "$wine_home" "$wine_runtime"
+          chmod 700 "$wine_runtime"
+          export HOME="$wine_home"
+          export WINEPREFIX="$wine_home/prefix"
+          export XDG_RUNTIME_DIR="$wine_runtime"
+          export WINEDEBUG=-all
+          export WINEPATH="$(winepath -w "$PREFIX/bin")"
+          printf '%s\n' 'int main(void) { return 0; }' > "$smoke_dir/smoke.c"
+          smoke_src=$(winepath -w "$smoke_dir/smoke.c")
+          smoke_out=$(winepath -w "$smoke_dir/smoke")
+          wine "$PREFIX/bin/m68k-amigaos-gcc.exe" \
+            -flto -mcrt=nix20 -mcpu=68040 -mhard-float \
+            "$smoke_src" -o "$smoke_out"
+          test -s "$smoke_dir/smoke"
+
       # Dereference links before crossing the Linux/Windows artifact boundary;
       # the installed Windows tree must contain ordinary files, not Unix links.
       - name: Export Windows toolchain tree
