@@ -63,27 +63,27 @@ on:
       checkout_ref:
         type: string
         default: ""
-  # Every new pull request revision builds the Linux, AmigaOS-hosted and
-  # MinGW-hosted toolchains, and the fast amigaos.exp target testsuite runs
-  # on every build. Labels request an additional specialized run of the
-  # merge commit:
-  #  - "ci-macos": macOS build
-  #  - "ci-testsuite-c": Linux build with the gcc C testsuite
-  #  - "ci-testsuite-cxx": Linux build with the g++ testsuite (slow)
-  #  - "ci-cross": Linux plus the AmigaOS and MinGW hosted toolchains
+  # Nothing builds on a plain push; add a label to build the merge commit,
+  # and re-add it to rebuild after pushing new commits:
+  #  - "ci-linux": the Linux toolchain (plus the fast amigaos.exp testsuite)
+  #  - "ci-macos": the macOS toolchain
+  #  - "ci-amigaos": the AmigaOS-hosted toolchain
+  #  - "ci-mingw": the MinGW-hosted toolchain
+  #  - "ci-testsuite-c": Linux toolchain with the gcc C testsuite
+  #  - "ci-testsuite-cxx": Linux toolchain with the g++ testsuite (slow)
   pull_request:
-    types: [opened, reopened, synchronize, labeled]
+    types: [labeled]
 
 jobs:
   build:
     if: >-
       github.event_name != 'pull_request' ||
-      github.event.action != 'labeled' ||
-      startsWith(github.event.label.name, 'ci')
+      contains(fromJSON('["ci-linux", "ci-macos", "ci-testsuite-c", "ci-testsuite-cxx"]'),
+               github.event.label.name)
     runs-on: ${{ inputs.runner || (github.event.label.name == 'ci-macos' && 'macos-15') || 'ubuntu-24.04' }}
     timeout-minutes: 300
     env:
-      RUN_TESTSUITE: ${{ inputs.run_testsuite || github.event.label.name == 'ci-testsuite' || github.event.label.name == 'ci-testsuite-c' }}
+      RUN_TESTSUITE: ${{ inputs.run_testsuite || github.event.label.name == 'ci-testsuite-c' }}
       RUN_TESTSUITE_CXX: ${{ inputs.run_cxx_testsuite || github.event.label.name == 'ci-testsuite-cxx' }}
       AMITOOLS_GIT: ${{ inputs.amitools_git || 'git+https://github.com/AmigaPorts/amitools.git' }}
       NDK: "3.2"
@@ -257,8 +257,7 @@ jobs:
   build_amigaos:
     name: Build AmigaOS hosted toolchain
     if: >-
-      (github.event_name == 'pull_request' &&
-        (github.event.action != 'labeled' || github.event.label.name == 'ci-cross')) ||
+      (github.event_name == 'pull_request' && github.event.label.name == 'ci-amigaos') ||
       (github.event_name != 'pull_request' && inputs.build_hosted)
     runs-on: ubuntu-24.04
     timeout-minutes: 300
@@ -329,8 +328,7 @@ jobs:
     # here must not block the release of the other platforms
     continue-on-error: true
     if: >-
-      (github.event_name == 'pull_request' &&
-        (github.event.action != 'labeled' || github.event.label.name == 'ci-cross')) ||
+      (github.event_name == 'pull_request' && github.event.label.name == 'ci-mingw') ||
       (github.event_name != 'pull_request' && inputs.build_hosted)
     runs-on: ubuntu-24.04
     timeout-minutes: 300
