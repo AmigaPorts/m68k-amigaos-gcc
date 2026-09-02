@@ -53,6 +53,16 @@ on:
       build_hosted:
         type: boolean
         default: true
+      # a module repo's own CI calls this workflow to build its PR: it
+      # points checkout_repo/checkout_ref at this build tree (instead of
+      # the caller) and names the module in repos. Empty for every other
+      # trigger, where checkout falls back to this repo at the event ref.
+      checkout_repo:
+        type: string
+        default: ""
+      checkout_ref:
+        type: string
+        default: ""
   # Every new pull request revision builds the Linux, AmigaOS-hosted and
   # MinGW-hosted toolchains, and the fast amigaos.exp target testsuite runs
   # on every build. Labels request an additional specialized run of the
@@ -84,7 +94,13 @@ jobs:
       # slow; pin one that is fast and healthy from the CI runners
       AMINET_MIRROR: http://nl.aminet.net
     steps:
+      # empty repository/ref check out this repo at the triggering event's
+      # ref (the normal PR, dispatch and release paths); a module caller
+      # overrides them to build this tree with its module swapped in
       - uses: actions/checkout@v7
+        with:
+          repository: ${{ inputs.checkout_repo }}
+          ref: ${{ inputs.checkout_ref }}
 
       # PREFIX and NDK reach every make invocation through the environment
       - name: Set prefix
