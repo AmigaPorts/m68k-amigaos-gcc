@@ -762,7 +762,7 @@ update-mpc:
 CONFIG_BINUTILS = --prefix=$(PREFIX) --target=$(TARGET) $(HOST_CONFIGURE) --disable-werror --disable-nls --without-msgpack
 
 ifeq (,$(strip $(HOST)))
-CONFIG_BINUTILS += --enable-tui --enable-targets=m68k-elf
+CONFIG_BINUTILS += --enable-targets=m68k-elf
 else
 CONFIG_BINUTILS += --disable-gdb --disable-gdbserver
 ifneq (,$(findstring mingw,$(HOST)))
