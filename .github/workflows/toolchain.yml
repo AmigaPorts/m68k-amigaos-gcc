@@ -86,7 +86,6 @@ jobs:
       RUN_TESTSUITE: ${{ inputs.run_testsuite || github.event.label.name == 'ci-testsuite-c' }}
       RUN_TESTSUITE_CXX: ${{ inputs.run_cxx_testsuite || github.event.label.name == 'ci-testsuite-cxx' }}
       AMITOOLS_GIT: ${{ inputs.amitools_git || 'git+https://github.com/AmigaPorts/amitools.git' }}
-      NDK: "3.2"
       # not GCC_VERSION: the Makefile reads that from gcc's BASE-VER
       # (16.2.0b) for gcc's own lib/gcc/<target>/<version> layout
       GCC_VER: ${{ inputs.gcc_version || '16.2' }}
@@ -102,7 +101,7 @@ jobs:
           repository: ${{ inputs.checkout_repo }}
           ref: ${{ inputs.checkout_ref }}
 
-      # PREFIX and NDK reach every make invocation through the environment
+      # PREFIX reaches every make invocation through the environment
       - name: Set prefix
         run: echo "PREFIX=$HOME/m68k-amigaos-gcc-$GCC_VER" >> $GITHUB_ENV
 
@@ -260,7 +259,6 @@ jobs:
       HOST: m68k-amigaos
       BUILD_TRIPLET: x86_64-linux-gnu
       HOST_RUNNER: vamos -C 68040 --
-      NDK: "3.2"
       OWNGMP: "1"
       BUILD_CC: x86_64-linux-gnu-gcc -B/opt/build-binutils/
       BUILD_CXX: x86_64-linux-gnu-g++ -B/opt/build-binutils/
@@ -339,7 +337,6 @@ jobs:
       HOST: x86_64-w64-mingw32ucrt
       BUILD_TRIPLET: x86_64-linux-gnu
       HOST_RUNNER: wine
-      NDK: "3.2"
       OWNGMP: "1"
       BUILD_CC: x86_64-linux-gnu-gcc -B/opt/build-binutils/
       BUILD_CXX: x86_64-linux-gnu-g++ -B/opt/build-binutils/
