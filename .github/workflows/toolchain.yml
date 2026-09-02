@@ -363,8 +363,17 @@ jobs:
 
       # Dereference links before crossing the Linux/Windows artifact boundary;
       # the installed Windows tree must contain ordinary files, not Unix links.
+      # SDI points at its parent include directory, so materialize that alias
+      # before asking tar to dereference the remaining non-recursive links.
       - name: Export Windows toolchain tree
         run: |
+          sdi_dir="$PREFIX/m68k-amigaos/include/SDI"
+          include_dir=$(dirname "$sdi_dir")
+          test -L "$sdi_dir"
+          rm "$sdi_dir"
+          mkdir "$sdi_dir"
+          find "$include_dir" -mindepth 1 -maxdepth 1 ! -name SDI \
+            -exec cp -aL -t "$sdi_dir" -- {} +
           tar --dereference -C "$(dirname "$PREFIX")" -cf mingw-prefix.tar "$(basename "$PREFIX")"
           test -s mingw-prefix.tar
 
