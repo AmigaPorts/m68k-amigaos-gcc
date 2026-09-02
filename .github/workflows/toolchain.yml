@@ -11,6 +11,10 @@ on:
         description: run the gcc testsuite under vamos
         type: boolean
         default: false
+      run_cxx_testsuite:
+        description: run the g++ testsuite under vamos (slow)
+        type: boolean
+        default: false
       amitools_git:
         description: pip source for amitools (vamos)
         default: git+https://github.com/AmigaPorts/amitools.git
@@ -34,6 +38,9 @@ on:
       run_testsuite:
         type: boolean
         default: false
+      run_cxx_testsuite:
+        type: boolean
+        default: false
       amitools_git:
         type: string
         default: git+https://github.com/AmigaPorts/amitools.git
@@ -47,8 +54,13 @@ on:
         type: boolean
         default: true
   # Every new pull request revision builds the Linux, AmigaOS-hosted and
-  # MinGW-hosted toolchains. Labels can request an additional specialized
-  # run: "ci-macos", "ci-testsuite", or "ci-cross" to rerun hosted builds.
+  # MinGW-hosted toolchains, and the fast amigaos.exp target testsuite runs
+  # on every build. Labels request an additional specialized run of the
+  # merge commit:
+  #  - "ci-macos": macOS build
+  #  - "ci-testsuite-c": Linux build with the gcc C testsuite
+  #  - "ci-testsuite-cxx": Linux build with the g++ testsuite (slow)
+  #  - "ci-cross": Linux plus the AmigaOS and MinGW hosted toolchains
   pull_request:
     types: [opened, reopened, synchronize, labeled]
 
@@ -61,7 +73,8 @@ jobs:
     runs-on: ${{ inputs.runner || (github.event.label.name == 'ci-macos' && 'macos-15') || 'ubuntu-24.04' }}
     timeout-minutes: 300
     env:
-      RUN_TESTSUITE: ${{ inputs.run_testsuite || github.event.label.name == 'ci-testsuite' }}
+      RUN_TESTSUITE: ${{ inputs.run_testsuite || github.event.label.name == 'ci-testsuite' || github.event.label.name == 'ci-testsuite-c' }}
+      RUN_TESTSUITE_CXX: ${{ inputs.run_cxx_testsuite || github.event.label.name == 'ci-testsuite-cxx' }}
       AMITOOLS_GIT: ${{ inputs.amitools_git || 'git+https://github.com/AmigaPorts/amitools.git' }}
       NDK: "3.2"
       # not GCC_VERSION: the Makefile reads that from gcc's BASE-VER
@@ -170,33 +183,59 @@ jobs:
           path: log/
           if-no-files-found: ignore
 
-      # the vamos testsuite setup is Linux-only for now
-      - name: Install testsuite dependencies
-        if: env.RUN_TESTSUITE == 'true' && runner.os == 'Linux'
+      - name: Install testsuite dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get install -y --no-install-recommends dejagnu python3-dev python3-venv
+
+      - name: Install testsuite dependencies (macOS)
+        if: runner.os == 'macOS'
+        run: brew install dejagnu
+
+      - name: Install amitools (vamos)
         run: |
-          sudo apt-get install -y --no-install-recommends dejagnu python3-dev python3-venv
           python3 -m venv $HOME/amitools-venv
           $HOME/amitools-venv/bin/pip install "amitools[vamos] @ $AMITOOLS_GIT"
 
-      - name: Run the gcc testsuite
+      # fast, so it runs on every build
+      - name: Run the AmigaOS target testsuite
+        run: |
+          set +e
+          PATH="$HOME/amitools-venv/bin:$PATH" make -j $NPROC check-gcc-amigaos
+          rc=$?
+          { echo '```'; cat check-gcc-amigaos.summary.txt 2>/dev/null; echo '```'; } >> $GITHUB_STEP_SUMMARY
+          exit $rc
+
+      - name: Run the gcc C testsuite
         if: env.RUN_TESTSUITE == 'true' && runner.os == 'Linux'
         run: |
           set +e
-          PATH="$HOME/amitools-venv/bin:$PATH" make -j $NPROC check
+          PATH="$HOME/amitools-venv/bin:$PATH" make -j $NPROC check-gcc-execute
           rc=$?
-          { echo '```'; cat check-gcc-execute.summary.txt check-gcc-amigaos.summary.txt 2>/dev/null; echo '```'; } >> $GITHUB_STEP_SUMMARY
+          { echo '```'; cat check-gcc-execute.summary.txt 2>/dev/null; echo '```'; } >> $GITHUB_STEP_SUMMARY
+          exit $rc
+
+      # much slower than the C testsuite, so it is opted into separately
+      - name: Run the g++ testsuite
+        if: env.RUN_TESTSUITE_CXX == 'true' && runner.os == 'Linux'
+        run: |
+          set +e
+          PATH="$HOME/amitools-venv/bin:$PATH" make -j $NPROC check-gcc-c++
+          rc=$?
+          { echo '```'; cat check-gcc-c++.summary.txt 2>/dev/null; echo '```'; } >> $GITHUB_STEP_SUMMARY
           exit $rc
 
       - name: Upload testsuite results
-        if: always() && env.RUN_TESTSUITE == 'true' && runner.os == 'Linux'
+        if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: testsuite-results
+          name: testsuite-results-${{ runner.os }}
           path: |
             build-*/gcc/gcc/testsuite/gcc/gcc-execute.sum
             build-*/gcc/gcc/testsuite/gcc/gcc-execute.log
             build-*/gcc/gcc/testsuite/gcc/gcc-amigaos.sum
             build-*/gcc/gcc/testsuite/gcc/gcc-amigaos.log
+            build-*/gcc/gcc/testsuite/g++/g++.sum
+            build-*/gcc/gcc/testsuite/g++/g++.log
           if-no-files-found: ignore
 
   build_amigaos:
