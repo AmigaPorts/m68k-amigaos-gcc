@@ -53,30 +53,39 @@ on:
       build_hosted:
         type: boolean
         default: true
-  # Every new pull request revision builds the Linux, AmigaOS-hosted and
-  # MinGW-hosted toolchains, and the fast amigaos.exp target testsuite runs
-  # on every build. Labels request an additional specialized run of the
-  # merge commit:
-  #  - "ci-macos": macOS build
-  #  - "ci-testsuite-c": Linux build with the gcc C testsuite
-  #  - "ci-testsuite-cxx": Linux build with the g++ testsuite (slow)
-  #  - "ci-cross": Linux plus the AmigaOS and MinGW hosted toolchains
+      # a module repo's own CI calls this workflow to build its PR: it
+      # points checkout_repo/checkout_ref at this build tree (instead of
+      # the caller) and names the module in repos. Empty for every other
+      # trigger, where checkout falls back to this repo at the event ref.
+      checkout_repo:
+        type: string
+        default: ""
+      checkout_ref:
+        type: string
+        default: ""
+  # Nothing builds on a plain push; add a label to build the merge commit,
+  # and re-add it to rebuild after pushing new commits:
+  #  - "ci-linux": the Linux toolchain (plus the fast amigaos.exp testsuite)
+  #  - "ci-macos": the macOS toolchain
+  #  - "ci-amigaos": the AmigaOS-hosted toolchain
+  #  - "ci-mingw": the MinGW-hosted toolchain
+  #  - "ci-testsuite-c": Linux toolchain with the gcc C testsuite
+  #  - "ci-testsuite-cxx": Linux toolchain with the g++ testsuite (slow)
   pull_request:
-    types: [opened, reopened, synchronize, labeled]
+    types: [labeled]
 
 jobs:
   build:
     if: >-
       github.event_name != 'pull_request' ||
-      github.event.action != 'labeled' ||
-      startsWith(github.event.label.name, 'ci')
+      contains(fromJSON('["ci-linux", "ci-macos", "ci-testsuite-c", "ci-testsuite-cxx"]'),
+               github.event.label.name)
     runs-on: ${{ inputs.runner || (github.event.label.name == 'ci-macos' && 'macos-15') || 'ubuntu-24.04' }}
     timeout-minutes: 300
     env:
-      RUN_TESTSUITE: ${{ inputs.run_testsuite || github.event.label.name == 'ci-testsuite' || github.event.label.name == 'ci-testsuite-c' }}
+      RUN_TESTSUITE: ${{ inputs.run_testsuite || github.event.label.name == 'ci-testsuite-c' }}
       RUN_TESTSUITE_CXX: ${{ inputs.run_cxx_testsuite || github.event.label.name == 'ci-testsuite-cxx' }}
       AMITOOLS_GIT: ${{ inputs.amitools_git || 'git+https://github.com/AmigaPorts/amitools.git' }}
-      NDK: "3.2"
       # not GCC_VERSION: the Makefile reads that from gcc's BASE-VER
       # (16.2.0b) for gcc's own lib/gcc/<target>/<version> layout
       GCC_VER: ${{ inputs.gcc_version || '16.2' }}
@@ -84,9 +93,15 @@ jobs:
       # slow; pin one that is fast and healthy from the CI runners
       AMINET_MIRROR: http://nl.aminet.net
     steps:
+      # empty repository/ref check out this repo at the triggering event's
+      # ref (the normal PR, dispatch and release paths); a module caller
+      # overrides them to build this tree with its module swapped in
       - uses: actions/checkout@v7
+        with:
+          repository: ${{ inputs.checkout_repo }}
+          ref: ${{ inputs.checkout_ref }}
 
-      # PREFIX and NDK reach every make invocation through the environment
+      # PREFIX reaches every make invocation through the environment
       - name: Set prefix
         run: echo "PREFIX=$HOME/m68k-amigaos-gcc-$GCC_VER" >> $GITHUB_ENV
 
@@ -119,24 +134,13 @@ jobs:
       - name: Select gcc branch
         run: make branch branch=amiga$GCC_VER mod=gcc
 
-      # build with a pull request from another module's repo: each
-      # word is module=branch, or module=URL#branch for a fork
+      # build with a pull request from another module's repo: each word in
+      # repos is module=branch, or module=URL#branch for a fork
       - name: Override module repos
         if: inputs.repos != ''
         env:
           REPOS: ${{ inputs.repos }}
-        run: |
-          for spec in $REPOS; do
-            mod=${spec%%=*}
-            ref=${spec#*=}
-            grep -q "^$mod[[:blank:]]" .repos || { echo "unknown module: $mod"; exit 1; }
-            if [[ "$ref" == *"#"* ]]; then
-              sed -i "s|^$mod[[:blank:]].*|$mod ${ref%%#*} ${ref##*#}|" .repos
-            else
-              make branch mod=$mod branch=$ref
-            fi
-          done
-          cat .repos
+        run: sh .github/scripts/override-repos.sh
 
       - name: Fetch sources
         run: make update
@@ -241,8 +245,7 @@ jobs:
   build_amigaos:
     name: Build AmigaOS hosted toolchain
     if: >-
-      (github.event_name == 'pull_request' &&
-        (github.event.action != 'labeled' || github.event.label.name == 'ci-cross')) ||
+      (github.event_name == 'pull_request' && github.event.label.name == 'ci-amigaos') ||
       (github.event_name != 'pull_request' && inputs.build_hosted)
     runs-on: ubuntu-24.04
     timeout-minutes: 300
@@ -256,7 +259,6 @@ jobs:
       HOST: m68k-amigaos
       BUILD_TRIPLET: x86_64-linux-gnu
       HOST_RUNNER: vamos -C 68040 --
-      NDK: "3.2"
       OWNGMP: "1"
       BUILD_CC: x86_64-linux-gnu-gcc -B/opt/build-binutils/
       BUILD_CXX: x86_64-linux-gnu-g++ -B/opt/build-binutils/
@@ -266,6 +268,9 @@ jobs:
 
     steps:
       - uses: actions/checkout@v7
+        with:
+          repository: ${{ inputs.checkout_repo }}
+          ref: ${{ inputs.checkout_ref }}
 
       - name: Prepare native build tools
         run: |
@@ -282,8 +287,11 @@ jobs:
           command -v lha
 
       - name: Build AmigaOS hosted toolchain
+        env:
+          REPOS: ${{ inputs.repos }}
         run: |
           make branch mod=gcc branch="amiga$GCC_VER"
+          [ -z "$REPOS" ] || sh .github/scripts/override-repos.sh
           make update
           make gcc-prerequisites
           make -j "$(nproc)" all
@@ -313,8 +321,7 @@ jobs:
     # here must not block the release of the other platforms
     continue-on-error: true
     if: >-
-      (github.event_name == 'pull_request' &&
-        (github.event.action != 'labeled' || github.event.label.name == 'ci-cross')) ||
+      (github.event_name == 'pull_request' && github.event.label.name == 'ci-mingw') ||
       (github.event_name != 'pull_request' && inputs.build_hosted)
     runs-on: ubuntu-24.04
     timeout-minutes: 300
@@ -330,7 +337,6 @@ jobs:
       HOST: x86_64-w64-mingw32ucrt
       BUILD_TRIPLET: x86_64-linux-gnu
       HOST_RUNNER: wine
-      NDK: "3.2"
       OWNGMP: "1"
       BUILD_CC: x86_64-linux-gnu-gcc -B/opt/build-binutils/
       BUILD_CXX: x86_64-linux-gnu-g++ -B/opt/build-binutils/
@@ -340,6 +346,9 @@ jobs:
 
     steps:
       - uses: actions/checkout@v7
+        with:
+          repository: ${{ inputs.checkout_repo }}
+          ref: ${{ inputs.checkout_ref }}
 
       - name: Install host runner
         run: |
@@ -364,8 +373,11 @@ jobs:
 
       - name: Build MinGW hosted toolchain
         id: version
+        env:
+          REPOS: ${{ inputs.repos }}
         run: |
           make branch mod=gcc branch="amiga$GCC_VER"
+          [ -z "$REPOS" ] || sh .github/scripts/override-repos.sh
           make update
           make -j "$(nproc)" all
           make -j 4 all-sdk
