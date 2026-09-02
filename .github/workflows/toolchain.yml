@@ -433,8 +433,8 @@ jobs:
           $env:AMIGA_GCC_SOURCE_DIR = (Resolve-Path staging/m68k-amigaos).Path
           $output = (Resolve-Path packages).Path
           & $iscc `
-            "--output-dir=$output" `
-            "--output-filename=$env:PACKAGE_BASENAME-setup" `
+            "/O$output" `
+            "/F$env:PACKAGE_BASENAME-setup" `
             setup/setup2.iss
           if ($LASTEXITCODE -ne 0) {
             throw "ISCC failed with exit code $LASTEXITCODE"
