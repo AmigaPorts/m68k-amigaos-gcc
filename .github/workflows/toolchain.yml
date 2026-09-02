@@ -28,6 +28,14 @@ on:
         description: build AmigaOS and MinGW hosted toolchains
         type: boolean
         default: true
+      build_linux:
+        description: build the Linux-hosted toolchain
+        type: boolean
+        default: true
+      build_macos:
+        description: build the macOS-hosted toolchain
+        type: boolean
+        default: false
   # same inputs again: workflow_call, used by release.yml, does not
   # share the workflow_dispatch input declarations
   workflow_call:
@@ -53,6 +61,14 @@ on:
       build_hosted:
         type: boolean
         default: true
+      # which native build to run (for callers like release.yml; on a
+      # pull request the ci-linux / ci-macos labels select instead)
+      build_linux:
+        type: boolean
+        default: true
+      build_macos:
+        type: boolean
+        default: false
       # a module repo's own CI calls this workflow to build its PR: it
       # points checkout_repo/checkout_ref at this build tree (instead of
       # the caller) and names the module in repos. Empty for every other
@@ -78,9 +94,10 @@ jobs:
   build_linux:
     name: Build Linux toolchain
     if: >-
-      github.event_name != 'pull_request' ||
-      contains(fromJSON('["ci-linux", "ci-testsuite-c", "ci-testsuite-cxx"]'),
-               github.event.label.name)
+      (github.event_name != 'pull_request' && inputs.build_linux) ||
+      (github.event_name == 'pull_request' &&
+        contains(fromJSON('["ci-linux", "ci-testsuite-c", "ci-testsuite-cxx"]'),
+                 github.event.label.name))
     runs-on: ${{ inputs.runner || 'ubuntu-24.04' }}
     timeout-minutes: 300
     env:
@@ -225,7 +242,9 @@ jobs:
 
   build_macos:
     name: Build macOS toolchain
-    if: github.event_name == 'pull_request' && github.event.label.name == 'ci-macos'
+    if: >-
+      (github.event_name == 'pull_request' && github.event.label.name == 'ci-macos') ||
+      (github.event_name != 'pull_request' && inputs.build_macos)
     runs-on: macos-15
     timeout-minutes: 300
     env:

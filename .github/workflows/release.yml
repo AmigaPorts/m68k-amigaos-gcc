@@ -17,7 +17,8 @@ jobs:
   build-macos:
     uses: ./.github/workflows/toolchain.yml
     with:
-      runner: macos-15
+      build_linux: false
+      build_macos: true
       build_hosted: false
 
   release:
