@@ -135,24 +135,13 @@ jobs:
       - name: Select gcc branch
         run: make branch branch=amiga$GCC_VER mod=gcc
 
-      # build with a pull request from another module's repo: each
-      # word is module=branch, or module=URL#branch for a fork
+      # build with a pull request from another module's repo: each word in
+      # repos is module=branch, or module=URL#branch for a fork
       - name: Override module repos
         if: inputs.repos != ''
         env:
           REPOS: ${{ inputs.repos }}
-        run: |
-          for spec in $REPOS; do
-            mod=${spec%%=*}
-            ref=${spec#*=}
-            grep -q "^$mod[[:blank:]]" .repos || { echo "unknown module: $mod"; exit 1; }
-            if [[ "$ref" == *"#"* ]]; then
-              sed -i "s|^$mod[[:blank:]].*|$mod ${ref%%#*} ${ref##*#}|" .repos
-            else
-              make branch mod=$mod branch=$ref
-            fi
-          done
-          cat .repos
+        run: sh .github/scripts/override-repos.sh
 
       - name: Fetch sources
         run: make update
@@ -281,6 +270,9 @@ jobs:
 
     steps:
       - uses: actions/checkout@v7
+        with:
+          repository: ${{ inputs.checkout_repo }}
+          ref: ${{ inputs.checkout_ref }}
 
       - name: Prepare native build tools
         run: |
@@ -297,8 +289,11 @@ jobs:
           command -v lha
 
       - name: Build AmigaOS hosted toolchain
+        env:
+          REPOS: ${{ inputs.repos }}
         run: |
           make branch mod=gcc branch="amiga$GCC_VER"
+          [ -z "$REPOS" ] || sh .github/scripts/override-repos.sh
           make update
           make gcc-prerequisites
           make -j "$(nproc)" all
@@ -354,6 +349,9 @@ jobs:
 
     steps:
       - uses: actions/checkout@v7
+        with:
+          repository: ${{ inputs.checkout_repo }}
+          ref: ${{ inputs.checkout_ref }}
 
       - name: Install host runner
         run: |
@@ -378,8 +376,11 @@ jobs:
 
       - name: Build MinGW hosted toolchain
         id: version
+        env:
+          REPOS: ${{ inputs.repos }}
         run: |
           make branch mod=gcc branch="amiga$GCC_VER"
+          [ -z "$REPOS" ] || sh .github/scripts/override-repos.sh
           make update
           make -j "$(nproc)" all
           make -j 4 all-sdk
