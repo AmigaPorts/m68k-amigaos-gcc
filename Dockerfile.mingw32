@@ -50,12 +50,14 @@ RUN test "$(${CC} -dumpmachine)" = "${HOST}" && \
 
 ARG BUILD_TARGET="all"
 ARG SDK_TARGET="all-sdk"
+ARG JOBS="4"
 
 RUN echo "BUILD_TARGET: ${BUILD_TARGET}" && \
     echo "SDK_TARGET:   ${SDK_TARGET}" && \
-    make -j "$(nproc)" ${BUILD_TARGET} && \
+    echo "JOBS:         ${JOBS}" && \
+    make -j "${JOBS}" ${BUILD_TARGET} && \
     if [ -n "${SDK_TARGET}" ]; then \
-        make -j 4 ${SDK_TARGET}; \
+        make -j "${JOBS}" ${SDK_TARGET}; \
     fi
 
 ENV PATH="${PREFIX}/bin:${PATH}"

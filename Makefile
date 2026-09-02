@@ -69,15 +69,37 @@ BUILD_TOOLS := $(BUILD)/build-tools
 # Keep them out of PREFIX so they cannot leak into target packages.
 BUILD_TOOLS_PREFIX ?= $(BUILD_TOOLS)/prefix
 
+# A Canadian cross needs a compiler which runs on BUILD and emits TARGET
+# objects.  Using the newly built MinGW compiler through Wine for every target
+# library source eventually exhausts Wine's process launcher.  Build the
+# build-to-target tools privately instead; GCC and binutils for HOST are still
+# built once and only the private bootstrap compiler is duplicated.
+ifneq (,$(findstring mingw,$(HOST)))
+ifeq (,$(strip $(TARGET_TOOL_PREFIX)))
+TARGET_BUILD_TOOLS_PREFIX := $(BUILD_TOOLS)/target-cross/prefix
+TARGET_BUILD_TOOLS_BUILD := $(BUILD_TOOLS)/target-cross/build
+TARGET_BUILD_TOOLS_PREREQ := $(TARGET_BUILD_TOOLS_BUILD)/_done
+TARGET_TOOL_PREFIX := $(TARGET_BUILD_TOOLS_PREFIX)/bin/$(TARGET)-
+endif
+endif
+
 # GitHub container jobs may provide a HOME owned by a different uid.  Keep
-# Wine's state in the writable build tree and initialize it once before a
-# Windows-hosted compiler can be executed.
+# Wine's prefix in the writable build tree and initialize it once before a
+# Windows-hosted compiler can be executed.  XDG_RUNTIME_DIR must stay short:
+# Wine appends socket names to it, and Unix domain socket paths are limited to
+# 108 bytes even when the build itself lives below a much longer CI workspace.
 ifneq (,$(findstring mingw,$(HOST)))
 WINEPREFIX ?= $(BUILD)/wine-prefix
 WINEDEBUG ?= -all
 WINEBOOT ?= wineboot
 WINEPATH ?= Z:$(abspath $(PREFIX)/bin)
-WINE_RUNTIME_DIR ?= $(BUILD)/wine-runtime
+WINE_RUNTIME_DIR ?= /tmp/m68k-amigaos-gcc-wine-$(shell id -u)
+WINE_RUNNER_LOCK ?= $(BUILD_TOOLS)/wine-runner.lock
+# Wine becomes unreliable when several Windows-hosted GCC drivers launch
+# cc1/as at once.  Bound only those Wine invocations; the rest of the build
+# keeps the parallelism requested from make.  Two slots avoid the runtime
+# failures without reducing a Canadian cross build to fully serial execution.
+WINE_RUNNER_SLOTS ?= 2
 XDG_RUNTIME_DIR := $(WINE_RUNTIME_DIR)
 MINGW_HOST_RUNTIME_SOURCE ?= $(shell $(CC) -print-file-name=libwinpthread-1.dll)
 MINGW_HOST_RUNTIME := $(PREFIX)/bin/libwinpthread-1.dll
@@ -99,20 +121,32 @@ ifneq (,$(strip $(TARGET_TOOL_PREFIX)))
 TARGET_CC_FOR_BUILD := $(TARGET_TOOL_PREFIX)gcc
 TARGET_CXX_FOR_BUILD := $(TARGET_TOOL_PREFIX)g++
 TARGET_AR_FOR_BUILD := $(TARGET_TOOL_PREFIX)ar
+TARGET_RANLIB_FOR_BUILD := $(TARGET_TOOL_PREFIX)ranlib
 TARGET_EXEC_PREFIX_FOR_BUILD := $(TARGET_TOOL_PREFIX)
 else ifneq (,$(strip $(HOST_TOOL_PREFIX)))
 TARGET_CC_FOR_BUILD := $(HOST_TOOL_PREFIX)gcc
 TARGET_CXX_FOR_BUILD := $(HOST_TOOL_PREFIX)g++
 TARGET_AR_FOR_BUILD := $(HOST_TOOL_PREFIX)ar
+TARGET_RANLIB_FOR_BUILD := $(HOST_TOOL_PREFIX)ranlib
 TARGET_EXEC_PREFIX_FOR_BUILD := $(HOST_TOOL_PREFIX)
 else
 TARGET_RUNNER_WRAPPER_DIR := $(BUILD_TOOLS)/target-runner
 TARGET_RUNNER_TOOL_NAMES := gcc g++ c++ cpp gcc-ar gcc-nm gcc-ranlib \
 	addr2line ar as c++filt elfedit ld ld.bfd nm objcopy objdump ranlib \
 	readelf size strings strip
+TARGET_RUNNER_COMPILER_TOOL_NAMES := gcc g++ c++ cpp
+ifneq (,$(findstring mingw,$(HOST)))
+# The hosted driver relocates its internal include directory to Z:/... under
+# Wine.  Use its Unix spelling while target libraries are built so dependency
+# files remain readable by the build machine's make.
+TARGET_RUNNER_COMPILER_FLAGS = -fno-canonical-system-headers \
+	-isystem "$(PREFIX)/lib/gcc/$(TARGET)/$(GCC_VERSION)/include"
+endif
+TARGET_RUNNER_FLAGS = $(if $(filter $*,$(TARGET_RUNNER_COMPILER_TOOL_NAMES)),$(TARGET_RUNNER_COMPILER_FLAGS))
 TARGET_RUNNER_WRAPPERS := $(patsubst %,$(TARGET_RUNNER_WRAPPER_DIR)/$(TARGET)-%,$(TARGET_RUNNER_TOOL_NAMES))
 TARGET_CC_FOR_BUILD := $(TARGET_RUNNER_WRAPPER_DIR)/$(TARGET)-gcc
 TARGET_AR_FOR_BUILD := $(TARGET_RUNNER_WRAPPER_DIR)/$(TARGET)-ar
+TARGET_RANLIB_FOR_BUILD := $(TARGET_RUNNER_WRAPPER_DIR)/$(TARGET)-ranlib
 TARGET_CXX_FOR_BUILD := $(TARGET_RUNNER_WRAPPER_DIR)/$(TARGET)-c++
 export PATH := $(TARGET_RUNNER_WRAPPER_DIR):$(PATH)
 endif
@@ -122,7 +156,7 @@ ifneq (,$(strip $(TARGET_EXEC_PREFIX_FOR_BUILD)))
 TARGET_EXEC_WRAPPER_DIR := $(BUILD_TOOLS)/target-exec
 TARGET_EXEC_TOOL_NAMES := ar as ld ld.bfd nm objcopy objdump ranlib strip
 TARGET_EXEC_WRAPPERS := $(patsubst %,$(TARGET_EXEC_WRAPPER_DIR)/%,$(TARGET_EXEC_TOOL_NAMES))
-TARGET_GCC_INCLUDE_FOR_BUILD := $(shell $(TARGET_CC_FOR_BUILD) -print-file-name=include 2>/dev/null)
+TARGET_GCC_INCLUDE_FOR_BUILD = $(shell $(TARGET_CC_FOR_BUILD) -print-file-name=include 2>/dev/null)
 TARGET_COMPILER_WRAPPER_DIR := $(BUILD_TOOLS)/target-compiler
 TARGET_COMPILER_TOOL_NAMES := gcc g++ c++ cpp
 TARGET_COMPILER_WRAPPERS := $(patsubst %,$(TARGET_COMPILER_WRAPPER_DIR)/$(TARGET)-%,$(TARGET_COMPILER_TOOL_NAMES))
@@ -137,6 +171,7 @@ endif
 else
 TARGET_CC_FOR_BUILD ?= $(shell command -v $(TARGET)-gcc 2>/dev/null)
 TARGET_AR_FOR_BUILD := $(PREFIX)/bin/$(TARGET)-ar
+TARGET_RANLIB_FOR_BUILD := $(PREFIX)/bin/$(TARGET)-ranlib
 endif
 
 ifneq (,$(strip $(HOST_RUNNER_SETUP_PREREQ)))
@@ -152,24 +187,70 @@ $(MINGW_HOST_RUNTIME): $(MINGW_HOST_RUNTIME_SOURCE)
 endif
 
 ifneq (,$(strip $(TARGET_RUNNER_WRAPPER_DIR)))
-$(TARGET_RUNNER_WRAPPER_DIR)/$(TARGET)-%:
+$(TARGET_RUNNER_WRAPPER_DIR)/$(TARGET)-%: Makefile
 	@mkdir -p $(@D)
 	@test -n "$(HOST_RUNNER)" || { echo "HOST_RUNNER is required to execute HOST=$(HOST) tools while building TARGET=$(TARGET) libraries"; exit 1; }
-	@printf '%s\n' '#!/bin/sh' 'exec $(HOST_RUNNER) "$(PREFIX)/bin/$(TARGET)-$*$(EXEEXT)" "$$@"' >$@
+ifneq (,$(findstring wine,$(HOST_RUNNER)))
+	@printf '%s\n' '#!/bin/sh' \
+		'response_file=' \
+		'case "$*" in' \
+		'  ar|gcc-ar)' \
+		'    arg_bytes=0' \
+		'    for arg do arg_bytes=$$((arg_bytes + $${#arg} + 1)); done' \
+		'    if [ "$$arg_bytes" -gt 16000 ]; then' \
+		'      response_file=.m68k-amigaos-tool-$$$$.rsp' \
+		'      cr=$$(printf '\''\r'\'')' \
+		'      for arg do arg=$${arg%"$$cr"}; printf '\''"%s"\n'\'' "$$arg"; done >"$$response_file"' \
+		'      set -- "@$$response_file"' \
+		'    fi' \
+		'    ;;' \
+		'esac' \
+		'trap '\''[ -z "$$response_file" ] || rm -f "$$response_file"'\'' EXIT HUP INT TERM' \
+		'slot=1' \
+		'while :; do' \
+		'  exec 9>"$(WINE_RUNNER_LOCK).$$slot"' \
+		'  if /usr/bin/flock -n 9; then break; fi' \
+		'  exec 9>&-' \
+		'  slot=$$((slot + 1))' \
+		'  if [ "$$slot" -gt "$(WINE_RUNNER_SLOTS)" ]; then slot=1; sleep 0.05; fi' \
+		'done' \
+		'attempt=1' \
+		'while :; do' \
+		'  stdout_file=$$(mktemp)' \
+		'  stderr_file=$$(mktemp)' \
+		'  $(HOST_RUNNER) "$(PREFIX)/bin/$(TARGET)-$*$(EXEEXT)" $(TARGET_RUNNER_FLAGS) "$$@" >"$$stdout_file" 2>"$$stderr_file"' \
+		'  status=$$?' \
+		'  if [ "$$status" -ne 0 ] && [ "$$attempt" -lt 3 ] && grep -Eq "wine client error:.*(Connection reset by peer|Broken pipe)|wineserver.*(crash|terminated)|fatal error: cannot execute .*: CreateProcess: No such file or directory" "$$stderr_file"; then' \
+		'    cat "$$stderr_file" >&2' \
+		'    rm -f "$$stdout_file" "$$stderr_file"' \
+		'    attempt=$$((attempt + 1))' \
+		'    sleep 1' \
+		'    continue' \
+		'  fi' \
+		'  cat "$$stdout_file"' \
+		'  cat "$$stderr_file" >&2' \
+		'  rm -f "$$stdout_file" "$$stderr_file"' \
+		'  exit "$$status"' \
+		'done' >$@
+else
+	@printf '%s\n' '#!/bin/sh' 'exec $(HOST_RUNNER) "$(PREFIX)/bin/$(TARGET)-$*$(EXEEXT)" $(TARGET_RUNNER_FLAGS) "$$@"' >$@
+endif
 	@chmod +x $@
 endif
 
 ifneq (,$(strip $(TARGET_EXEC_WRAPPER_DIR)))
+$(TARGET_EXEC_WRAPPERS): $(TARGET_BUILD_TOOLS_PREREQ)
+
 $(TARGET_EXEC_WRAPPER_DIR)/%:
 	@mkdir -p $(@D)
 	@test -x "$(TARGET_EXEC_PREFIX_FOR_BUILD)$*"
 	@ln -sf "$(TARGET_EXEC_PREFIX_FOR_BUILD)$*" $@
 
-$(TARGET_COMPILER_WRAPPERS): $(TARGET_COMPILER_WRAPPER_DIR)/$(TARGET)-%: $(TARGET_EXEC_WRAPPERS)
+$(TARGET_COMPILER_WRAPPERS): $(TARGET_COMPILER_WRAPPER_DIR)/$(TARGET)-%: $(TARGET_EXEC_WRAPPERS) Makefile
 	@mkdir -p $(@D)
 	@test -x "$(TARGET_EXEC_PREFIX_FOR_BUILD)$*"
 	@test -n "$(TARGET_GCC_INCLUDE_FOR_BUILD)"
-	@printf '%s\n' '#!/bin/sh' 'exec "$(TARGET_EXEC_PREFIX_FOR_BUILD)$*" -B"$(TARGET_EXEC_WRAPPER_DIR)/" -isystem "$(TARGET_GCC_INCLUDE_FOR_BUILD)" "$$@"' >$@
+	@printf '%s\n' '#!/bin/sh' 'exec "$(TARGET_EXEC_PREFIX_FOR_BUILD)$*" -B"$(TARGET_EXEC_WRAPPER_DIR)/" -B"$(PREFIX)/lib/gcc/$(TARGET)/$(GCC_VERSION)/" -B"$(PREFIX)/$(TARGET)/lib/" -isystem "$(TARGET_GCC_INCLUDE_FOR_BUILD)" "$$@"' >$@
 	@chmod +x $@
 
 $(TARGET_PREFIXED_EXEC_WRAPPERS): $(TARGET_COMPILER_WRAPPER_DIR)/$(TARGET)-%: $(TARGET_EXEC_WRAPPER_DIR)/%
@@ -427,7 +508,7 @@ help:
 # =================================================
 # all
 # =================================================
-.PHONY: all gcc gdb gprof binutils fd2sfd fd2pragma ira sfdc vasm libnix ixemul libgcc clib2 libdebug libpthread ndk ndk13 min libnix4.library
+.PHONY: all gcc gdb gprof binutils build-target-tools fd2sfd fd2pragma ira sfdc vasm libnix ixemul libgcc clib2 libdebug libpthread ndk ndk13 min libnix4.library
 ifeq (,$(strip $(HOST)))
 all: gcc binutils gdb gprof fd2sfd fd2pragma ira sfdc vasm libnix ixemul libgcc clib2 libdebug libpthread ndk ndk13 libnix4.library
 else
@@ -435,6 +516,8 @@ all: gcc binutils gprof fd2sfd fd2pragma ira sfdc vasm libnix ixemul libgcc clib
 endif
 
 min: binutils gcc gprof libnix libgcc libnix4.library
+
+build-target-tools: $(TARGET_BUILD_TOOLS_PREREQ)
 
 # =================================================
 # clean
@@ -676,12 +759,17 @@ update-mpc:
 # =================================================
 # binutils
 # =================================================
-CONFIG_BINUTILS = --prefix=$(PREFIX) --target=$(TARGET) $(HOST_CONFIGURE) --disable-werror --disable-nls
+CONFIG_BINUTILS = --prefix=$(PREFIX) --target=$(TARGET) $(HOST_CONFIGURE) --disable-werror --disable-nls --without-msgpack
 
 ifeq (,$(strip $(HOST)))
-CONFIG_BINUTILS += --enable-tui --enable-plugins --without-msgpack
+CONFIG_BINUTILS += --enable-tui
 else
-CONFIG_BINUTILS += --disable-doc --disable-plugins --disable-gdb --disable-gdbserver --without-msgpack
+CONFIG_BINUTILS += --disable-gdb --disable-gdbserver
+ifneq (,$(findstring mingw,$(HOST)))
+CONFIG_BINUTILS += --enable-plugins
+else
+CONFIG_BINUTILS += --disable-plugins
+endif
 LD_CROSS_MAKE_ENV := bfdplugin_LTLIBRARIES= noinst_LTLIBRARIES=
 LD_CROSS_MAKE_FLAGS := -e
 endif
@@ -786,6 +874,16 @@ ifneq ($(strip $(HOST)),$(TARGET))
 CONFIG_GCC += --with-headers=$(PROJECTS)/newlib-cygwin/newlib/libc/sys/amigaos/include/
 endif
 
+ifneq (,$(findstring mingw,$(HOST)))
+# A MinGW-hosted compiler run through Wine canonicalizes Unix system-header
+# paths to Z:/... in dependency files.  Those drive-letter paths are not valid
+# prerequisites for the Unix make process building the target libraries.
+# Also omit libstdc++'s prebuilt standard-header files: their output paths
+# exceed the Windows path limit in deep CI workspaces.  This does not disable
+# PCH support in the compiler itself.
+CONFIG_GCC += --disable-canonical-system-headers --disable-libstdcxx-pch
+endif
+
 ifeq (,$(strip $(HOST)))
 CONFIG_GCC += --with-stage1-ldflags="-dynamic-libgcc -dynamic-libstdc++" --with-boot-ldflags="-dynamic-libgcc -dynamic-libstdc++"
 else
@@ -877,7 +975,36 @@ ifneq (,$(strip $(GCC_FOR_TARGET_BUILD)))
 GCC_TARGET_MAKE_FLAGS += GCC_FOR_TARGET="$(GCC_FOR_TARGET_BUILD)" \
 	CC_FOR_TARGET="$(TARGET_CC_COMMAND_FOR_BUILD)" \
 	CXX_FOR_TARGET="$(TARGET_CXX_COMMAND_FOR_BUILD)" \
-	AR_FOR_TARGET="$(TARGET_AR_FOR_BUILD)"
+	AR_FOR_TARGET="$(TARGET_AR_FOR_BUILD)" \
+	RANLIB_FOR_TARGET="$(TARGET_RANLIB_FOR_BUILD)"
+ifneq (,$(strip $(TARGET_RUNNER_WRAPPER_DIR)))
+# GCC discovers the remaining target tools by running the hosted compiler.
+# A Windows compiler prints CRLF-terminated Z:/ paths, which the Unix parent
+# make cannot execute.  Keep every directly invoked target tool behind the
+# HOST_RUNNER wrappers; use GCC's archive wrappers so LTO plugin handling is
+# retained.
+GCC_TARGET_CONFIGURE_ENV := \
+	AR_FOR_TARGET="$(TARGET_RUNNER_WRAPPER_DIR)/$(TARGET)-ar" \
+	AS_FOR_TARGET="$(TARGET_RUNNER_WRAPPER_DIR)/$(TARGET)-as" \
+	LD_FOR_TARGET="$(TARGET_RUNNER_WRAPPER_DIR)/$(TARGET)-ld" \
+	NM_FOR_TARGET="$(TARGET_RUNNER_WRAPPER_DIR)/$(TARGET)-nm" \
+	OBJCOPY_FOR_TARGET="$(TARGET_RUNNER_WRAPPER_DIR)/$(TARGET)-objcopy" \
+	OBJDUMP_FOR_TARGET="$(TARGET_RUNNER_WRAPPER_DIR)/$(TARGET)-objdump" \
+	RANLIB_FOR_TARGET="$(TARGET_RUNNER_WRAPPER_DIR)/$(TARGET)-ranlib" \
+	READELF_FOR_TARGET="$(TARGET_RUNNER_WRAPPER_DIR)/$(TARGET)-readelf" \
+	STRIP_FOR_TARGET="$(TARGET_RUNNER_WRAPPER_DIR)/$(TARGET)-strip"
+GCC_TARGET_TOOL_ENV := \
+	AR_FOR_TARGET="$(TARGET_RUNNER_WRAPPER_DIR)/$(TARGET)-gcc-ar" \
+	AS_FOR_TARGET="$(TARGET_RUNNER_WRAPPER_DIR)/$(TARGET)-as" \
+	LD_FOR_TARGET="$(TARGET_RUNNER_WRAPPER_DIR)/$(TARGET)-ld" \
+	NM_FOR_TARGET="$(TARGET_RUNNER_WRAPPER_DIR)/$(TARGET)-gcc-nm" \
+	OBJCOPY_FOR_TARGET="$(TARGET_RUNNER_WRAPPER_DIR)/$(TARGET)-objcopy" \
+	OBJDUMP_FOR_TARGET="$(TARGET_RUNNER_WRAPPER_DIR)/$(TARGET)-objdump" \
+	RANLIB_FOR_TARGET="$(TARGET_RUNNER_WRAPPER_DIR)/$(TARGET)-gcc-ranlib" \
+	READELF_FOR_TARGET="$(TARGET_RUNNER_WRAPPER_DIR)/$(TARGET)-readelf" \
+	STRIP_FOR_TARGET="$(TARGET_RUNNER_WRAPPER_DIR)/$(TARGET)-strip"
+GCC_TARGET_MAKE_FLAGS += $(GCC_TARGET_TOOL_ENV)
+endif
 endif
 endif
 
@@ -906,7 +1033,7 @@ ifneq ($(OWNGMP),)
 GCC_PREREQUISITE_SOURCES := $(PROJECTS)/$(GMP)/configure $(PROJECTS)/$(MPFR)/configure $(PROJECTS)/$(MPC)/configure
 endif
 
-$(BUILD)/gcc/Makefile: $(PROJECTS)/gcc/configure $(BUILD)/binutils/_done $(GCC_PREREQUISITE_SOURCES) $(GCC_HOST_COMPAT_PREREQ) | $(PREFIX_STAMP)
+$(BUILD)/gcc/Makefile: Makefile $(PROJECTS)/gcc/configure $(BUILD)/binutils/_done $(GCC_PREREQUISITE_SOURCES) $(GCC_HOST_COMPAT_PREREQ) $(TARGET_RUNNER_WRAPPERS) $(TARGET_BUILD_TOOLS_PREREQ) $(TARGET_EXEC_WRAPPERS) $(TARGET_COMPILER_WRAPPERS) $(TARGET_PREFIXED_EXEC_WRAPPERS) | $(PREFIX_STAMP)
 	@mkdir -p $(BUILD)/gcc
 ifneq ($(OWNGMP),)
 	@mkdir -p $(PROJECTS)/gcc/gmp
@@ -916,7 +1043,7 @@ ifneq ($(OWNGMP),)
 	@rsync -a --no-group $(PROJECTS)/$(MPC)/* $(PROJECTS)/gcc/mpc
 	@rsync -a --no-group $(PROJECTS)/$(MPFR)/* $(PROJECTS)/gcc/mpfr
 endif
-	$(L0)"configure gcc"$(L1) cd $(BUILD)/gcc && $(E) $(GCC_HOST_TOOLS) $(GCC_HOST_CONFIGURE_ENV) $(GCC_HOST_LDFLAGS) $(PROJECTS)/gcc/configure $(CONFIG_GCC) $(L2)
+	$(L0)"configure gcc"$(L1) cd $(BUILD)/gcc && $(E) $(GCC_HOST_TOOLS) $(GCC_HOST_CONFIGURE_ENV) $(GCC_TARGET_CONFIGURE_ENV) $(GCC_HOST_LDFLAGS) $(PROJECTS)/gcc/configure $(CONFIG_GCC) $(L2)
 
 $(BUILD)/libamiga-host-compat.a: $(BUILD)/gcc-host-compat.o
 	$(L0)"archive Amiga host compatibility library"$(L1) $(GCC_HOST_AR) rcs $@ $< $(L2)
@@ -930,6 +1057,59 @@ $(PROJECTS)/gcc/configure:
 	for i in $$(find patches/gcc/ -type f 2>/dev/null); \
 	do if [[ "$$i" == *.diff ]] ; \
 		then j=$${i:8}; patch -N "$(PROJECTS)/$${j%.diff}" "$$i"; fi ; done
+
+ifneq (,$(strip $(TARGET_BUILD_TOOLS_PREREQ)))
+TARGET_BUILD_MACHINE := $(if $(strip $(BUILD_TRIPLET)),$(BUILD_TRIPLET),$(shell $(BUILD_CC) -dumpmachine 2>/dev/null))
+TARGET_BUILD_TOOL_PREFIX := $(TARGET_BUILD_MACHINE)-
+TARGET_BUILD_TOOLS_ENV := CC="$(BUILD_CC)" CXX="$(BUILD_CXX)" \
+	CC_FOR_BUILD="$(BUILD_CC)" CXX_FOR_BUILD="$(BUILD_CXX)" \
+	AR="$(TARGET_BUILD_TOOL_PREFIX)ar" AS="$(TARGET_BUILD_TOOL_PREFIX)as" \
+	LD="$(TARGET_BUILD_TOOL_PREFIX)ld" NM="$(TARGET_BUILD_TOOL_PREFIX)nm" \
+	OBJCOPY="$(TARGET_BUILD_TOOL_PREFIX)objcopy" OBJDUMP="$(TARGET_BUILD_TOOL_PREFIX)objdump" \
+	RANLIB="$(TARGET_BUILD_TOOL_PREFIX)ranlib" READELF="$(TARGET_BUILD_TOOL_PREFIX)readelf" \
+	STRIP="$(TARGET_BUILD_TOOL_PREFIX)strip" \
+	PATH="$(TARGET_BUILD_TOOLS_PREFIX)/bin:$(PATH)"
+TARGET_BUILD_BINUTILS_CONFIG := --prefix=$(TARGET_BUILD_TOOLS_PREFIX) \
+	--build=$(TARGET_BUILD_MACHINE) --host=$(TARGET_BUILD_MACHINE) \
+	--target=$(TARGET) --disable-werror --disable-nls --without-msgpack \
+	--disable-gdb --disable-gdbserver --enable-plugins
+TARGET_BUILD_GCC_CONFIG := --prefix=$(TARGET_BUILD_TOOLS_PREFIX) \
+	--build=$(TARGET_BUILD_MACHINE) --host=$(TARGET_BUILD_MACHINE) \
+	--target=$(TARGET) --enable-languages=c,c++,objc,$(ADDLANG) \
+	--enable-version-specific-runtime-libs --enable-lto \
+	--disable-bootstrap --disable-libssp --disable-nls --without-zstd \
+	--disable-shared --disable-werror --enable-threads=$(THREADS) \
+	--with-headers=$(PROJECTS)/newlib-cygwin/newlib/libc/sys/amigaos/include/ \
+	--with-build-time-tools=$(TARGET_BUILD_TOOLS_PREFIX)/$(TARGET)/bin \
+	--with-gmp=/usr --with-mpfr=/usr --with-mpc=/usr
+
+$(TARGET_BUILD_TOOLS_PREREQ): $(TARGET_BUILD_TOOLS_BUILD)/gcc/_done
+	@touch $@
+
+$(TARGET_BUILD_TOOLS_BUILD)/binutils/_done: $(TARGET_BUILD_TOOLS_BUILD)/binutils/Makefile
+	$(L0)"make build-to-target binutils"$(L1) $(TARGET_BUILD_TOOLS_ENV) $(MAKE) -C $(TARGET_BUILD_TOOLS_BUILD)/binutils all-gas all-binutils all-ld $(L2)
+	$(L0)"install build-to-target binutils"$(L1) $(TARGET_BUILD_TOOLS_ENV) $(MAKE) -C $(TARGET_BUILD_TOOLS_BUILD)/binutils install-gas install-binutils install-ld $(L2)
+	@touch $@
+
+$(TARGET_BUILD_TOOLS_BUILD)/binutils/Makefile: Makefile $(PROJECTS)/binutils/configure
+	@mkdir -p $(@D)
+	$(L0)"configure build-to-target binutils"$(L1) cd $(@D) && $(E) $(TARGET_BUILD_TOOLS_ENV) $(PROJECTS)/binutils/configure $(TARGET_BUILD_BINUTILS_CONFIG) $(L2)
+
+$(TARGET_BUILD_TOOLS_BUILD)/gcc/_done: $(TARGET_BUILD_TOOLS_BUILD)/gcc/Makefile $(TARGET_BUILD_TOOLS_BUILD)/binutils/_done
+	$(L0)"make build-to-target gcc"$(L1) $(TARGET_BUILD_TOOLS_ENV) $(MAKE) -C $(TARGET_BUILD_TOOLS_BUILD)/gcc all-gcc $(L2)
+	$(L0)"install build-to-target gcc"$(L1) $(TARGET_BUILD_TOOLS_ENV) $(MAKE) -C $(TARGET_BUILD_TOOLS_BUILD)/gcc install-gcc $(L2)
+	@if [ -d "$(TARGET_BUILD_TOOLS_PREFIX)/$(TARGET)/sys-include" ] && [ ! -L "$(TARGET_BUILD_TOOLS_PREFIX)/$(TARGET)/sys-include" ]; then \
+		mv "$(TARGET_BUILD_TOOLS_PREFIX)/$(TARGET)/sys-include" "$(TARGET_BUILD_TOOLS_PREFIX)/$(TARGET)/bootstrap-sys-include"; \
+	fi
+	@for dir in include sys-include ndk-include ndk13-include libnix ixemul clib2; do \
+		ln -sfn "$(PREFIX)/$(TARGET)/$$dir" "$(TARGET_BUILD_TOOLS_PREFIX)/$(TARGET)/$$dir"; \
+	done
+	@touch $@
+
+$(TARGET_BUILD_TOOLS_BUILD)/gcc/Makefile: Makefile $(PROJECTS)/gcc/configure $(PROJECTS)/newlib-cygwin/newlib/configure $(TARGET_BUILD_TOOLS_BUILD)/binutils/_done
+	@mkdir -p $(@D)
+	$(L0)"configure build-to-target gcc"$(L1) cd $(@D) && $(E) $(TARGET_BUILD_TOOLS_ENV) $(PROJECTS)/gcc/configure $(TARGET_BUILD_GCC_CONFIG) $(L2)
+endif
 
 # =================================================
 # fd2sfd
@@ -1412,6 +1592,13 @@ LIBGCCS := $(patsubst %,$(PREFIX)/lib/gcc/$(TARGET)/$(GCC_VERSION)/%,$(LIBGCCS_N
 libgcc: $(BUILD)/gcc/_libgcc_done
 
 $(BUILD)/gcc/_libgcc_done: $(BUILD)/libnix/_done $(BUILD)/libpthread/_done $(LIBAMIGA) $(GCC_TARGET_PREREQ) $(shell find 2>/dev/null $(PROJECTS)/gcc/libgcc -type f)
+ifneq (,$(strip $(HOST)))
+	# Hosted target compilers do not search GCC's build-tree include directory.
+	# Install libgcc first so libstdc++ can find generated headers such as
+	# unwind.h through the installed compiler include directory.
+	$(L0)"make target libgcc"$(L1) $(MAKE) -C $(BUILD)/gcc $(GCC_TARGET_MAKE_FLAGS) all-target-libgcc $(L2)
+	$(L0)"install target libgcc"$(L1) $(MAKE) -C $(BUILD)/gcc $(GCC_TARGET_MAKE_FLAGS) install-target-libgcc $(L2)
+endif
 	$(L0)"make libgcc"$(L1) $(MAKE) -C $(BUILD)/gcc $(GCC_TARGET_MAKE_FLAGS) all-target $(L2)
 	$(L0)"install libgcc"$(L1) $(MAKE) -C $(BUILD)/gcc $(GCC_TARGET_MAKE_FLAGS) install-target $(L2)
 	@echo "done" >$@
@@ -1470,6 +1657,10 @@ $(PROJECTS)/libdebug/configure:
 libpthread: $(BUILD)/libpthread/_done
 
 $(BUILD)/libpthread/_done: $(BUILD)/libpthread/Makefile
+	@mkdir -p $(PREFIX)/$(TARGET)/lib/libb \
+		$(PREFIX)/$(TARGET)/lib/libm020 \
+		$(PREFIX)/$(TARGET)/lib/libb/libm020 \
+		$(PREFIX)/$(TARGET)/lib/libb32/libm020
 	@rsync -a --no-group --exclude=debug.h $(BUILD)/libpthread/*.h $(PREFIX)/$(TARGET)/include/
 	$(L0)"make libpthread"$(L1) cd $(BUILD)/libpthread && $(MAKE) -f Makefile.gcc6 $(L2)
 	$(L0)"install libpthread lib"$(L1) cp $(BUILD)/libpthread/lib/libpthread.a $(PREFIX)/$(TARGET)/lib/ $(L2)
@@ -1491,6 +1682,12 @@ $(PROJECTS)/aros-stuff/pthreads/Makefile:
 # newlib
 # =================================================
 NEWLIB_CONFIG := CC=$(TARGET)-gcc CXX=$(TARGET)-g++
+ifneq (,$(strip $(HOST)))
+# A Canadian-cross build inherits HOST binutils from the environment.  Newlib
+# contains TARGET objects, so its archives must instead be created and indexed
+# by the newly built TARGET tools running through the appropriate runner.
+NEWLIB_CONFIG += AR=$(TARGET_AR_FOR_BUILD) RANLIB=$(TARGET_RANLIB_FOR_BUILD)
+endif
 NEWLIB_FILES = $(shell find 2>/dev/null $(PROJECTS)/newlib-cygwin/newlib -type f)
 
 .PHONY: newlib

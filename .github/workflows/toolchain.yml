@@ -24,9 +24,6 @@ on:
         description: build AmigaOS and MinGW hosted toolchains
         type: boolean
         default: true
-      hosted_gcc_branch:
-        description: gcc branch for the AmigaOS and MinGW hosted toolchains
-        default: amiga16.2
   # same inputs again: workflow_call, used by release.yml, does not
   # share the workflow_dispatch input declarations
   workflow_call:
@@ -49,18 +46,18 @@ on:
       build_hosted:
         type: boolean
         default: true
-      hosted_gcc_branch:
-        type: string
-        default: amiga16.2
-  # label a pull request "ci-macos" for a macOS build of its merge commit,
-  # "ci-testsuite" for a Linux build with the gcc testsuite, or "ci-cross"
-  # for Linux plus the AmigaOS and MinGW hosted toolchains
+  # Every new pull request revision builds the Linux, AmigaOS-hosted and
+  # MinGW-hosted toolchains. Labels can request an additional specialized
+  # run: "ci-macos", "ci-testsuite", or "ci-cross" to rerun hosted builds.
   pull_request:
-    types: [labeled]
+    types: [opened, reopened, synchronize, labeled]
 
 jobs:
   build:
-    if: github.event_name != 'pull_request' || startsWith(github.event.label.name, 'ci')
+    if: >-
+      github.event_name != 'pull_request' ||
+      github.event.action != 'labeled' ||
+      startsWith(github.event.label.name, 'ci')
     runs-on: ${{ inputs.runner || (github.event.label.name == 'ci-macos' && 'macos-15') || 'ubuntu-24.04' }}
     timeout-minutes: 300
     env:
@@ -205,8 +202,9 @@ jobs:
   build_amigaos:
     name: Build AmigaOS hosted toolchain
     if: >-
-      (github.event_name != 'pull_request' && inputs.build_hosted) ||
-      github.event.label.name == 'ci-cross'
+      (github.event_name == 'pull_request' &&
+        (github.event.action != 'labeled' || github.event.label.name == 'ci-cross')) ||
+      (github.event_name != 'pull_request' && inputs.build_hosted)
     runs-on: ubuntu-24.04
     timeout-minutes: 300
     container:
@@ -225,7 +223,7 @@ jobs:
       BUILD_CXX: x86_64-linux-gnu-g++ -B/opt/build-binutils/
       CC_FOR_BUILD: x86_64-linux-gnu-gcc -B/opt/build-binutils/
       CXX_FOR_BUILD: x86_64-linux-gnu-g++ -B/opt/build-binutils/
-      HOSTED_GCC_BRANCH: ${{ inputs.hosted_gcc_branch || 'amiga16.2' }}
+      GCC_VER: ${{ inputs.gcc_version || '16.2' }}
 
     steps:
       - uses: actions/checkout@v7
@@ -246,7 +244,7 @@ jobs:
 
       - name: Build AmigaOS hosted toolchain
         run: |
-          make branch mod=gcc branch="$HOSTED_GCC_BRANCH"
+          make branch mod=gcc branch="amiga$GCC_VER"
           make update
           make gcc-prerequisites
           make -j "$(nproc)" all
@@ -276,8 +274,9 @@ jobs:
     # here must not block the release of the other platforms
     continue-on-error: true
     if: >-
-      (github.event_name != 'pull_request' && inputs.build_hosted) ||
-      github.event.label.name == 'ci-cross'
+      (github.event_name == 'pull_request' &&
+        (github.event.action != 'labeled' || github.event.label.name == 'ci-cross')) ||
+      (github.event_name != 'pull_request' && inputs.build_hosted)
     runs-on: ubuntu-24.04
     timeout-minutes: 300
     container:
@@ -298,7 +297,7 @@ jobs:
       BUILD_CXX: x86_64-linux-gnu-g++ -B/opt/build-binutils/
       CC_FOR_BUILD: x86_64-linux-gnu-gcc -B/opt/build-binutils/
       CXX_FOR_BUILD: x86_64-linux-gnu-g++ -B/opt/build-binutils/
-      HOSTED_GCC_BRANCH: ${{ inputs.hosted_gcc_branch || 'amiga16.2' }}
+      GCC_VER: ${{ inputs.gcc_version || '16.2' }}
 
     steps:
       - uses: actions/checkout@v7
@@ -327,7 +326,7 @@ jobs:
       - name: Build MinGW hosted toolchain
         id: version
         run: |
-          make branch mod=gcc branch="$HOSTED_GCC_BRANCH"
+          make branch mod=gcc branch="amiga$GCC_VER"
           make update
           make -j "$(nproc)" all
           make -j 4 all-sdk
@@ -337,10 +336,47 @@ jobs:
           fi
           echo "package_version=$package_version" >> "$GITHUB_OUTPUT"
 
+      - name: Test MinGW hosted compiler
+        run: |
+          smoke_dir="$RUNNER_TEMP/mingw-smoke"
+          wine_home="$RUNNER_TEMP/wine-home"
+          wine_runtime="$RUNNER_TEMP/wine-runtime"
+          mkdir -p "$smoke_dir" "$wine_home" "$wine_runtime"
+          chmod 700 "$wine_runtime"
+          export HOME="$wine_home"
+          export WINEPREFIX="$wine_home/prefix"
+          export XDG_RUNTIME_DIR="$wine_runtime"
+          export WINEDEBUG=-all
+          export WINEPATH="$(winepath -w "$PREFIX/bin")"
+          printf '%s\n' 'int main(void) { return 0; }' > "$smoke_dir/smoke.c"
+          smoke_src=$(winepath -w "$smoke_dir/smoke.c")
+          smoke_out=$(winepath -w "$smoke_dir/smoke")
+          wine "$PREFIX/bin/m68k-amigaos-gcc.exe" \
+            -flto -mcrt=nix20 -mcpu=68040 -mhard-float \
+            "$smoke_src" -o "$smoke_out"
+          test -s "$smoke_dir/smoke"
+
+      - name: Free build space
+        run: |
+          make clean
+          rm -rf projects download \
+            "$RUNNER_TEMP/mingw-smoke" \
+            "$RUNNER_TEMP/wine-home" \
+            "$RUNNER_TEMP/wine-runtime"
+
       # Dereference links before crossing the Linux/Windows artifact boundary;
       # the installed Windows tree must contain ordinary files, not Unix links.
+      # SDI points at its parent include directory, so materialize that alias
+      # before asking tar to dereference the remaining non-recursive links.
       - name: Export Windows toolchain tree
         run: |
+          sdi_dir="$PREFIX/m68k-amigaos/include/SDI"
+          include_dir=$(dirname "$sdi_dir")
+          test -L "$sdi_dir"
+          rm "$sdi_dir"
+          mkdir "$sdi_dir"
+          find "$include_dir" -mindepth 1 -maxdepth 1 ! -name SDI \
+            -exec cp -aL -t "$sdi_dir" -- {} +
           tar --dereference -C "$(dirname "$PREFIX")" -cf mingw-prefix.tar "$(basename "$PREFIX")"
           test -s mingw-prefix.tar
 
@@ -401,8 +437,8 @@ jobs:
           $env:AMIGA_GCC_SOURCE_DIR = (Resolve-Path staging/m68k-amigaos).Path
           $output = (Resolve-Path packages).Path
           & $iscc `
-            "--output-dir=$output" `
-            "--output-filename=$env:PACKAGE_BASENAME-setup" `
+            "/O$output" `
+            "/F$env:PACKAGE_BASENAME-setup" `
             setup/setup2.iss
           if ($LASTEXITCODE -ne 0) {
             throw "ISCC failed with exit code $LASTEXITCODE"
