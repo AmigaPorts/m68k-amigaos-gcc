@@ -58,12 +58,12 @@ AmigaOS-specific changes are maintained in the upstream AmigaPorts repositories.
 ## Prerequisites
 ### Fedora
 ```
-sudo dnf install wget gcc gcc-c++ python git perl-Pod-Simple gperf patch autoconf automake make makedepend bison flex ncurses-devel gmp-devel mpfr-devel libmpc-devel gettext-devel rsync readline-devel which
+sudo dnf install wget gcc gcc-c++ python git perl-Pod-Simple gperf patch autoconf automake make makedepend bison flex gmp-devel mpfr-devel libmpc-devel gettext-devel rsync readline-devel which
 ```
 
 ### Ubuntu, Debian
 ```
-sudo apt install make wget git gcc g++ libgmp-dev libmpfr-dev libmpc-dev flex bison gettext ncurses-dev autoconf rsync libreadline-dev
+sudo apt install make wget git gcc g++ libgmp-dev libmpfr-dev libmpc-dev flex bison gettext autoconf rsync libreadline-dev
 ```
 
 If building with a normal user, the `PREFIX` directory must be writable (default is `/opt/amiga`). You can add the user to an appropriate group. 
@@ -108,13 +108,13 @@ Install cygwin via setup.exe and add wget. Then open cygwin shell and run:
 ```
 wget https://raw.githubusercontent.com/transcode-open/apt-cyg/master/apt-cyg
 install apt-cyg /bin
-apt-cyg install gcc-core gcc-g++ python git perl-Pod-Simple gperf patch automake make makedepend bison flex libncurses-devel python-devel gettext-devel libgmp-devel libmpc-devel libmpfr-devel rsync
+apt-cyg install gcc-core gcc-g++ python git perl-Pod-Simple gperf patch automake make makedepend bison flex python-devel gettext-devel libgmp-devel libmpc-devel libmpfr-devel rsync
 ```
 
 ### Windows with msys2
 
 ```
-pacman -S git base-devel gcc flex gmp-devel mpc-devel mpfr-devel ncurses-devel rsync autoconf automake
+pacman -S git base-devel gcc flex gmp-devel mpc-devel mpfr-devel rsync autoconf automake
 ```
 
 Also note that you **MUST** cd into an **absolute path** e.g. `cd /c/msys64/home/test/amiga-gcc/` before running make, or builds may fail, because some files aren't found correctly (that's a msys2 bug).
