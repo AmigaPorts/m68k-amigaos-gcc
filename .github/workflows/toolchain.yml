@@ -166,7 +166,7 @@ jobs:
         run: |
           if [[ "$GITHUB_REF" == refs/tags/* ]]; then
             make package \
-              PACKAGE=m68k-amigaos-gcc-${GITHUB_REF_NAME#v}-$(uname -s)-$(uname -m).tar.xz
+              PACKAGE=m68k-amigaos-gcc-${GITHUB_REF_NAME#v}-$(uname -m)-$(uname -s | tr '[:upper:]' '[:lower:]').tar.xz
           else
             make package
           fi
@@ -255,7 +255,7 @@ jobs:
       run:
         shell: bash
     env:
-      PREFIX: ${{ github.workspace }}/output/amigaos/m68k-amigaos-native
+      PREFIX: ${{ github.workspace }}/output/amigaos/m68k-amigaos-gcc-${{ inputs.gcc_version || '16.2' }}
       HOST: m68k-amigaos
       BUILD_TRIPLET: x86_64-linux-gnu
       HOST_RUNNER: vamos -C 68040 --
