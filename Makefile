@@ -615,7 +615,9 @@ drop-prefix:
 # on which the produced tools run.  PACKAGE_PLATFORM may be overridden for a
 # more user-facing platform label without changing the configured HOST.
 ifeq (,$(strip $(HOST)))
-PACKAGE_PLATFORM ?= $(UNAME_S)-$(shell uname -m)
+# short CPU-first cpu-os pair (x86_64-linux, arm64-darwin), stable across
+# distros unlike a full config triple; cross/hosted builds use $(HOST) below
+PACKAGE_PLATFORM ?= $(shell uname -m)-$(shell uname -s | tr '[:upper:]' '[:lower:]')
 else
 PACKAGE_PLATFORM ?= $(HOST)
 endif
