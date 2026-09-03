@@ -660,10 +660,10 @@ update: update-gcc update-binutils update-fd2sfd update-fd2pragma update-ira upd
 	+$(MAKE) -B $(DOWNLOAD)/$(LIBFREETYPE).tar.xz
 
 update-gcc: $(PROJECTS)/gcc/configure
-	@cd $(PROJECTS)/gcc && git pull || (export DEPTH=16; while true; do echo "trying depth=$$DEPTH"; git pull --depth $$DEPTH && break; export DEPTH=$$(($$DEPTH+$$DEPTH));done)
+	@cd $(PROJECTS)/gcc && (git pull --ff-only || git fetch --unshallow || git fetch --deepen 100 || true)
 
 update-binutils: $(PROJECTS)/binutils/configure
-	@cd $(PROJECTS)/binutils && git pull || (export DEPTH=16; while true; do echo "trying depth=$$DEPTH"; git pull --depth $$DEPTH && break; export DEPTH=$$(($$DEPTH+$$DEPTH));done)
+	@cd $(PROJECTS)/binutils && (git pull --ff-only || git fetch --unshallow || git fetch --deepen 100 || true)
 
 update-fd2sfd: $(PROJECTS)/fd2sfd/configure
 	@cd $(PROJECTS)/fd2sfd && git pull
