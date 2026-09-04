@@ -483,27 +483,30 @@ x:
 # =================================================
 .PHONY: help
 help:
-	@echo "make help					display this help"
-	@echo "make info					print prefix and other flags"
-	@echo "make all 					build and install all"
-	@echo "make min 					build and install the minimal to use gcc"
-	@echo "make <target>					builds a target: binutils, gcc, gprof, fd2sfd, fd2pragma, ira, sfdc, vasm, vbcc, vlink, libnix, ixemul, libgcc, clib2, libdebug, libpthread, ndk, ndk13"
-	@echo "make clean					remove the build folder"
-	@echo "make clean-<target>				remove the target's build folder"
-	@echo "make drop-prefix				remove all content from the prefix folder"
-	@echo "make package [PACKAGE_FORMAT=tar.xz|lha]	package the prefix folder for the destination host"
-	@echo "make package-lha				package the prefix folder as an .lha archive"
-	@echo "make update					perform git pull for all targets"
-	@echo "make update-<target>				perform git pull for the given target"
-	@echo "make sdk=<sdk>					install the sdk <sdk>"
-	@echo "make all-sdk					install all sdks"
-	@echo "make l   					print the last log entry for each project"
-	@echo "make b   					print the branch for each project"
-	@echo "make r   					print the remote for each project"
-	@echo "make v [date=<date>]				checkout all projects for a given date, checkout to branch if no date given"
-	@echo "make branch branch=<branch> mod=<module>	switch the module to the given branch"
+	@echo "make help                display this help"
+	@echo "make info                print prefix and other flags"
+	@echo "make all                 build and install all"
+	@echo "make min                 build and install the minimal to use gcc"
+	@echo "make <target>            builds a target: binutils, gcc, gprof, fd2sfd, fd2pragma, ira, sfdc, vasm, vbcc, vlink, libnix, ixemul, libgcc, clib2, libdebug, libpthread, ndk, ndk13"
+	@echo "make clean               remove the build folder"
+	@echo "make clean-<target>      remove the target's build folder"
+	@echo "make drop-prefix         remove all content from the prefix folder"
+	@echo "make package             package the prefix folder for the destination host"
+	@echo "make package-lha         package the prefix folder as an .lha archive"
+	@echo "make update              perform git pull for all targets"
+	@echo "make update-<target>     perform git pull for the given target"
+	@echo "make sdk=<sdk>           install the sdk <sdk>"
+	@echo "make all-sdk             install all sdks"
+	@echo "make l                   print the last log entry for each project"
+	@echo "make b                   print the branch for each project"
+	@echo "make r                   print the remote for each project"
+	@echo "make v [date=<date>]     checkout all projects for a given date, checkout to branch if no date given"
+	@echo "make branch branch=<branch> mod=<module>  switch the module to the given branch"
 	@echo ""
-	@echo "the optional parameter THREADS=posix will build it with thread support"
+	@echo "Parameters:"
+	@echo "PREFIX=<path>            defaults to /opt/amiga"
+	@echo "THREADS=posix            build gcc with thread support"
+	@echo "ADDLANG=lang,lang...     configure additional language frontends"
 
 # =================================================
 # all
@@ -755,10 +758,6 @@ update-mpc:
 	@$(MAKE) $(PROJECTS)/$(MPC)/configure
 
 # =================================================
-# B I N
-# =================================================
-
-# =================================================
 # binutils
 # =================================================
 CONFIG_BINUTILS = --prefix=$(PREFIX) --target=$(TARGET) $(HOST_CONFIGURE) --disable-werror --disable-nls --without-msgpack
@@ -853,7 +852,7 @@ $(BUILD)/binutils/_gdb: $(BUILD)/binutils/_done
 # =================================================
 # gprof
 # =================================================
-CONFIG_GRPOF := --prefix=$(PREFIX) --target=$(TARGET) $(HOST_CONFIGURE) --disable-werror
+CONFIG_GPROF := --prefix=$(PREFIX) --target=$(TARGET) $(HOST_CONFIGURE) --disable-werror
 
 gprof: $(BUILD)/binutils/_gprof
 
@@ -864,7 +863,7 @@ $(BUILD)/binutils/_gprof: $(BUILD)/binutils/gprof/Makefile $(shell find 2>/dev/n
 
 $(BUILD)/binutils/gprof/Makefile: $(PROJECTS)/binutils/configure $(BUILD)/binutils/_done
 	@mkdir -p $(BUILD)/binutils/gprof
-	$(L0)"configure gprof"$(L1) cd $(BUILD)/binutils/gprof && $(E) $(PROJECTS)/binutils/gprof/configure $(CONFIG_GRPOF) $(L2)
+	$(L0)"configure gprof"$(L1) cd $(BUILD)/binutils/gprof && $(E) $(PROJECTS)/binutils/gprof/configure $(CONFIG_GPROF) $(L2)
 
 # =================================================
 # gcc
@@ -1055,7 +1054,7 @@ $(BUILD)/gcc-host-compat.o: support/amiga-host-compat.c
 	$(L0)"make Amiga host compatibility object"$(L1) $(CC) $(CFLAGS) -c $< -o $@ $(L2)
 
 $(PROJECTS)/gcc/configure:
-	@cd $(PROJECTS) &&	git clone -b $(gcc_BRANCH) --depth 16 $(gcc_URL)
+	@cd $(PROJECTS) && git clone -b $(gcc_BRANCH) --depth 16 $(gcc_URL)
 	for i in $$(find patches/gcc/ -type f 2>/dev/null); \
 	do if [[ "$$i" == *.diff ]] ; \
 		then j=$${i:8}; patch -N "$(PROJECTS)/$${j%.diff}" "$$i"; fi ; done
@@ -1149,7 +1148,7 @@ $(BUILD_TOOLS)/fd2sfd/Makefile: $(PROJECTS)/fd2sfd/configure
 	$(L0)"configure fd2sfd for the build machine"$(L1) cd $(BUILD_TOOLS)/fd2sfd && CC="$(BUILD_CC)" CFLAGS="$(BUILD_CFLAGS)" $(PROJECTS)/fd2sfd/configure --prefix=$(BUILD_TOOLS_PREFIX) --target=$(TARGET) $(L2)
 
 $(PROJECTS)/fd2sfd/configure:
-	@cd $(PROJECTS) &&	git clone -b $(fd2sfd_BRANCH) --depth 4 $(fd2sfd_URL)
+	@cd $(PROJECTS) && git clone -b $(fd2sfd_BRANCH) --depth 4 $(fd2sfd_URL)
 	for i in $$(find patches/fd2sfd/ -type f); \
 	do if [[ "$$i" == *.diff ]] ; \
 		then j=$${i:8}; patch -N "$(PROJECTS)/$${j%.diff}" "$$i"; fi ; done
@@ -1188,7 +1187,7 @@ $(BUILD_TOOLS)/fd2pragma/fd2pragma: $(PROJECTS)/fd2pragma/makefile $(shell find 
 	$(L0)"make fd2pragma for the build machine"$(L1) cd $(PROJECTS)/fd2pragma && $(BUILD_CC) -o $@ $(BUILD_CFLAGS) fd2pragma.c $(L2)
 
 $(PROJECTS)/fd2pragma/makefile:
-	@cd $(PROJECTS) &&	git clone -b $(fd2pragma_BRANCH) --depth 4 $(fd2pragma_URL)
+	@cd $(PROJECTS) && git clone -b $(fd2pragma_BRANCH) --depth 4 $(fd2pragma_URL)
 
 # =================================================
 # ira
@@ -1207,7 +1206,7 @@ $(BUILD)/ira/ira$(EXEEXT): $(PROJECTS)/ira/Makefile $(shell find 2>/dev/null $(P
 	$(L0)"make ira"$(L1) cd $(PROJECTS)/ira && $(CC) -o $@ $(CFLAGS) *.c -std=c99 $(LDFLAGS) $(L2)
 
 $(PROJECTS)/ira/Makefile:
-	@cd $(PROJECTS) &&	git clone -b $(ira_BRANCH) --depth 4 $(ira_URL)
+	@cd $(PROJECTS) && git clone -b $(ira_BRANCH) --depth 4 $(ira_URL)
 
 # =================================================
 # sfdc
@@ -1229,7 +1228,7 @@ $(BUILD)/sfdc/Makefile: $(PROJECTS)/sfdc/configure $(shell find 2>/dev/null $(PR
 	$(L0)"configure sfdc"$(L1) cd $(BUILD)/sfdc && $(E) $(BUILD)/sfdc/configure $(CONFIG_SFDC) $(L2)
 
 $(PROJECTS)/sfdc/configure:
-	@cd $(PROJECTS) &&	git clone -b $(sfdc_BRANCH) --depth 4 $(sfdc_URL)
+	@cd $(PROJECTS) && git clone -b $(sfdc_BRANCH) --depth 4 $(sfdc_URL)
 
 # =================================================
 # vasm
@@ -1279,7 +1278,7 @@ $(BUILD_TOOLS)/vasm/Makefile: $(PROJECTS)/vasm/Makefile $(shell find 2>/dev/null
 	@touch $(BUILD_TOOLS)/vasm/Makefile
 
 $(PROJECTS)/vasm/Makefile:
-	@cd $(PROJECTS) &&	git clone -b $(vasm_BRANCH) --depth 4 $(vasm_URL)
+	@cd $(PROJECTS) && git clone -b $(vasm_BRANCH) --depth 4 $(vasm_URL)
 
 # =================================================
 # vbcc
@@ -1305,7 +1304,7 @@ $(BUILD)/vbcc/Makefile: $(PROJECTS)/vbcc/Makefile $(shell find 2>/dev/null $(PRO
 	@touch $(BUILD)/vbcc/Makefile
 
 $(PROJECTS)/vbcc/Makefile:
-	@cd $(PROJECTS) &&	git clone -b $(vbcc_BRANCH) --depth 4 $(vbcc_URL)
+	@cd $(PROJECTS) && git clone -b $(vbcc_BRANCH) --depth 4 $(vbcc_URL)
 
 # =================================================
 # vlink
@@ -1325,7 +1324,7 @@ $(BUILD)/vlink/Makefile: $(PROJECTS)/vlink/Makefile
 	@rsync -a --no-group $(PROJECTS)/vlink $(BUILD)/ --exclude .git
 
 $(PROJECTS)/vlink/Makefile:
-	@cd $(PROJECTS) &&	git clone -b $(vlink_BRANCH) --depth 4 $(vlink_URL)
+	@cd $(PROJECTS) && git clone -b $(vlink_BRANCH) --depth 4 $(vlink_URL)
 
 # Always built, so the toolchain ships its own lha instead of relying
 # on the host: brew only has lhasa, which cannot create archives and
@@ -1398,9 +1397,6 @@ $(DOWNLOAD)/vbcc_target_m68k-kick13.lha:
 $(DOWNLOAD)/vbcc_target_m68k-amigaos.lha:
 	$(call get-file,vbcc_target,http://aminet.net/dev/c/vbcc_target_m68k-amiga.lha,vbcc_target_m68k-amigaos.lha)
 
-# =================================================
-# L I B R A R I E S
-# =================================================
 # =================================================
 # NDK - no git
 # =================================================
@@ -1544,7 +1540,7 @@ $(BUILD)/_netinclude: $(PROJECTS)/amiga-netinclude/README.md $(BUILD)/ndk-includ
 	@echo "done" >$@
 
 $(PROJECTS)/amiga-netinclude/README.md:
-	@cd $(PROJECTS) &&	git clone -b $(amiga-netinclude_BRANCH) --depth 4 $(amiga-netinclude_URL)
+	@cd $(PROJECTS) && git clone -b $(amiga-netinclude_BRANCH) --depth 4 $(amiga-netinclude_URL)
 
 # =================================================
 # libamiga
@@ -1583,7 +1579,7 @@ $(BUILD)/libnix/_done: $(BUILD)/newlib/_done $(BUILD)/ndk-include_ndk $(BUILD)/n
 	@echo "done" >$@
 
 $(PROJECTS)/libnix/Makefile.gcc6:
-	@cd $(PROJECTS) &&	git clone -b $(libnix_BRANCH) --depth 4 $(libnix_URL)
+	@cd $(PROJECTS) && git clone -b $(libnix_BRANCH) --depth 4 $(libnix_URL)
 
 # =================================================
 # gcc libs
@@ -1649,7 +1645,7 @@ $(BUILD)/libdebug/Makefile: $(BUILD)/gcc/_libgcc_done $(BUILD)/libnix/_done $(PR
 	$(L0)"configure libdebug"$(L1) cd $(BUILD)/libdebug && LD=$(TARGET)-ld CC=$(TARGET)-gcc CFLAGS="$(CFLAGS_FOR_TARGET)" $(PROJECTS)/libdebug/configure $(CONFIG_LIBDEBUG) $(L2)
 
 $(PROJECTS)/libdebug/configure:
-	@cd $(PROJECTS) &&	git clone -b $(libdebug_BRANCH) --depth 4 $(libdebug_URL)
+	@cd $(PROJECTS) && git clone -b $(libdebug_BRANCH) --depth 4 $(libdebug_URL)
 	@touch -t 0001010000 $(PROJECTS)/libdebug/configure.ac
 
 # =================================================
@@ -1678,7 +1674,7 @@ $(BUILD)/libpthread/Makefile: $(BUILD)/libnix/_done $(PROJECTS)/aros-stuff/pthre
 	@touch $(BUILD)/libpthread/Makefile
 
 $(PROJECTS)/aros-stuff/pthreads/Makefile:
-	@cd $(PROJECTS) &&	git clone -b $(aros-stuff_BRANCH) --depth 4 $(aros-stuff_URL)
+	@cd $(PROJECTS) && git clone -b $(aros-stuff_BRANCH) --depth 4 $(aros-stuff_URL)
 
 # =================================================
 # newlib
@@ -1718,13 +1714,13 @@ $(BUILD)/newlib/newlib/Makefile: $(PROJECTS)/newlib-cygwin/newlib/configure $(BU
 	; else touch "$(BUILD)/newlib/newlib/Makefile"; fi
 
 $(PROJECTS)/newlib-cygwin/newlib/configure:
-	@cd $(PROJECTS) &&	git clone -b $(newlib-cygwin_BRANCH) --depth 4  $(newlib-cygwin_URL)
+	@cd $(PROJECTS) && git clone -b $(newlib-cygwin_BRANCH) --depth 4 $(newlib-cygwin_URL)
 
 # =================================================
 # ixemul
 # =================================================
 $(PROJECTS)/ixemul/configure:
-	@cd $(PROJECTS) &&	git clone -b $(ixemul_BRANCH) $(ixemul_URL)
+	@cd $(PROJECTS) && git clone -b $(ixemul_BRANCH) $(ixemul_URL)
 
 .PHONY: ixemul
 ixemul:	$(PREFIX)/$(TARGET)/ixemul/lib/libc.a
