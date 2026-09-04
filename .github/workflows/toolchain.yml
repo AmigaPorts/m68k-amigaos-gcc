@@ -145,6 +145,10 @@ jobs:
       - name: Fetch sources
         run: make update
 
+      # provenance for the whole build, independent of the testsuite
+      - name: Record module revisions
+        run: sh .github/scripts/module-revisions.sh >> $GITHUB_STEP_SUMMARY
+
       - name: Build toolchain
         run: make -j $NPROC all
 
