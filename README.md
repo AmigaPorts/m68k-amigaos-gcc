@@ -24,36 +24,13 @@ Currently, these tools are built:
 # Branches
 ## Notable branches of gcc
 * `amiga6`: The legacy gcc-6.5.0b branch
-* `amiga10.4`: gcc-10.4.0  supports register parameters
-* `amiga13.4`: gcc-13.4.0  supports register parameters
-* `amiga15.2`: gcc-15.2.0  supports register parameters
+* `amiga10.4`: gcc-10.4.0
+* `amiga13.4`: gcc-13.4.0
+* `amiga15.2`: gcc-15.2.0
 * `amiga16.2`: gcc-16.2.0, the default branch, built and tested by CI
 
 ## Notable branches of binutils
 * `amiga-2.46`: binutils 2.46 with amigaos support and dwarf2 debugging (the default)
-
-# COPYRIGHTS
-* amiga-netinclude: 'Roadshow' -- Amiga TCP/IP stack, Copyright © 2001-2016 by Olaf Barthel. Freely Distributable.
-* aros-stuff: libpthread, Copyright (C) 2014 Szilard Biro.
-* binutils: Free Software Foundation, GNU GENERAL PUBLIC LICENSE V2.
-* clib2: Copyright (c) 2002-2015 by Olaf Barthel.
-* fd2pragma: Dirk Stoecker, public domain.
-* fd2sfd: Martin Blom et al, GNU GENERAL PUBLIC LICENSE V2.
-* gcc: Free Software Foundation, GNU GENERAL PUBLIC LICENSE V2.
-* ira: Tim Ruehsen, Ilkka Lehtoranta, Frank Wille, Nicolas Bastien. Freeware.
-* ixemul: Markus Wild, Rafael W. Luebbert, Leonard Norrgard, Jeff Shepherd, Matthias Fleischer, Hans Verkuil. GNU GENERAL PUBLIC LICENSE V2.
-* libdebug: ?, GNU GENERAL PUBLIC LICENSE V2.
-* libnix: Matthias Fleischer, Gunther Nikl. Public Domain.
-* NDK3.2: Hyperion, unknown license...
-* newlib: Free Software Foundation, GNU GENERAL PUBLIC LICENSE V2.
-* sfdc: Martin Blom, GNU GENERAL PUBLIC LICENSE V2.
-* vasm: copyright in 2002-2022 by Volker Barthelmann, free for non-commercial purposes.
-* vbcc: copyright in 1995-2022 by Volker Barthelmann, free for non-commercial purposes.
-* vlink: copyright 1995-2022 by Frank Wille, free for non-commercial purposes.
-
-There are also libraries (SDKs) which can be downloaded and installed. These libraries can all be built from source. All of these libraries are provided under their respective licenses.
-
-AmigaOS-specific changes are maintained in the upstream AmigaPorts repositories. The optional `patches/<module>/` directories can still be used for downstream patches, but no GCC or binutils patches are required by default. None of these changes modify the original copyright in any way. All other changes are published under the terms of the GNU GENERAL PUBLIC LICENSE V2.
 
 ## Prerequisites
 ### Fedora
@@ -173,9 +150,7 @@ sudo usermod -a -G users username
 After adding the user to the group, you may have to logout and login again to apply the changes to your user.
 
 ## Building
-Once the `PREFIX` directory is writable, run `make all`. You can use
-`-j` to speed up the build, adjusting the value of `-j` to the number
-of cores you wish to use for the build process.
+Once the `PREFIX` directory is writable, run `make all`. You can use `-j$(nproc)` to speed up the build.
 
 ```
 make clean
@@ -292,28 +267,6 @@ make branch mod=binutils branch=devel1
 ```
 The default branches and repositories are in the file **default-repos**, the local state is managed in the file **.repos**.
 
-The default GCC branch is `amiga16.2`; see the Branches section above
-for the alternatives. A fresh build can therefore be started directly:
-```
-sudo mkdir -p /opt/amiga16
-sudo chown $USER /opt/amiga16
-git clone https://github.com/AmigaPorts/m68k-amigaos-gcc
-cd m68k-amigaos-gcc
-export PREFIX=/opt/amiga16
-make all -j$(nproc)
-```
+# Copyrights
 
-## Fortran support
-m68k-amigaos-gfortran is available now too. To build it add `ADDLANG=fortran`:
-```
-make all -j20 ADDLANG=fortran
-```
-
-The example from https://gcc.gnu.org/wiki/GFortranGettingStarted does work, you have to link using gcc:
-```
-> m68k-amigaos-gfortran -Os fprog.f90 -c
-> m68k-amigaos-gcc -Os -noixemul sub.c -c
-> m68k-amigaos-gcc fprog.o sub.o  -o fprog -lgfortran -noixemul -lm
-> vamos fprog
-abcd 5 4711 4712.000000 13 14
-```
+See [COPYING](COPYING) and [COPYING-THIRD-PARTY](COPYING-THIRD-PARTY.md).
