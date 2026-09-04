@@ -664,56 +664,64 @@ update: update-gcc update-binutils update-fd2sfd update-fd2pragma update-ira upd
 	+$(MAKE) -B $(DOWNLOAD)/$(LIBPNG).tar.xz
 	+$(MAKE) -B $(DOWNLOAD)/$(LIBFREETYPE).tar.xz
 
+# Pull a module checkout forward. A checkout pinned to an exact commit (CI
+# building a module's pull request) has no branch to pull, so it is left as
+# is; a shallow clone that cannot fast-forward is deepened instead.
+define update-module
+@cd $(PROJECTS)/$1 && if git symbolic-ref -q HEAD >/dev/null; then \
+	git pull --ff-only || git fetch --unshallow || git fetch --deepen 100 || true; fi
+endef
+
 update-gcc: $(PROJECTS)/gcc/configure
-	@cd $(PROJECTS)/gcc && (git pull --ff-only || git fetch --unshallow || git fetch --deepen 100 || true)
+	$(call update-module,gcc)
 
 update-binutils: $(PROJECTS)/binutils/configure
-	@cd $(PROJECTS)/binutils && (git pull --ff-only || git fetch --unshallow || git fetch --deepen 100 || true)
+	$(call update-module,binutils)
 
 update-fd2sfd: $(PROJECTS)/fd2sfd/configure
-	@cd $(PROJECTS)/fd2sfd && git pull
+	$(call update-module,fd2sfd)
 
 update-fd2pragma: $(PROJECTS)/fd2pragma/makefile
-	@cd $(PROJECTS)/fd2pragma && git pull
+	$(call update-module,fd2pragma)
 
 update-ira: $(PROJECTS)/ira/Makefile
-	@cd $(PROJECTS)/ira && git pull
+	$(call update-module,ira)
 
 update-sfdc: $(PROJECTS)/sfdc/configure
-	@cd $(PROJECTS)/sfdc && git pull
+	$(call update-module,sfdc)
 
 update-vasm: $(PROJECTS)/vasm/Makefile
-	@cd $(PROJECTS)/vasm && git pull
+	$(call update-module,vasm)
 
 update-vbcc: $(PROJECTS)/vbcc/Makefile
-	@cd $(PROJECTS)/vbcc && git pull
+	$(call update-module,vbcc)
 
 update-vlink: $(PROJECTS)/vlink/Makefile
-	@cd $(PROJECTS)/vlink && git pull
+	$(call update-module,vlink)
 
 update-libnix: $(PROJECTS)/libnix/Makefile.gcc6
-	@cd $(PROJECTS)/libnix && git pull
+	$(call update-module,libnix)
 
 update-ixemul: $(PROJECTS)/ixemul/configure
-	@cd $(PROJECTS)/ixemul && git pull
+	$(call update-module,ixemul)
 
 update-clib2: $(PROJECTS)/clib2/LICENSE
-	@cd $(PROJECTS)/clib2 && git pull
+	$(call update-module,clib2)
 
 update-libdebug: $(PROJECTS)/libdebug/configure
-	@cd $(PROJECTS)/libdebug && git pull
+	$(call update-module,libdebug)
 
 update-libpthread: $(PROJECTS)/aros-stuff/pthreads/Makefile
-	@cd $(PROJECTS)/aros-stuff && git pull
+	$(call update-module,aros-stuff)
 
 update-ndk: $(DOWNLOAD)/$(NDK_ARC_NAME).lha
 	$(MAKE) $(PROJECTS)/$(NDK_FOLDER_NAME).info
 
 update-newlib: $(PROJECTS)/newlib-cygwin/newlib/configure
-	@cd $(PROJECTS)/newlib-cygwin && git pull
+	$(call update-module,newlib-cygwin)
 
 update-netinclude: $(PROJECTS)/amiga-netinclude/README.md
-	@cd $(PROJECTS)/amiga-netinclude && git pull
+	$(call update-module,amiga-netinclude)
 
 .PHONY: gcc-prerequisites update-gmp update-mpc update-mpfr
 gcc-prerequisites: $(PROJECTS)/$(GMP)/configure $(PROJECTS)/$(MPFR)/configure $(PROJECTS)/$(MPC)/configure
