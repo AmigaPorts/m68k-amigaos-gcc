@@ -150,8 +150,8 @@ with the gcc testsuite as a release gate.
 
 You can select one of the various runtimes:
 
-* Nothing specified: newlib-based static runtime for Kickstart 2.0+ (still the default, but uncommon nowadays)
-* `-mcrt=nix20` or `-noixemul`: the libnix runtime for Kickstart 2.0+ (recommended option for most projects)
+* Nothing specified: newlib-based static runtime for Kickstart 2.0+ (**default, but uncommon nowadays**)
+* `-mcrt=nix20` or `-noixemul`: the libnix runtime for Kickstart 2.0+ (**recommended option for most projects**)
 * `-mcrt=nix13`: the libnix static runtime for Kickstart 1.3 (also uses headers from `<PREFIX>/m68k-amigaos/ndk13-include`)
 * `-mcrt=clib2`: the clib2 static runtime
 * `-mcrt=ixemul`: the ixemul dynamic runtime for Kickstart 2.0+, requires an installed `ixemul.library`
