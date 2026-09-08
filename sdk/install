@@ -2,7 +2,6 @@
 export PATH=$PATH:$3/bin
 sdk_descriptor="sdk/$2.sdk"
 sdk_prefix=$3
-sdk_blobs_url_base=${BLOBS_URL_BASE:-https://raw.githubusercontent.com/AmigaPorts/toolchain-blobs/refs/heads/main}
 
 run_host_tool()
 {
@@ -201,12 +200,7 @@ case $1 in
 					fi
 					if [ ! -e "$archive" ]; then
 						url=${a[1]}:${a[2]}
-						blob_url="${sdk_blobs_url_base%/}/$file"
-						fallback_url="$sdk_fallback_url"
-						if [ "$blob_url" != "$url" ] && [ -z "$fallback_url" ]; then
-							fallback_url="$url"
-						fi
-						sdk_download_archive "$blob_url" "$fallback_url" \
+						sdk_download_archive "$url" "$sdk_fallback_url" \
 							"$archive" "$sdk_sha256" || exit 1
 					fi
 					if [ ! -e "build/$2" ] || [ "$(ls -l build/$2)" == "total 0" ]; then
