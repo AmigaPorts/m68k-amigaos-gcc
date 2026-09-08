@@ -304,12 +304,10 @@ get_branch = $(shell grep '^$(1)[[:blank:]]' .repos | $(SED) -e 's/[[:blank:]]\+
 $(foreach modu,$(modules),$(eval $(modu)_URL=$(call get_url,$(modu))))
 $(foreach modu,$(modules),$(eval $(modu)_BRANCH=$(call get_branch,$(modu))))
 
-NDK_GITHUB_BLOBS_BASE ?= https://raw.githubusercontent.com/AmigaPorts/toolchain-blobs/refs/heads/main
-NDK32_URL ?= $(NDK_GITHUB_BLOBS_BASE)/NDK3.2.lha
-NDK39_URL ?= $(NDK_GITHUB_BLOBS_BASE)/NDK39.lha
+BLOBS_URL_BASE ?= https://raw.githubusercontent.com/AmigaPorts/toolchain-blobs/refs/heads/main
 
 ifneq ($(NDK),3.9)
-NDK_URL              := $(NDK32_URL)
+NDK_URL              := $(BLOBS_URL_BASE)/NDK3.2.lha
 NDK_SHA256           := 96cabd4ad683dced632e147bf86dee0f50dcb1254386216c25c362916a6409bb
 NDK_ARC_NAME         := NDK3.2
 NDK_FOLDER_NAME      := NDK3.2
@@ -319,7 +317,7 @@ NDK_FOLDER_NAME_FD   := NDK3.2/FD
 NDK_FOLDER_NAME_SFD  := NDK3.2/SFD
 NDK_FOLDER_NAME_LIBS := NDK3.2/lib
 else
-NDK_URL              := $(NDK39_URL)
+NDK_URL              := $(BLOBS_URL_BASE)/NDK39.lha
 NDK_SHA256           :=
 NDK_ARC_NAME         := NDK3.9
 NDK_FOLDER_NAME      := NDK_3.9/Include
