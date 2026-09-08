@@ -2,6 +2,7 @@ Short: CyberGraphX retargetable graphics system
 Version: 4.2
 Url: https://raw.githubusercontent.com/AmigaPorts/toolchain-blobs/refs/heads/main/CGraphX-DevKit.lha
 FallbackUrl: http://aminet.net/dev/misc/CGraphX-DevKit.lha
+Sha256: dd2610649a692863dc27bbce595520b0ee269a03e03f73a8858396127df0fb0c
 
 CGraphX/Assembler/Include/cybergraphx/cybergraphics.i
 CGraphX/Autodocs/cybergraphics.doc

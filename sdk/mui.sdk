@@ -2,6 +2,7 @@ Short: Magic User Interface
 Version: 5.0-2020R3
 Url: https://raw.githubusercontent.com/AmigaPorts/toolchain-blobs/refs/heads/main/MUI-5.0-2020R3-os3.lha
 FallbackUrl: https://github.com/amiga-mui/muidev/releases/download/MUI-5.0-2020R3/MUI-5.0-2020R3-os3.lha
+Sha256: d5d0c596ea0d8567f6e4f9347deb1e25b59d6a13bdca3aa8e10c7c5063a7f32a
 
 SDK/MUI/Autodocs/MCC/MCC_NumericString.doc
 SDK/MUI/Autodocs/MCC/MCC_BetterBalance.doc

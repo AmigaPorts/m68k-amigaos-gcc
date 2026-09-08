@@ -2,6 +2,7 @@ Short: Guigfx MUI custom class
 Version: 19.2
 Url: https://raw.githubusercontent.com/AmigaPorts/toolchain-blobs/refs/heads/main/MCC_Guigfx.lha
 FallbackUrl: http://aminet.net/dev/mui/MCC_Guigfx.lha
+Sha256: dcc3e277cbceee70e4f9f22b6d67fbb0120ff09f173e01e5918b67cd7bd0ba24
 
 MCC_Guigfx/Developer/Assembler/Include/MUI/Guigfx_mcc.i
 MCC_Guigfx/Developer/C/Include/MUI/Guigfx_mcc.h

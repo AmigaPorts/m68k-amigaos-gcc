@@ -2,6 +2,7 @@ Short: Driver system for 3D hardware on the Amiga
 Version: 4.2
 Url: https://raw.githubusercontent.com/AmigaPorts/toolchain-blobs/refs/heads/main/Warp3DDev-4.2a.lha
 FallbackUrl: http://aminet.net/dev/misc/Warp3DDev-4.2a.lha
+Sha256: fcf8bffb4065963663cd7f6b2a9c3d6908b0f9a5c0b53be0451de16c2fa0ba2e
 
 Warp3D_Devel/Docs/Warp3D.doc
 Warp3D_Devel/Docs/Warp3D.guide

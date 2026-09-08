@@ -2,6 +2,7 @@ Short: BetterString custom class for MUI
 Version: 11.36
 Url: https://raw.githubusercontent.com/AmigaPorts/toolchain-blobs/refs/heads/main/MCC_BetterString-11.36.lha
 FallbackUrl: http://aminet.net/dev/mui/MCC_BetterString-11.36.lha
+Sha256: dcba694a5600c5cf0144b7d8f00089fde57aea1cd3a6f644ddeeceae8e006319
 
 MCC_BetterString/Developer/Autodocs/MCC/MCC_BetterString.doc
 MCC_BetterString/Developer/Autodocs/MCC/MCC_HotkeyString.doc

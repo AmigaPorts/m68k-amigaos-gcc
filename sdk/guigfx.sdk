@@ -2,6 +2,7 @@ Short: Application layer for pixel graphics
 Version: 20.0
 Url: https://raw.githubusercontent.com/AmigaPorts/toolchain-blobs/refs/heads/main/guigfxlib.lha
 FallbackUrl: http://aminet.net/dev/misc/guigfxlib.lha
+Sha256: c0be7adafd0595c094856a0434b34b7411c66daa7cb866d7b4c8c2da4cba3d35
 
 doc/autodoc/guigfx = guigfx.guide
 doc/autodoc/guigfx.doc

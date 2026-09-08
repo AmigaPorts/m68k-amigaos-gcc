@@ -2,6 +2,7 @@ Short: Powerful unarchiving tool
 Version: V12.1
 Url: https://raw.githubusercontent.com/AmigaPorts/toolchain-blobs/refs/heads/main/xadmasterdev.lha
 FallbackUrl: http://aminet.net/util/arc/xadmasterdev.lha
+Sha256: b82c222d712bd2b62b4774d5557684e628968122f897a08332feb743f7a95478
 
 xad/xadmaster.guide
 xad/xadmaster.guide.info
