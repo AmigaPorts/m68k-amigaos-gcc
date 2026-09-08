@@ -304,9 +304,9 @@ get_branch = $(shell grep '^$(1)[[:blank:]]' .repos | $(SED) -e 's/[[:blank:]]\+
 $(foreach modu,$(modules),$(eval $(modu)_URL=$(call get_url,$(modu))))
 $(foreach modu,$(modules),$(eval $(modu)_BRANCH=$(call get_branch,$(modu))))
 
-NDK_GITHUB_RELEASE_BASE ?= https://github.com/AmigaPorts/toolchain-blobs/releases/download/amiga-ndk
-NDK32_URL ?= $(NDK_GITHUB_RELEASE_BASE)/NDK3.2.lha
-NDK39_URL ?= $(NDK_GITHUB_RELEASE_BASE)/NDK39.lha
+NDK_GITHUB_BLOBS_BASE ?= https://raw.githubusercontent.com/AmigaPorts/toolchain-blobs/refs/heads/main
+NDK32_URL ?= $(NDK_GITHUB_BLOBS_BASE)/NDK3.2.lha
+NDK39_URL ?= $(NDK_GITHUB_BLOBS_BASE)/NDK39.lha
 
 ifneq ($(NDK),3.9)
 NDK_URL              := $(NDK32_URL)
