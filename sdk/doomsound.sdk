@@ -1,6 +1,7 @@
 Short: New Sound & Music Libraries for DOOM ports
 Version: 38.0
-Url: http://aminet.net/game/shoot/DoomSndLibs.lha
+Url: https://raw.githubusercontent.com/AmigaPorts/toolchain-blobs/refs/heads/main/DoomSndLibs.lha
+FallbackUrl: http://aminet.net/game/shoot/DoomSndLibs.lha
 
 doomsound_lib.sfd = doomsound.sfd
 

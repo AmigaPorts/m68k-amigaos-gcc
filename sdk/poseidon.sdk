@@ -1,6 +1,7 @@
 Short: poseidon usb stack
 Version: 1.31
-Url: https://dump.platon42.de/files/PoseidonDev.lha
+Url: https://raw.githubusercontent.com/AmigaPorts/toolchain-blobs/refs/heads/main/PoseidonDev.lha
+FallbackUrl: https://dump.platon42.de/files/PoseidonDev.lha
 
 patch : poseidon_lib.sfd.diff
 patch : usbclass_lib.sfd.diff

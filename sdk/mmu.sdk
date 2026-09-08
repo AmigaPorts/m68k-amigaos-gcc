@@ -1,6 +1,7 @@
 Short: m68k MMU control library
 Version: 46.3
-Url: http://aminet.net/docs/misc/MuManual.lha
+Url: https://raw.githubusercontent.com/AmigaPorts/toolchain-blobs/refs/heads/main/MuManual.lha
+FallbackUrl: http://aminet.net/docs/misc/MuManual.lha
 
 MuManual/Autodocs/68040 = 68040.guide 
 MuManual/Autodocs/68040.doc

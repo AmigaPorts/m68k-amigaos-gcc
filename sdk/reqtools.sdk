@@ -1,6 +1,7 @@
 Short: reqtools.library
 Version: 2.9
-Url: http://aminet.net/util/libs/ReqToolsDev.lha
+Url: https://raw.githubusercontent.com/AmigaPorts/toolchain-blobs/refs/heads/main/ReqToolsDev.lha
+FallbackUrl: http://aminet.net/util/libs/ReqToolsDev.lha
 
 ReqTools/ReqTools.guide
 ReqTools/fd/reqtools_lib.fd = reqtools.fd

@@ -1,6 +1,7 @@
 Short: P96 retargetable graphics system
 Version: 3.6.1
-Url: https://aminet.net/dev/misc/P96Develop.lha
+Url: https://raw.githubusercontent.com/AmigaPorts/toolchain-blobs/refs/heads/main/P96Develop.lha
+FallbackUrl: https://aminet.net/dev/misc/P96Develop.lha
 Sha256: 53d3413653afc58a9b12e8c31b66a8fa096edf3c3de18937f4aa8effd98b4d2b
 
 Picasso96Develop/Include/libraries/Picasso96.i

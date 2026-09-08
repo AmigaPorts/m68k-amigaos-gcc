@@ -1,6 +1,7 @@
 Short: AmiSSL, OpenSSL 3.x for AmigaOS
 Version: 5.27
-Url: https://github.com/jens-maus/amissl/releases/download/5.27/AmiSSL-5.27-SDK.lha
+Url: https://raw.githubusercontent.com/AmigaPorts/toolchain-blobs/refs/heads/main/AmiSSL-5.27-SDK.lha
+FallbackUrl: https://github.com/jens-maus/amissl/releases/download/5.27/AmiSSL-5.27-SDK.lha
 Sha256: 5003bef8c5930354d16b0ce7196d71b2811891c42fad38a9238c5ce4098ad42a
 
 AmiSSL/Developer/Autodocs/amissl.doc

@@ -1,6 +1,7 @@
 Short: 	Shared lib that recognizes file types
 Version: 4.0
-Url: http://aminet.net/util/cli/WhatIs.lha
+Url: https://raw.githubusercontent.com/AmigaPorts/toolchain-blobs/refs/heads/main/WhatIs.lha
+FallbackUrl: http://aminet.net/util/cli/WhatIs.lha
 
 
 WhatIs/include/clib/whatis_protos.h

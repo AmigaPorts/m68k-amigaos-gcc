@@ -1,6 +1,7 @@
 Short: codesets.library, character set conversion
 Version: 6.22
-Url: https://github.com/jens-maus/libcodesets/releases/download/6.22/codesets-6.22.lha
+Url: https://raw.githubusercontent.com/AmigaPorts/toolchain-blobs/refs/heads/main/codesets-6.22.lha
+FallbackUrl: https://github.com/jens-maus/libcodesets/releases/download/6.22/codesets-6.22.lha
 Sha256: 029d3bf9dd8b85bef6f0ccb58c0b4123d16cc5042a1c13519698016f6966750c
 
 codesets/Developer/Autodocs/codesets.doc

@@ -1,6 +1,7 @@
 Short: Image processing kernel
 Version: 40.8
-Url: http://aminet.net/dev/misc/renderlib.lha
+Url: https://raw.githubusercontent.com/AmigaPorts/toolchain-blobs/refs/heads/main/renderlib.lha
+FallbackUrl: http://aminet.net/dev/misc/renderlib.lha
 
 renderlib/doc/render = render.guide
 renderlib/doc/render.doc
