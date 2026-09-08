@@ -1752,7 +1752,7 @@ $(DOWNLOAD)/ixemul-sdk.lha:
 # =================================================
 .PHONY: sdk all-sdk
 sdk: libnix $(LHA_PREREQ)
-	$(L0)"sdk $(sdk)"$(L1) TOOL_RUNNER="$(HOST_RUNNER)" HOST_EXEEXT="$(EXEEXT)" CC_FOR_SDK="$(SDK_CC_FOR_BUILD)" AR_FOR_SDK="$(SDK_AR_FOR_BUILD)" FD2SFD_FOR_BUILD="$(FD2SFD_FOR_BUILD)" SFDC_FOR_BUILD="$(SFDC_FOR_BUILD)" LHA_FOR_BUILD="$(LHA_FOR_BUILD)" $(PWD)/sdk/install install $(sdk) $(PREFIX) $(L2)
+	$(L0)"sdk $(sdk)"$(L1) TOOL_RUNNER="$(HOST_RUNNER)" HOST_EXEEXT="$(EXEEXT)" CC_FOR_SDK="$(SDK_CC_FOR_BUILD)" AR_FOR_SDK="$(SDK_AR_FOR_BUILD)" FD2SFD_FOR_BUILD="$(FD2SFD_FOR_BUILD)" SFDC_FOR_BUILD="$(SFDC_FOR_BUILD)" LHA_FOR_BUILD="$(LHA_FOR_BUILD)" BLOBS_URL_BASE="$(BLOBS_URL_BASE)" $(PWD)/sdk/install install $(sdk) $(PREFIX) $(L2)
 
 SDKS0=$(shell find sdk/*.sdk)
 SDKS=$(patsubst sdk/%.sdk,%,$(SDKS0))
@@ -1972,7 +1972,7 @@ $(PROJECTS)/$(ZLIB)/configure: $(DOWNLOAD)/$(ZLIB).tar.gz
 	@touch $@
 
 $(DOWNLOAD)/$(ZLIB).tar.gz:
-	$(call get-file,zlib,https://zlib.net/fossils/$(ZLIB).tar.gz,$(ZLIB).tar.gz,bb329a0a2cd0274d05519d61c667c062e06990d72e125ee2dfa8de64f0119d16)
+	$(call get-file,zlib,$(BLOBS_URL_BASE)/$(ZLIB).tar.gz,$(ZLIB).tar.gz,bb329a0a2cd0274d05519d61c667c062e06990d72e125ee2dfa8de64f0119d16)
 
 # =================================================
 # libpng
@@ -2010,7 +2010,7 @@ $(PROJECTS)/$(LIBPNG)/configure: $(DOWNLOAD)/$(LIBPNG).tar.xz $(BUILD)/$(ZLIB)/_
 	@touch $@
 
 $(DOWNLOAD)/$(LIBPNG).tar.xz:
-	$(call get-file,libpng16,https://sourceforge.net/projects/libpng/files/libpng16/$(subst libpng-,,$(LIBPNG))/$(LIBPNG).tar.xz,$(LIBPNG).tar.xz,28eb403f51f0f7405249132cecfe82ea5c0ef97f1b32c5a65828814ae0d34775)
+	$(call get-file,libpng16,$(BLOBS_URL_BASE)/$(LIBPNG).tar.xz,$(LIBPNG).tar.xz,28eb403f51f0f7405249132cecfe82ea5c0ef97f1b32c5a65828814ae0d34775)
 
 # =================================================
 # libfreetype
@@ -2047,4 +2047,4 @@ $(PROJECTS)/$(LIBFREETYPE)/configure: $(DOWNLOAD)/$(LIBFREETYPE).tar.xz $(BUILD)
 	@touch $@
 
 $(DOWNLOAD)/$(LIBFREETYPE).tar.xz:
-	$(call get-file,$(LIBFREETYPE),https://download-mirror.savannah.gnu.org/releases/freetype/$(LIBFREETYPE).tar.xz,$(LIBFREETYPE).tar.xz)
+	$(call get-file,$(LIBFREETYPE),$(BLOBS_URL_BASE)/$(LIBFREETYPE).tar.xz,$(LIBFREETYPE).tar.xz)
