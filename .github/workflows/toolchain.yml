@@ -108,6 +108,10 @@ jobs:
       - name: Install build dependencies (Linux)
         if: runner.os == 'Linux'
         run: |
+          # The runner image ships Google Chrome and its apt repository,
+          # which nothing here uses; while Google republishes it, its index
+          # fails the hash check and takes apt-get update down with it.
+          sudo rm -f /etc/apt/sources.list.d/google-chrome*.list
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
             autoconf automake bison build-essential ca-certificates flex \
