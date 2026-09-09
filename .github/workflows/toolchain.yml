@@ -4,6 +4,7 @@
 # calls this workflow with its branch swapped in, with a ci-* tag. The
 # label picks what to build:
 #   ci-linux         - the Linux toolchain (plus the amigaos.exp testsuite)
+#   ci-linux-arm     - the same on an arm64 Linux runner
 #   ci-macos         - the macOS toolchain
 #   ci-amigaos       - the AmigaOS-hosted toolchain
 #   ci-mingw         - the MinGW-hosted toolchain
@@ -84,9 +85,13 @@ jobs:
   build:
     if: >-
       github.event_name != 'pull_request' ||
-      contains(fromJSON('["ci-linux", "ci-macos", "ci-testsuite-c", "ci-testsuite-cxx"]'),
+      contains(fromJSON('["ci-linux", "ci-linux-arm", "ci-macos", "ci-testsuite-c", "ci-testsuite-cxx"]'),
                github.event.label.name)
-    runs-on: ${{ inputs.runner || (github.event.label.name == 'ci-macos' && 'macos-15') || 'ubuntu-24.04' }}
+    runs-on: >-
+      ${{ inputs.runner
+          || (github.event.label.name == 'ci-macos' && 'macos-15')
+          || (github.event.label.name == 'ci-linux-arm' && 'ubuntu-24.04-arm')
+          || 'ubuntu-24.04' }}
     timeout-minutes: 300
     env:
       RUN_TESTSUITE: ${{ inputs.run_testsuite || github.event.label.name == 'ci-testsuite-c' }}
