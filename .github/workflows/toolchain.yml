@@ -1,3 +1,16 @@
+# Build the whole m68k-amigaos toolchain, on dispatch, from release.yml,
+# or for a labelled pull request. Nothing builds on a plain push: label a
+# pull request here, or in a module repository whose toolchain-ci.yml
+# calls this workflow with its branch swapped in, with a ci-* tag. The
+# label picks what to build:
+#   ci-linux         - the Linux toolchain (plus the amigaos.exp testsuite)
+#   ci-macos         - the macOS toolchain
+#   ci-amigaos       - the AmigaOS-hosted toolchain
+#   ci-mingw         - the MinGW-hosted toolchain
+#   ci-testsuite-c   - the Linux toolchain with the gcc C testsuite
+#   ci-testsuite-cxx - the Linux toolchain with the g++ testsuite (slow)
+# Re-add the label to rebuild after pushing new commits.
+
 name: Bootstrap toolchain
 
 on:
@@ -63,14 +76,7 @@ on:
       checkout_ref:
         type: string
         default: ""
-  # Nothing builds on a plain push; add a label to build the merge commit,
-  # and re-add it to rebuild after pushing new commits:
-  #  - "ci-linux": the Linux toolchain (plus the fast amigaos.exp testsuite)
-  #  - "ci-macos": the macOS toolchain
-  #  - "ci-amigaos": the AmigaOS-hosted toolchain
-  #  - "ci-mingw": the MinGW-hosted toolchain
-  #  - "ci-testsuite-c": Linux toolchain with the gcc C testsuite
-  #  - "ci-testsuite-cxx": Linux toolchain with the g++ testsuite (slow)
+  # the ci-* labels listed at the top of this file
   pull_request:
     types: [labeled]
 
@@ -108,6 +114,10 @@ jobs:
       - name: Install build dependencies (Linux)
         if: runner.os == 'Linux'
         run: |
+          # The runner image ships Google Chrome and its apt repository,
+          # which nothing here uses; while Google republishes it, its index
+          # fails the hash check and takes apt-get update down with it.
+          sudo rm -f /etc/apt/sources.list.d/google-chrome*.list
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
             autoconf automake bison build-essential ca-certificates flex \
