@@ -11,6 +11,9 @@ on:
         description: runner label
         default: ubuntu-24.04
 
+permissions:
+  contents: read
+
 jobs:
   build_libfreetype2:
     runs-on: ${{ inputs.runner || 'ubuntu-24.04' }}
