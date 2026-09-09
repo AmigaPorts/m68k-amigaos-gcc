@@ -1,0 +1,80 @@
+name: Prototype libfreetype2 cache
+
+on:
+  workflow_dispatch:
+    inputs:
+      gcc_version:
+        description: gcc version to build (branch amiga<version>)
+        default: "16.2"
+        required: true
+      runner:
+        description: runner label
+        default: ubuntu-24.04
+
+jobs:
+  build_libfreetype2:
+    runs-on: ${{ inputs.runner || 'ubuntu-24.04' }}
+    timeout-minutes: 300
+    env:
+      GCC_VER: ${{ inputs.gcc_version || '16.2' }}
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set prefix and parallelism
+        run: |
+          echo "PREFIX=$HOME/m68k-amigaos-gcc-$GCC_VER" >> "$GITHUB_ENV"
+          echo "NPROC=$(nproc 2>/dev/null || sysctl -n hw.ncpu)" >> "$GITHUB_ENV"
+
+      - name: Install build dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            autoconf automake bison build-essential ca-certificates flex \
+            gettext git libgmp-dev libmpfr-dev libmpc-dev \
+            rsync wget xz-utils
+
+      - name: Select gcc branch
+        run: make branch branch=amiga$GCC_VER mod=gcc
+
+      - name: Fetch sources
+        run: make update
+
+      - name: Restore cached libfreetype2 build
+        id: freetype-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            ${{ env.PREFIX }}
+            build/libnix
+            build/freetype-2.12.1
+            download/freetype-2.12.1.tar.xz
+          key: ${{ runner.os }}-libfreetype2-${{ env.GCC_VER }}-${{ hashFiles('Makefile', '.github/workflows/toolchain.yml') }}
+          restore-keys: |
+            ${{ runner.os }}-libfreetype2-${{ env.GCC_VER }}-
+
+      - name: Build libfreetype2
+        run: make -j "$NPROC" libfreetype2
+
+      - name: Save cached libfreetype2 build
+        if: steps.freetype-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            ${{ env.PREFIX }}
+            build/libnix
+            build/freetype-2.12.1
+            download/freetype-2.12.1.tar.xz
+          key: ${{ steps.freetype-cache.outputs.cache-primary-key }}
+
+      - name: Upload libfreetype2 artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: libfreetype2-${{ env.GCC_VER }}-${{ runner.os }}-${{ runner.arch }}
+          path: |
+            ${{ env.PREFIX }}/m68k-amigaos/lib/libfreetype.a
+            ${{ env.PREFIX }}/m68k-amigaos/include/ft2build.h
+            ${{ env.PREFIX }}/m68k-amigaos/include/freetype
+          if-no-files-found: error
+          compression-level: 0
