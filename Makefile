@@ -1802,6 +1802,7 @@ CXXTESTSUITE = $(BUILD)/gcc/gcc/testsuite/g++
 # drive check-gcc-c in the same build tree, sharing gcc.sum and
 # testsuite/gcc-parallel, so they must not run at the same time.
 check:
+	@$(MAKE) --no-print-directory check-multilib
 	@$(MAKE) --no-print-directory check-gcc-amigaos
 	@$(MAKE) --no-print-directory check-gcc-execute
 
@@ -1917,6 +1918,30 @@ MULTI = MODNAME/.: \
 		MODNAME/libb32/libm060:-fbaserel32_-m68060 \
 		MODNAME/libb32/libm020:-fbaserel32_-m68020 \
 		MODNAME/libb32/libm020/libm881:-fbaserel32_-m68020_-m68881
+
+# MULTI and gcc/config/m68k/t-amigaos describe the same set of multilibs
+# twice: t-amigaos tells the driver which directory a set of flags selects,
+# MULTI tells this Makefile which directories to build the libraries for.
+# If they drift, a library is built for a directory the driver never selects,
+# or the driver selects a directory with nothing in it. check-multilib
+# compares MULTI's directories with the built driver's -print-multi-lib.
+MULTI_DIRS := $(sort $(foreach T,$(MULTI),$(patsubst MODNAME/%,%,$(word 1,$(subst :, ,$(T))))))
+
+.PHONY: check-multilib
+check-multilib:
+	@driver="$(PREFIX)/bin/$(TARGET)-gcc"; \
+	test -x "$$driver" || { echo "check-multilib: $$driver is not built"; exit 1; }; \
+	want="$(BUILD)/check-multilib.want"; have="$(BUILD)/check-multilib.have"; mkdir -p "$(BUILD)"; \
+	printf '%s\n' $(MULTI_DIRS) | sort > "$$want"; \
+	"$$driver" -print-multi-lib | cut -d';' -f1 | sort > "$$have"; \
+	if cmp -s "$$want" "$$have"; then \
+		echo "check-multilib: MULTI and $$driver agree on $$(wc -l < "$$have" | tr -d ' ') multilib directories"; \
+	else \
+		echo "check-multilib: MULTI (this Makefile) and t-amigaos (the driver) disagree:"; \
+		echo "  only in MULTI:   $$(comm -23 "$$want" "$$have" | tr '\n' ' ')"; \
+		echo "  only in driver:  $$(comm -13 "$$want" "$$have" | tr '\n' ' ')"; \
+		exit 1; \
+	fi
 
 # 1=module name, 2=from name, 3 = to name
 COPY_MULTILIBS = $(foreach T, $(subst MODNAME,$1,$(MULTI)),cp $(BUILD)/$(word 1,$(subst :, ,${T}))/$2 $(BUILD)/$(word 1,$(subst :, ,${T}))/$3;)
