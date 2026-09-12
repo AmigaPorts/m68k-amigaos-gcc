@@ -242,6 +242,11 @@ jobs:
           $HOME/amitools-venv/bin/pip install "amitools[vamos] @ $AMITOOLS_GIT"
           echo "$HOME/amitools-venv/bin" >> "$GITHUB_PATH"
 
+      # MULTI and t-amigaos must name the same multilib directories; this
+      # only asks the driver, so it runs on every build
+      - name: Check the multilib set
+        run: make check-multilib
+
       # gas and ld dump tests for the hunk target; they run on the build
       # machine, no simulator needed
       - name: Run the binutils testsuite
