@@ -180,6 +180,15 @@ Then run the testsuite:
 make -j$(nproc) check
 ```
 
+Alternatively, the `baseboards/volamos*.exp` boards run the same tests under
+[volamos](https://github.com/sidick/volamos), a Rust reimplementation of the
+same idea; install it and put it on the PATH, then select it with `board`:
+```shell
+make -j$(nproc) check board=volamos
+```
+(matching `board=amigaos-020`, `board=amigaos-baserel`, etc. also have
+`volamos-020`, `volamos-baserel`, ... counterparts).
+
 ## Version management
 The **Makefile** provides some targets to switch to an older state
 for all modules.
