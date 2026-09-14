@@ -1797,19 +1797,45 @@ TESTSUITE = $(BUILD)/gcc/gcc/testsuite/gcc
 # The C++ testsuite writes into a separate g++ directory.
 CXXTESTSUITE = $(BUILD)/gcc/gcc/testsuite/g++
 
-.PHONY: check check-gcc-execute check-gcc-amigaos check-gcc-c++
+.PHONY: check check-gcc-execute check-gcc-amigaos check-gcc-c++ check-binutils check-binutils-gas check-binutils-ld
 # Run the two sequentially (recipe lines run in order even under make -j): both
 # drive check-gcc-c in the same build tree, sharing gcc.sum and
 # testsuite/gcc-parallel, so they must not run at the same time.
 check:
+	@$(MAKE) --no-print-directory check-binutils
 	@$(MAKE) --no-print-directory check-gcc-amigaos
 	@$(MAKE) --no-print-directory check-gcc-execute
+
+# The gas and ld dump tests for the hunk target run on the build machine
+# under DejaGnu.  The gas m68k tests written for ELF expect % register
+# syntax and fail on this target, so gas's own exit status is ignored and
+# only the Amiga tests decide.  The previous .sum is removed first and at
+# least one Amiga PASS is required, so a testsuite that did not run cannot
+# pass on a stale or empty summary.
+check-binutils: check-binutils-gas check-binutils-ld
+
+check-binutils-gas:
+	@rm -f $(BUILD)/binutils/gas/testsuite/gas.sum
+	$(L0)"check gas"$(L1)$(MAKE) -C $(BUILD)/binutils/gas check "RUNTESTFLAGS=all.exp" || true$(L2)
+	@{ echo '----- gas -----'; grep -E '^(PASS|FAIL|ERROR|XPASS|UNRESOLVED).*[Aa]miga' $(BUILD)/binutils/gas/testsuite/gas.sum 2>/dev/null || echo '(no tests run)'; } | tee $@.summary.txt
+	@echo "results: $(BUILD)/binutils/gas/testsuite/gas.{sum,log}"
+	@grep -qE '^PASS.*[Aa]miga' $(BUILD)/binutils/gas/testsuite/gas.sum
+	@! grep -qE '^(FAIL|ERROR|XPASS|UNRESOLVED).*[Aa]miga' $(BUILD)/binutils/gas/testsuite/gas.sum
+
+check-binutils-ld:
+	@rm -f $(BUILD)/binutils/ld/ld.sum
+	$(L0)"check ld"$(L1)$(MAKE) -C $(BUILD)/binutils/ld check "RUNTESTFLAGS=amiga.exp"$(L2)
+	@{ echo '----- ld -----'; grep -E '^(PASS|FAIL|ERROR|XPASS|UNRESOLVED)' $(BUILD)/binutils/ld/ld.sum 2>/dev/null || echo '(no tests run)'; } | tee $@.summary.txt
+	@echo "results: $(BUILD)/binutils/ld/ld.{sum,log}"
+	@grep -qE '^PASS' $(BUILD)/binutils/ld/ld.sum
+	@! grep -qE '^(FAIL|ERROR|XPASS|UNRESOLVED)' $(BUILD)/binutils/ld/ld.sum
 
 check-gcc-execute:
 	@ln -sf $(PREFIX)/$(TARGET)/libnix $(BUILD)/gcc/$(TARGET)/libnix
 	$(L0)"check execute.exp"$(L1)$(MAKE) -C $(BUILD)/gcc check-gcc-c "RUNTESTFLAGS=--target_board=$(board) execute.exp=* SIM=vamos"$(L2)
 	@cp -f $(TESTSUITE)/gcc.sum $(TESTSUITE)/gcc-execute.sum; cp -f $(TESTSUITE)/gcc.log $(TESTSUITE)/gcc-execute.log
 	@{ echo '----- execute.exp -----'; grep '^# of' $(TESTSUITE)/gcc-execute.sum || echo '(no tests run)'; grep -E '^(FAIL|ERROR|XPASS)' $(TESTSUITE)/gcc-execute.sum || true; } | tee $@.summary.txt
+	@echo "results: $(TESTSUITE)/gcc-execute.{sum,log}"
 
 # amiga-specific target tests; a no-op on gcc branches that predate them (a .exp filter matching no file runs nothing).
 check-gcc-amigaos:
@@ -1817,6 +1843,7 @@ check-gcc-amigaos:
 	$(L0)"check amigaos.exp"$(L1)$(MAKE) -C $(BUILD)/gcc check-gcc-c "RUNTESTFLAGS=--target_board=$(board) gcc.target/m68k/amigaos/amigaos.exp SIM=vamos"$(L2)
 	@cp -f $(TESTSUITE)/gcc.sum $(TESTSUITE)/gcc-amigaos.sum; cp -f $(TESTSUITE)/gcc.log $(TESTSUITE)/gcc-amigaos.log
 	@{ echo '----- amigaos.exp -----'; grep '^# of' $(TESTSUITE)/gcc-amigaos.sum || echo '(no tests run)'; grep -E '^(FAIL|ERROR|XPASS)' $(TESTSUITE)/gcc-amigaos.sum || true; } | tee $@.summary.txt
+	@echo "results: $(TESTSUITE)/gcc-amigaos.{sum,log}"
 
 # The full C++ testsuite is large and slow under vamos, so it is not part of
 # `check`; run it on demand with `make check-gcc-c++`.
@@ -1824,6 +1851,7 @@ check-gcc-c++:
 	@ln -sf $(PREFIX)/$(TARGET)/libnix $(BUILD)/gcc/$(TARGET)/libnix
 	$(L0)"check c++"$(L1)$(MAKE) -C $(BUILD)/gcc check-gcc-c++ "RUNTESTFLAGS=--target_board=$(board) SIM=vamos"$(L2)
 	@{ echo '----- c++ -----'; grep '^# of' $(CXXTESTSUITE)/g++.sum || echo '(no tests run)'; grep -E '^(FAIL|ERROR|XPASS)' $(CXXTESTSUITE)/g++.sum || true; } | tee $@.summary.txt
+	@echo "results: $(CXXTESTSUITE)/g++.{sum,log}"
 
 
 # =================================================
