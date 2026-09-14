@@ -1989,12 +1989,14 @@ $(BUILD)/$(ZLIB)/libz.a: $(BUILD)/$(ZLIB)/Makefile
 
 $(BUILD)/$(ZLIB)/Makefile: $(PROJECTS)/$(ZLIB)/configure
 	$(call MULTICONFIGURE,$(ZLIB),libz.a,)
-	@# zlib 1.3.2 adds -fPIC unconditionally; the Amiga assembler has no GOT
-	@$(foreach T,$(subst MODNAME,$(ZLIB),$(MULTI)),$(SED) -i 's/ -fPIC//' $(BUILD)/$(word 1,$(subst :, ,${T}))/Makefile;)
 	@touch $@
 
+# zlib 1.3.2's configure adds -fPIC unconditionally and test-compiles with
+# it; the hunk linker has no GOT and gcc rejects -fPIC, so drop it before
+# configure runs.
 $(PROJECTS)/$(ZLIB)/configure: $(DOWNLOAD)/$(ZLIB).tar.gz
 	tar -C $(PROJECTS) -xf $(DOWNLOAD)/$(ZLIB).tar.gz
+	$(SED) -i 's/ -fPIC"/"/' $@
 	@touch $@
 
 $(DOWNLOAD)/$(ZLIB).tar.gz:
