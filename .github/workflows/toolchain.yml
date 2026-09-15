@@ -219,6 +219,16 @@ jobs:
           python3 -m venv $HOME/amitools-venv
           $HOME/amitools-venv/bin/pip install "amitools[vamos] @ $AMITOOLS_GIT"
 
+      # gas and ld dump tests for the hunk target; they run on the build
+      # machine, no vamos needed
+      - name: Run the binutils testsuite
+        run: |
+          set +e
+          make check-binutils
+          rc=$?
+          { echo '```'; cat check-binutils-gas.summary.txt check-binutils-ld.summary.txt 2>/dev/null; echo '```'; } >> $GITHUB_STEP_SUMMARY
+          exit $rc
+
       # fast, so it runs on every build
       - name: Run the AmigaOS target testsuite
         run: |
