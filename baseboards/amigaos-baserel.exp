@@ -8,8 +8,15 @@ load_base_board_description "basic-sim"
 # set of routines needed by the tool to communicate with the board.
 load_generic_config "sim"
 
-# "vamos" is the name of the sim subdir.
+# Default the simulator here, but only if not already overridden by a
+# runtest/make SIM= on the command line: setup_sim (via find_sim) uses the
+# global SIM if it is set, so setting our default beforehand still lets an
+# explicit override win, while setup_sim populates board_info from it.
+if {![info exists SIM]} {
+    set SIM vamos
+}
 setup_sim amigaos
+set_board_info sim,options "-C 68020 -s 4096 -m 11264"
 
 # No multilib options needed by default.
 process_multilib_options ""
@@ -19,8 +26,6 @@ set_board_info cflags "-noixemul -fbaserel"
 set_board_info ldflags "-lpthread"
 set_board_info ldscript "";
 
-set_board_info sim vamos
-set_board_info sim,options "-C 68020 -s 4096 -m 11264"
 set_board_info gcc,stack_size 4096
 set_board_info isremote 0
 set_board_info slow_simulator 0

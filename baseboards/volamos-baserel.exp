@@ -13,16 +13,16 @@ load_generic_config "sim"
 # global SIM if it is set, so setting our default beforehand still lets an
 # explicit override win, while setup_sim populates board_info from it.
 if {![info exists SIM]} {
-    set SIM vamos
+    set SIM volamos
 }
 setup_sim amigaos
-set_board_info sim,options "-C 68020 -s 4096 -m 11264"
+set_board_info sim,options "--cpu 68020 --stack 4096K --ram 11264K"
 
 # No multilib options needed by default.
 process_multilib_options ""
 
 set_board_info compiler "[find_gcc]"
-set_board_info cflags "-noixemul -m68020 -fbaserel32"
+set_board_info cflags "-noixemul -fbaserel"
 set_board_info ldflags "-lpthread"
 set_board_info ldscript "";
 

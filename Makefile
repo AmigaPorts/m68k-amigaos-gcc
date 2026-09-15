@@ -1789,8 +1789,13 @@ ifeq (,$(board))
 board = amigaos
 endif
 
+# The board's own baseboards/*.exp defaults its simulator (vamos/volamos)
+# unless overridden; forward SIM= to runtest only when the caller set one,
+# e.g. `make check SIM=/path/to/wrapper`.
+RUNTEST_SIM = $(if $(SIM), SIM=$(SIM))
+
 # Point dejagnu at the in-repo board descriptions in baseboards/ which wire up
-# vamos as the simulator.
+# vamos/volamos as the simulator.
 export DEJAGNU ?= $(CURDIR)/dejagnu-site.exp
 # Directory where dejagnu writes gcc.sum / gcc.log.
 TESTSUITE = $(BUILD)/gcc/gcc/testsuite/gcc
@@ -1832,7 +1837,7 @@ check-binutils-ld:
 
 check-gcc-execute:
 	@ln -sfn $(PREFIX)/$(TARGET)/libnix $(BUILD)/gcc/$(TARGET)/libnix
-	$(L0)"check execute.exp"$(L1)$(MAKE) -C $(BUILD)/gcc check-gcc-c "RUNTESTFLAGS=--target_board=$(board) execute.exp=* SIM=vamos"$(L2)
+	$(L0)"check execute.exp"$(L1)$(MAKE) -C $(BUILD)/gcc check-gcc-c "RUNTESTFLAGS=--target_board=$(board) execute.exp=*$(RUNTEST_SIM)"$(L2)
 	@cp -f $(TESTSUITE)/gcc.sum $(TESTSUITE)/gcc-execute.sum; cp -f $(TESTSUITE)/gcc.log $(TESTSUITE)/gcc-execute.log
 	@{ echo '----- execute.exp -----'; grep '^# of' $(TESTSUITE)/gcc-execute.sum || echo '(no tests run)'; grep -E '^(FAIL|ERROR|XPASS)' $(TESTSUITE)/gcc-execute.sum || true; } | tee $@.summary.txt
 	@echo "results: $(TESTSUITE)/gcc-execute.{sum,log}"
@@ -1840,7 +1845,7 @@ check-gcc-execute:
 # amiga-specific target tests; a no-op on gcc branches that predate them (a .exp filter matching no file runs nothing).
 check-gcc-amigaos:
 	@ln -sfn $(PREFIX)/$(TARGET)/libnix $(BUILD)/gcc/$(TARGET)/libnix
-	$(L0)"check amigaos.exp"$(L1)$(MAKE) -C $(BUILD)/gcc check-gcc-c "RUNTESTFLAGS=--target_board=$(board) gcc.target/m68k/amigaos/amigaos.exp SIM=vamos"$(L2)
+	$(L0)"check amigaos.exp"$(L1)$(MAKE) -C $(BUILD)/gcc check-gcc-c "RUNTESTFLAGS=--target_board=$(board) gcc.target/m68k/amigaos/amigaos.exp$(RUNTEST_SIM)"$(L2)
 	@cp -f $(TESTSUITE)/gcc.sum $(TESTSUITE)/gcc-amigaos.sum; cp -f $(TESTSUITE)/gcc.log $(TESTSUITE)/gcc-amigaos.log
 	@{ echo '----- amigaos.exp -----'; grep '^# of' $(TESTSUITE)/gcc-amigaos.sum || echo '(no tests run)'; grep -E '^(FAIL|ERROR|XPASS)' $(TESTSUITE)/gcc-amigaos.sum || true; } | tee $@.summary.txt
 	@echo "results: $(TESTSUITE)/gcc-amigaos.{sum,log}"
@@ -1849,7 +1854,7 @@ check-gcc-amigaos:
 # `check`; run it on demand with `make check-gcc-c++`.
 check-gcc-c++:
 	@ln -sfn $(PREFIX)/$(TARGET)/libnix $(BUILD)/gcc/$(TARGET)/libnix
-	$(L0)"check c++"$(L1)$(MAKE) -C $(BUILD)/gcc check-gcc-c++ "RUNTESTFLAGS=--target_board=$(board) SIM=vamos"$(L2)
+	$(L0)"check c++"$(L1)$(MAKE) -C $(BUILD)/gcc check-gcc-c++ "RUNTESTFLAGS=--target_board=$(board)$(RUNTEST_SIM)"$(L2)
 	@{ echo '----- c++ -----'; grep '^# of' $(CXXTESTSUITE)/g++.sum || echo '(no tests run)'; grep -E '^(FAIL|ERROR|XPASS)' $(CXXTESTSUITE)/g++.sum || true; } | tee $@.summary.txt
 	@echo "results: $(CXXTESTSUITE)/g++.{sum,log}"
 
