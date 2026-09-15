@@ -8,12 +8,15 @@ load_base_board_description "basic-sim"
 # set of routines needed by the tool to communicate with the board.
 load_generic_config "sim"
 
-# The simulator must be set before setup_sim: find_sim only honours a
-# SIM= given on the runtest command line, otherwise it fills in a
-# placeholder that a later set_board_info cannot replace.
-set_board_info sim volamos
-set_board_info sim,options "--cpu 68020 --stack 4096K --ram 11264K"
+# Default the simulator here, but only if not already overridden by a
+# runtest/make SIM= on the command line: setup_sim (via find_sim) uses the
+# global SIM if it is set, so setting our default beforehand still lets an
+# explicit override win, while setup_sim populates board_info from it.
+if {![info exists SIM]} {
+    set SIM volamos
+}
 setup_sim amigaos
+set_board_info sim,options "--cpu 68020 --stack 4096K --ram 11264K"
 
 # No multilib options needed by default.
 process_multilib_options ""
