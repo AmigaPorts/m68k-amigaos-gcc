@@ -36,9 +36,6 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
     gcc-15 \
     gettext \
     git \
-    libgmp-dev \
-    libmpfr-dev \
-    libmpc-dev \
     libncurses-dev \
     make \
     rsync \
