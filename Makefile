@@ -832,14 +832,8 @@ $(BUILD)/binutils/Makefile: $(PROJECTS)/binutils/configure | $(PREFIX_STAMP)
 	@mkdir -p $(BUILD)/binutils
 	$(L0)"configure binutils"$(L1) cd $(BUILD)/binutils && $(E) $(PROJECTS)/binutils/configure $(CONFIG_BINUTILS) $(L2)
 
-
-# GCC and binutils normally need no local patches: AmigaPorts fixes are
-# maintained upstream.  Their clone rules retain optional downstream hooks.
 $(PROJECTS)/binutils/configure:
 	@cd $(PROJECTS) && git clone -b $(binutils_BRANCH) --depth 16 $(binutils_URL) binutils
-	for i in $$(find patches/binutils/ -type f 2>/dev/null); \
-	do if [[ "$$i" == *.diff ]] ; \
-		then j=$${i:8}; patch -N "$(PROJECTS)/$${j%.diff}" "$$i"; fi ; done
 
 # =================================================
 # gdb
@@ -1063,9 +1057,6 @@ $(BUILD)/gcc-host-compat.o: support/amiga-host-compat.c
 
 $(PROJECTS)/gcc/configure:
 	@cd $(PROJECTS) && git clone -b $(gcc_BRANCH) --depth 16 $(gcc_URL)
-	for i in $$(find patches/gcc/ -type f 2>/dev/null); \
-	do if [[ "$$i" == *.diff ]] ; \
-		then j=$${i:8}; patch -N "$(PROJECTS)/$${j%.diff}" "$$i"; fi ; done
 
 ifneq (,$(strip $(TARGET_BUILD_TOOLS_PREREQ)))
 TARGET_BUILD_MACHINE := $(if $(strip $(BUILD_TRIPLET)),$(BUILD_TRIPLET),$(shell $(BUILD_CC) -dumpmachine 2>/dev/null))
@@ -1157,9 +1148,6 @@ $(BUILD_TOOLS)/fd2sfd/Makefile: $(PROJECTS)/fd2sfd/configure
 
 $(PROJECTS)/fd2sfd/configure:
 	@cd $(PROJECTS) && git clone -b $(fd2sfd_BRANCH) --depth 4 $(fd2sfd_URL)
-	for i in $$(find patches/fd2sfd/ -type f); \
-	do if [[ "$$i" == *.diff ]] ; \
-		then j=$${i:8}; patch -N "$(PROJECTS)/$${j%.diff}" "$$i"; fi ; done
 
 # =================================================
 # fd2pragma
