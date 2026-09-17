@@ -1835,12 +1835,18 @@ check-binutils-ld:
 	@grep -qE '^PASS' $(BUILD)/binutils/ld/ld.sum
 	@! grep -qE '^(FAIL|ERROR|XPASS|UNRESOLVED)' $(BUILD)/binutils/ld/ld.sum
 
+# The C suites are expected to be clean, so any FAIL, ERROR or XPASS fails
+# the target.  UNRESOLVED is tolerated: DejaGnu cannot tell whether the
+# "amiga" object format supports weak symbols, so dg-require-weak tests
+# (20030125-1.c) come out unresolved.  The g++ suite below only reports:
+# it still has hundreds of standing failures.
 check-gcc-execute:
 	@ln -sfn $(PREFIX)/$(TARGET)/libnix $(BUILD)/gcc/$(TARGET)/libnix
 	$(L0)"check execute.exp"$(L1)$(MAKE) -C $(BUILD)/gcc check-gcc-c "RUNTESTFLAGS=--target_board=$(board) execute.exp=*$(RUNTEST_SIM)"$(L2)
 	@cp -f $(TESTSUITE)/gcc.sum $(TESTSUITE)/gcc-execute.sum; cp -f $(TESTSUITE)/gcc.log $(TESTSUITE)/gcc-execute.log
 	@{ echo '----- execute.exp -----'; grep '^# of' $(TESTSUITE)/gcc-execute.sum || echo '(no tests run)'; grep -E '^(FAIL|ERROR|XPASS)' $(TESTSUITE)/gcc-execute.sum || true; } | tee $@.summary.txt
 	@echo "results: $(TESTSUITE)/gcc-execute.{sum,log}"
+	@! grep -qE '^(FAIL|ERROR|XPASS)' $(TESTSUITE)/gcc-execute.sum
 
 # amiga-specific target tests; a no-op on gcc branches that predate them (a .exp filter matching no file runs nothing).
 check-gcc-amigaos:
@@ -1849,6 +1855,7 @@ check-gcc-amigaos:
 	@cp -f $(TESTSUITE)/gcc.sum $(TESTSUITE)/gcc-amigaos.sum; cp -f $(TESTSUITE)/gcc.log $(TESTSUITE)/gcc-amigaos.log
 	@{ echo '----- amigaos.exp -----'; grep '^# of' $(TESTSUITE)/gcc-amigaos.sum || echo '(no tests run)'; grep -E '^(FAIL|ERROR|XPASS)' $(TESTSUITE)/gcc-amigaos.sum || true; } | tee $@.summary.txt
 	@echo "results: $(TESTSUITE)/gcc-amigaos.{sum,log}"
+	@! grep -qE '^(FAIL|ERROR|XPASS)' $(TESTSUITE)/gcc-amigaos.sum
 
 # The full C++ testsuite is large and slow under vamos, so it is not part of
 # `check`; run it on demand with `make check-gcc-c++`.
