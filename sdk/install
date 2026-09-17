@@ -100,23 +100,15 @@ sdk_fetch_archive()
 	fi
 
 	rm -f "$sdk_archive_tmp"
-	if command -v curl >/dev/null 2>&1; then
-		# --retry alone only covers timeouts and 408/429/5xx; aminet
-		# sometimes closes the connection mid-transfer (curl error 18),
-		# so retry on all errors. The sha256 check catches bad data.
-		echo curl --fail --location --connect-timeout 10 \
-			--retry 3 --retry-all-errors \
-			"$sdk_archive_url" --output "$sdk_archive_tmp"
-		curl --fail --location --connect-timeout 10 \
-			--retry 3 --retry-all-errors \
-			"$sdk_archive_url" --output "$sdk_archive_tmp"
-	elif command -v wget >/dev/null 2>&1; then
-		echo wget --timeout=10 --tries=4 "$sdk_archive_url" -O "$sdk_archive_tmp"
-		wget --timeout=10 --tries=4 "$sdk_archive_url" -O "$sdk_archive_tmp"
-	else
-		echo "cannot download $sdk_archive_url: curl or wget is required" >&2
-		return 1
-	fi
+	# --retry alone only covers timeouts and 408/429/5xx; aminet
+	# sometimes closes the connection mid-transfer (curl error 18),
+	# so retry on all errors. The sha256 check catches bad data.
+	echo curl --fail --location --connect-timeout 10 \
+		--retry 3 --retry-all-errors \
+		"$sdk_archive_url" --output "$sdk_archive_tmp"
+	curl --fail --location --connect-timeout 10 \
+		--retry 3 --retry-all-errors \
+		"$sdk_archive_url" --output "$sdk_archive_tmp"
 }
 
 sdk_download_archive()
