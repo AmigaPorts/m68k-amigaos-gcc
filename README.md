@@ -28,7 +28,7 @@ Currently, these tools are built:
 
 ### Fedora
 ```
-sudo dnf install wget gcc gcc-c++ python git perl-Pod-Simple gperf patch autoconf automake make makedepend bison flex gettext-devel rsync readline-devel which
+sudo dnf install wget gcc gcc-c++ git patch autoconf automake make bison flex rsync ncurses-devel which
 ```
 
 ### Ubuntu, Debian
