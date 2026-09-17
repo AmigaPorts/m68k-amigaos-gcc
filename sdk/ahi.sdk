@@ -1,6 +1,8 @@
 Short: retargetable audio library
 Version: 6.0
-Url: http://aminet.net/driver/audio/m68k-amigaos-ahidev.lha
+Url: https://raw.githubusercontent.com/AmigaPorts/toolchain-blobs/refs/heads/main/m68k-amigaos-ahidev.lha
+FallbackUrl: http://aminet.net/driver/audio/m68k-amigaos-ahidev.lha
+Sha256: de3571879210ad9ca179fbbc7a8c0591dfd0b673d6785657d8796fc1d7a147ec
 
 m68k-amigaos-ahi/Developer/Docs/ahi.doc
 m68k-amigaos-ahi/Developer/Docs/ahi.guide

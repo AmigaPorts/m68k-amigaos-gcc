@@ -304,8 +304,10 @@ get_branch = $(shell grep '^$(1)[[:blank:]]' .repos | $(SED) -e 's/[[:blank:]]\+
 $(foreach modu,$(modules),$(eval $(modu)_URL=$(call get_url,$(modu))))
 $(foreach modu,$(modules),$(eval $(modu)_BRANCH=$(call get_branch,$(modu))))
 
+BLOBS_URL_BASE ?= https://raw.githubusercontent.com/AmigaPorts/toolchain-blobs/refs/heads/main
+
 ifneq ($(NDK),3.9)
-NDK_URL              := https://aminet.net/dev/misc/NDK3.2.lha
+NDK_URL              := $(BLOBS_URL_BASE)/NDK3.2.lha
 NDK_SHA256           := 96cabd4ad683dced632e147bf86dee0f50dcb1254386216c25c362916a6409bb
 NDK_ARC_NAME         := NDK3.2
 NDK_FOLDER_NAME      := NDK3.2
@@ -315,7 +317,7 @@ NDK_FOLDER_NAME_FD   := NDK3.2/FD
 NDK_FOLDER_NAME_SFD  := NDK3.2/SFD
 NDK_FOLDER_NAME_LIBS := NDK3.2/lib
 else
-NDK_URL              := http://hp.alinea-computer.de/AmigaOS/NDK39.lha
+NDK_URL              := $(BLOBS_URL_BASE)/NDK39.lha
 NDK_SHA256           :=
 NDK_ARC_NAME         := NDK3.9
 NDK_FOLDER_NAME      := NDK_3.9/Include
@@ -2005,7 +2007,7 @@ $(PROJECTS)/$(ZLIB)/configure: $(DOWNLOAD)/$(ZLIB).tar.gz
 	@touch $@
 
 $(DOWNLOAD)/$(ZLIB).tar.gz:
-	$(call get-file,zlib,https://zlib.net/fossils/$(ZLIB).tar.gz,$(ZLIB).tar.gz,bb329a0a2cd0274d05519d61c667c062e06990d72e125ee2dfa8de64f0119d16)
+	$(call get-file,zlib,$(BLOBS_URL_BASE)/$(ZLIB).tar.gz,$(ZLIB).tar.gz,bb329a0a2cd0274d05519d61c667c062e06990d72e125ee2dfa8de64f0119d16)
 
 # =================================================
 # libpng
@@ -2043,7 +2045,7 @@ $(PROJECTS)/$(LIBPNG)/configure: $(DOWNLOAD)/$(LIBPNG).tar.xz $(BUILD)/$(ZLIB)/_
 	@touch $@
 
 $(DOWNLOAD)/$(LIBPNG).tar.xz:
-	$(call get-file,libpng16,https://sourceforge.net/projects/libpng/files/libpng16/$(subst libpng-,,$(LIBPNG))/$(LIBPNG).tar.xz,$(LIBPNG).tar.xz,28eb403f51f0f7405249132cecfe82ea5c0ef97f1b32c5a65828814ae0d34775)
+	$(call get-file,libpng16,$(BLOBS_URL_BASE)/$(LIBPNG).tar.xz,$(LIBPNG).tar.xz,28eb403f51f0f7405249132cecfe82ea5c0ef97f1b32c5a65828814ae0d34775)
 
 # =================================================
 # libfreetype
@@ -2080,4 +2082,4 @@ $(PROJECTS)/$(LIBFREETYPE)/configure: $(DOWNLOAD)/$(LIBFREETYPE).tar.xz $(BUILD)
 	@touch $@
 
 $(DOWNLOAD)/$(LIBFREETYPE).tar.xz:
-	$(call get-file,$(LIBFREETYPE),https://download-mirror.savannah.gnu.org/releases/freetype/$(LIBFREETYPE).tar.xz,$(LIBFREETYPE).tar.xz)
+	$(call get-file,$(LIBFREETYPE),$(BLOBS_URL_BASE)/$(LIBFREETYPE).tar.xz,$(LIBFREETYPE).tar.xz)

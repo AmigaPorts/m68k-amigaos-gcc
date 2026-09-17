@@ -1,6 +1,8 @@
 Short: 	Library to play audio from scsi-cdrom
 Version: 37
-Url: http://aminet.net/dev/misc/CDPlayerlib37.lha
+Url: https://raw.githubusercontent.com/AmigaPorts/toolchain-blobs/refs/heads/main/CDPlayerlib37.lha
+FallbackUrl: http://aminet.net/dev/misc/CDPlayerlib37.lha
+Sha256: fd51d757947a8a3eac62b526f9abc475308f674ff19315055dfbc3162e6bdeec
 
 patch : cdplayer.fd.diff
 patch : cdplayer_protos.h.diff

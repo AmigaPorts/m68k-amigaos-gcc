@@ -1,6 +1,8 @@
 Short: TextEditor custom class for MUI
 Version: 15.56
-Url: http://aminet.net/dev/mui/MCC_TextEditor-15.56.lha
+Url: https://raw.githubusercontent.com/AmigaPorts/toolchain-blobs/refs/heads/main/MCC_TextEditor-15.56.lha
+FallbackUrl: http://aminet.net/dev/mui/MCC_TextEditor-15.56.lha
+Sha256: d239a8324684233c09999354399f25595996c7ba52b2f44627263eb9676abfe9
 
 MCC_TextEditor/Developer/Autodocs/MCC/MCC_TextEditor.doc
 MCC_TextEditor/Developer/C/include/mui/TextEditor_mcc.h

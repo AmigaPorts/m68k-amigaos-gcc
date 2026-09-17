@@ -1,6 +1,7 @@
 Short: A set of C macro/defines to make amiga development easier.
 Version: 54.10
-Url: git://github.com/salass00/filesysbox:V54.10
+Url: https://raw.githubusercontent.com/AmigaPorts/toolchain-blobs/refs/heads/main/filesysbox
+FallbackUrl: git://github.com/salass00/filesysbox:V54.10
 
 include
 fd

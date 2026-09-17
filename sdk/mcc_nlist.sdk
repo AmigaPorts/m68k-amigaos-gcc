@@ -1,6 +1,8 @@
 Short: NList custom classes for MUI
 Version: 0.128
-Url: http://aminet.net/dev/mui/MCC_NList-0.128.lha
+Url: https://raw.githubusercontent.com/AmigaPorts/toolchain-blobs/refs/heads/main/MCC_NList-0.128.lha
+FallbackUrl: http://aminet.net/dev/mui/MCC_NList-0.128.lha
+Sha256: 639e54660e1c8a83f3c030e2b383b575534a155c9087909b59300177e8adb0e7
 
 MCC_NList/Developer/Autodocs/MCC/MCC_NBalance.doc
 MCC_NList/Developer/Autodocs/MCC/MCC_NFloattext.doc

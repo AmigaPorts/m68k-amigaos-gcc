@@ -1,6 +1,8 @@
 Short: mhi.library
 Version: 1.2
-Url: http://aminet.net/driver/audio/mhi_dev.lha
+Url: https://raw.githubusercontent.com/AmigaPorts/toolchain-blobs/refs/heads/main/mhi_dev.lha
+FallbackUrl: http://aminet.net/driver/audio/mhi_dev.lha
+Sha256: 3bc6a02eaa57ed30cda46d66f546ad3725d17fa2ca1aeebd25f1b7314be2f3ef
 
 Autodoc/mhi.doc
 Docs/MHI_Developer.guide

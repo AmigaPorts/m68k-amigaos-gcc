@@ -1,6 +1,7 @@
 Short: A set of C macro/defines to make amiga development easier.
 Version: 1.7
-Url: git://github.com/AmigaPorts/SDI
+Url: https://raw.githubusercontent.com/AmigaPorts/toolchain-blobs/refs/heads/main/SDI
+FallbackUrl: git://github.com/AmigaPorts/SDI
 
 SDI_compiler.h
 SDI_hook.h
