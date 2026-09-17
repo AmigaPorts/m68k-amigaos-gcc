@@ -1975,7 +1975,7 @@ $(PROJECTS)/$(ZLIB)/configure: $(DOWNLOAD)/$(ZLIB).tar.gz
 	@touch $@
 
 $(DOWNLOAD)/$(ZLIB).tar.gz:
-	$(call get-file,zlib,https://zlib.net/fossils/$(ZLIB).tar.gz,$(ZLIB).tar.gz,bb329a0a2cd0274d05519d61c667c062e06990d72e125ee2dfa8de64f0119d16)
+	$(call get-file,zlib,https://github.com/madler/zlib/releases/download/v$(subst zlib-,,$(ZLIB))/$(ZLIB).tar.gz,$(ZLIB).tar.gz,bb329a0a2cd0274d05519d61c667c062e06990d72e125ee2dfa8de64f0119d16)
 
 # =================================================
 # libpng
