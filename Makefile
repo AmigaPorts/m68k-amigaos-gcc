@@ -525,12 +525,7 @@ build-target-tools: $(TARGET_BUILD_TOOLS_PREREQ)
 # =================================================
 # clean
 # =================================================
-ifneq ($(OWNMPC),)
-.PHONY: clean-gmp clean-mpc clean-mpfr
-clean: clean-gmp clean-mpc clean-mpfr
-endif
-
-.PHONY: drop-prefix clean clean-gcc clean-binutils clean-fd2sfd clean-fd2pragma clean-ira clean-sfdc clean-vasm clean-vbcc clean-vlink clean-libnix clean-ixemul clean-libgcc clean-clib2 clean-libdebug clean-libpthread clean-newlib clean-ndk
+.PHONY: drop-prefix clean clean-gcc clean-binutils clean-fd2sfd clean-fd2pragma clean-ira clean-sfdc clean-vasm clean-vbcc clean-vlink clean-libnix clean-ixemul clean-libgcc clean-clib2 clean-libdebug clean-libpthread clean-newlib clean-ndk clean-gmp clean-mpc clean-mpfr
 clean: clean-gcc clean-binutils clean-fd2sfd clean-fd2pragma clean-ira clean-sfdc clean-vasm clean-vbcc clean-vlink clean-libnix clean-ixemul clean-clib2 clean-libdebug clean-libpthread clean-newlib clean-ndk clean-gmp clean-mpc clean-mpfr
 	rm -rf $(BUILD)
 	rm -rf *.log
@@ -540,13 +535,13 @@ clean-gcc:
 	rm -rf $(BUILD)/gcc
 
 clean-gmp:
-	rm -rf $(PROJECTS)/gcc/gmp
+	rm -rf $(PROJECTS)/gcc/gmp $(PROJECTS)/binutils/gmp
 
 clean-mpc:
 	rm -rf $(PROJECTS)/gcc/mpc
 
 clean-mpfr:
-	rm -rf $(PROJECTS)/gcc/mpfr
+	rm -rf $(PROJECTS)/gcc/mpfr $(PROJECTS)/binutils/mpfr
 
 clean-libgcc:
 	rm -rf $(BUILD)/gcc/$(TARGET)
@@ -753,12 +748,30 @@ $(PROJECTS)/$(MPFR)/configure: $(DOWNLOAD)/$(MPFRFILE)
 $(PROJECTS)/$(MPC)/configure: $(DOWNLOAD)/$(MPCFILE)
 	$(call extract-gcc-prerequisite,$(MPC))
 
+# gmp, mpfr and mpc are always built in-tree, so the binaries do not
+# depend on the distribution's versions of those libraries: gcc and
+# binutils (for gdb) each get a copy in their source tree.  The copies
+# are real targets so that every configure sharing a source tree, such
+# as the two binutils builds of a Canadian cross, waits for the same
+# single copy instead of racing it under make -j.
+GCC_PREREQUISITE_SOURCES := $(PROJECTS)/gcc/gmp/configure $(PROJECTS)/gcc/mpfr/configure $(PROJECTS)/gcc/mpc/configure
+BINUTILS_PREREQUISITE_SOURCES := $(PROJECTS)/binutils/gmp/configure $(PROJECTS)/binutils/mpfr/configure
+
+$(PROJECTS)/gcc/gmp/configure $(PROJECTS)/binutils/gmp/configure: $(PROJECTS)/$(GMP)/configure
+	@mkdir -p $(@D) && rsync -a --no-group $(<D)/ $(@D)
+
+$(PROJECTS)/gcc/mpfr/configure $(PROJECTS)/binutils/mpfr/configure: $(PROJECTS)/$(MPFR)/configure
+	@mkdir -p $(@D) && rsync -a --no-group $(<D)/ $(@D)
+
+$(PROJECTS)/gcc/mpc/configure: $(PROJECTS)/$(MPC)/configure
+	@mkdir -p $(@D) && rsync -a --no-group $(<D)/ $(@D)
+
 update-gmp:
-	@rm -rf $(PROJECTS)/$(GMP) $(PROJECTS)/gcc/gmp
+	@rm -rf $(PROJECTS)/$(GMP) $(PROJECTS)/gcc/gmp $(PROJECTS)/binutils/gmp
 	@$(MAKE) $(PROJECTS)/$(GMP)/configure
 
 update-mpfr:
-	@rm -rf $(PROJECTS)/$(MPFR) $(PROJECTS)/gcc/mpfr
+	@rm -rf $(PROJECTS)/$(MPFR) $(PROJECTS)/gcc/mpfr $(PROJECTS)/binutils/mpfr
 	@$(MAKE) $(PROJECTS)/$(MPFR)/configure
 
 update-mpc:
@@ -783,17 +796,6 @@ LD_CROSS_MAKE_ENV := bfdplugin_LTLIBRARIES= noinst_LTLIBRARIES=
 LD_CROSS_MAKE_FLAGS := -e
 endif
 
-# FreeBSD, OSX : libs added by the command brew install gmp
-ifeq (Darwin, $(findstring Darwin, $(UNAME_S)))
-	BREW_PREFIX := $$(brew --prefix)
-	CONFIG_BINUTILS += --with-gmp=$(BREW_PREFIX) --with-mpfr=$(BREW_PREFIX)
-endif
-
-ifeq (FreeBSD, $(findstring FreeBSD, $(UNAME_S)))
-	PORTS_PREFIX?=/usr/local
-	CONFIG_BINUTILS += --with-libgmp-prefix=$(PORTS_PREFIX)
-endif
-
 BINUTILS_CMD := $(TARGET)-addr2line $(TARGET)-ar $(TARGET)-as $(TARGET)-c++filt \
 	$(TARGET)-ld $(TARGET)-nm $(TARGET)-objcopy $(TARGET)-objdump $(TARGET)-ranlib \
 	$(TARGET)-readelf $(TARGET)-size $(TARGET)-strings $(TARGET)-strip
@@ -812,7 +814,7 @@ INSTALL_GDB := install-gdb
 
 binutils: $(BUILD)/binutils/_done
 
-$(BUILD)/binutils/_done: $(BUILD)/binutils/Makefile $(shell find 2>/dev/null $(PROJECTS)/binutils -not \( -path $(PROJECTS)/binutils/.git -prune \) -not \( -path $(PROJECTS)/binutils/gprof -prune \) -type f)
+$(BUILD)/binutils/_done: $(BUILD)/binutils/Makefile $(shell find 2>/dev/null $(PROJECTS)/binutils -not \( -path $(PROJECTS)/binutils/.git -prune \) -not \( -path $(PROJECTS)/binutils/gprof -prune \) -not \( -path $(PROJECTS)/binutils/gmp -prune \) -not \( -path $(PROJECTS)/binutils/mpfr -prune \) -type f)
 	@touch -t 0001010000 $(PROJECTS)/binutils/binutils/arparse.y
 	@touch -t 0001010000 $(PROJECTS)/binutils/binutils/arlex.l
 	@touch -t 0001010000 $(PROJECTS)/binutils/ld/ldgram.y
@@ -828,18 +830,12 @@ $(BUILD)/binutils/_done: $(BUILD)/binutils/Makefile $(shell find 2>/dev/null $(P
 	done
 	@echo "done" >$@
 
-$(BUILD)/binutils/Makefile: $(PROJECTS)/binutils/configure | $(PREFIX_STAMP)
+$(BUILD)/binutils/Makefile: $(PROJECTS)/binutils/configure $(BINUTILS_PREREQUISITE_SOURCES) | $(PREFIX_STAMP)
 	@mkdir -p $(BUILD)/binutils
 	$(L0)"configure binutils"$(L1) cd $(BUILD)/binutils && $(E) $(PROJECTS)/binutils/configure $(CONFIG_BINUTILS) $(L2)
 
-
-# GCC and binutils normally need no local patches: AmigaPorts fixes are
-# maintained upstream.  Their clone rules retain optional downstream hooks.
 $(PROJECTS)/binutils/configure:
 	@cd $(PROJECTS) && git clone -b $(binutils_BRANCH) --depth 16 $(binutils_URL) binutils
-	for i in $$(find patches/binutils/ -type f 2>/dev/null); \
-	do if [[ "$$i" == *.diff ]] ; \
-		then j=$${i:8}; patch -N "$(PROJECTS)/$${j%.diff}" "$$i"; fi ; done
 
 # =================================================
 # gdb
@@ -914,21 +910,6 @@ GCC_HOST_COMPAT_PREREQ := $(GCC_HOST_COMPAT_LIBRARY)
 # not permit an ordinary non-libtool object in a .la library.
 GCC_HOST_LDFLAGS := LDFLAGS="$(LDFLAGS) -Wl,--whole-archive -L$(BUILD) -lamiga-host-compat -Wl,--no-whole-archive"
 GCC_HOST_AR := $(if $(strip $(HOST_TOOL_PREFIX)),$(HOST_TOOL_PREFIX)ar,$(TARGET)-ar)
-endif
-
-# FreeBSD, OSX : libs added by the command brew install gmp mpfr libmpc
-ifeq (Darwin, $(findstring Darwin, $(UNAME_S)))
-	BREW_PREFIX := $$(brew --prefix)
-	CONFIG_GCC += --with-gmp=$(BREW_PREFIX) \
-		--with-mpfr=$(BREW_PREFIX) \
-		--with-mpc=$(BREW_PREFIX)
-endif
-
-ifeq (FreeBSD, $(findstring FreeBSD, $(UNAME_S)))
-	PORTS_PREFIX?=/usr/local
-	CONFIG_GCC += --with-gmp=$(PORTS_PREFIX) \
-		--with-mpfr=$(PORTS_PREFIX) \
-		--with-mpc=$(PORTS_PREFIX)
 endif
 
 GCC_CMD := $(TARGET)-c++ $(TARGET)-g++ $(TARGET)-gcc-$(GCC_VERSION) $(TARGET)-gcc-nm \
@@ -1038,20 +1019,8 @@ $(BUILD)/gcc/_done: $(BUILD)/gcc/Makefile $(shell find 2>/dev/null $(GCCD) -maxd
 	done
 	@echo "done" >$@
 
-ifneq ($(OWNGMP),)
-GCC_PREREQUISITE_SOURCES := $(PROJECTS)/$(GMP)/configure $(PROJECTS)/$(MPFR)/configure $(PROJECTS)/$(MPC)/configure
-endif
-
 $(BUILD)/gcc/Makefile: Makefile $(PROJECTS)/gcc/configure $(BUILD)/binutils/_done $(GCC_PREREQUISITE_SOURCES) $(GCC_HOST_COMPAT_PREREQ) $(TARGET_RUNNER_WRAPPERS) $(TARGET_BUILD_TOOLS_PREREQ) $(TARGET_EXEC_WRAPPERS) $(TARGET_COMPILER_WRAPPERS) $(TARGET_PREFIXED_EXEC_WRAPPERS) | $(PREFIX_STAMP)
 	@mkdir -p $(BUILD)/gcc
-ifneq ($(OWNGMP),)
-	@mkdir -p $(PROJECTS)/gcc/gmp
-	@mkdir -p $(PROJECTS)/gcc/mpc
-	@mkdir -p $(PROJECTS)/gcc/mpfr
-	@rsync -a --no-group $(PROJECTS)/$(GMP)/* $(PROJECTS)/gcc/gmp
-	@rsync -a --no-group $(PROJECTS)/$(MPC)/* $(PROJECTS)/gcc/mpc
-	@rsync -a --no-group $(PROJECTS)/$(MPFR)/* $(PROJECTS)/gcc/mpfr
-endif
 	$(L0)"configure gcc"$(L1) cd $(BUILD)/gcc && $(E) $(GCC_HOST_TOOLS) $(GCC_HOST_CONFIGURE_ENV) $(GCC_TARGET_CONFIGURE_ENV) $(GCC_HOST_LDFLAGS) $(PROJECTS)/gcc/configure $(CONFIG_GCC) $(L2)
 
 $(BUILD)/libamiga-host-compat.a: $(BUILD)/gcc-host-compat.o
@@ -1063,9 +1032,6 @@ $(BUILD)/gcc-host-compat.o: support/amiga-host-compat.c
 
 $(PROJECTS)/gcc/configure:
 	@cd $(PROJECTS) && git clone -b $(gcc_BRANCH) --depth 16 $(gcc_URL)
-	for i in $$(find patches/gcc/ -type f 2>/dev/null); \
-	do if [[ "$$i" == *.diff ]] ; \
-		then j=$${i:8}; patch -N "$(PROJECTS)/$${j%.diff}" "$$i"; fi ; done
 
 ifneq (,$(strip $(TARGET_BUILD_TOOLS_PREREQ)))
 TARGET_BUILD_MACHINE := $(if $(strip $(BUILD_TRIPLET)),$(BUILD_TRIPLET),$(shell $(BUILD_CC) -dumpmachine 2>/dev/null))
@@ -1100,7 +1066,7 @@ $(TARGET_BUILD_TOOLS_BUILD)/binutils/_done: $(TARGET_BUILD_TOOLS_BUILD)/binutils
 	$(L0)"install build-to-target binutils"$(L1) $(TARGET_BUILD_TOOLS_ENV) $(MAKE) -C $(TARGET_BUILD_TOOLS_BUILD)/binutils install-gas install-binutils install-ld $(L2)
 	@touch $@
 
-$(TARGET_BUILD_TOOLS_BUILD)/binutils/Makefile: Makefile $(PROJECTS)/binutils/configure
+$(TARGET_BUILD_TOOLS_BUILD)/binutils/Makefile: Makefile $(PROJECTS)/binutils/configure $(BINUTILS_PREREQUISITE_SOURCES)
 	@mkdir -p $(@D)
 	$(L0)"configure build-to-target binutils"$(L1) cd $(@D) && $(E) $(TARGET_BUILD_TOOLS_ENV) $(PROJECTS)/binutils/configure $(TARGET_BUILD_BINUTILS_CONFIG) $(L2)
 
@@ -1157,9 +1123,6 @@ $(BUILD_TOOLS)/fd2sfd/Makefile: $(PROJECTS)/fd2sfd/configure
 
 $(PROJECTS)/fd2sfd/configure:
 	@cd $(PROJECTS) && git clone -b $(fd2sfd_BRANCH) --depth 4 $(fd2sfd_URL)
-	for i in $$(find patches/fd2sfd/ -type f); \
-	do if [[ "$$i" == *.diff ]] ; \
-		then j=$${i:8}; patch -N "$(PROJECTS)/$${j%.diff}" "$$i"; fi ; done
 
 # =================================================
 # fd2pragma

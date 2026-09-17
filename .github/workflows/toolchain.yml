@@ -126,8 +126,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
             autoconf automake bison build-essential ca-certificates flex \
-            gettext git libgmp-dev libmpfr-dev libmpc-dev \
-            rsync wget xz-utils
+            gettext git rsync wget xz-utils
 
       # Apple ships old or BSD versions of most build tools; put the brew
       # GNU ones first on PATH under their plain names (gnubin) so the
@@ -136,7 +135,7 @@ jobs:
         if: runner.os == 'macOS'
         run: |
           brew install autoconf automake bison coreutils flex gettext \
-            gmp gnu-sed gnu-tar grep make mpfr libmpc wget xz
+            gnu-sed gnu-tar grep make wget xz
           echo "$(brew --prefix bison)/bin" >> $GITHUB_PATH
           echo "$(brew --prefix flex)/bin" >> $GITHUB_PATH
           for pkg in coreutils gnu-sed gnu-tar grep make; do
@@ -288,7 +287,6 @@ jobs:
       HOST: m68k-amigaos
       BUILD_TRIPLET: x86_64-linux-gnu
       HOST_RUNNER: vamos -C 68040 --
-      OWNGMP: "1"
       BUILD_CC: x86_64-linux-gnu-gcc -B/opt/build-binutils/
       BUILD_CXX: x86_64-linux-gnu-g++ -B/opt/build-binutils/
       CC_FOR_BUILD: x86_64-linux-gnu-gcc -B/opt/build-binutils/
@@ -366,7 +364,6 @@ jobs:
       HOST: x86_64-w64-mingw32ucrt
       BUILD_TRIPLET: x86_64-linux-gnu
       HOST_RUNNER: wine
-      OWNGMP: "1"
       BUILD_CC: x86_64-linux-gnu-gcc -B/opt/build-binutils/
       BUILD_CXX: x86_64-linux-gnu-g++ -B/opt/build-binutils/
       CC_FOR_BUILD: x86_64-linux-gnu-gcc -B/opt/build-binutils/
