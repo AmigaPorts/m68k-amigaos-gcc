@@ -28,12 +28,12 @@ Currently, these tools are built:
 
 ### Fedora
 ```
-sudo dnf install wget gcc gcc-c++ python git perl-Pod-Simple gperf patch autoconf automake make makedepend bison flex gmp-devel mpfr-devel libmpc-devel gettext-devel rsync readline-devel which
+sudo dnf install curl gcc gcc-c++ python git perl-Pod-Simple gperf patch autoconf automake make makedepend bison flex gmp-devel mpfr-devel libmpc-devel gettext-devel rsync readline-devel which
 ```
 
 ### Ubuntu, Debian
 ```
-sudo apt install make wget git gcc g++ libgmp-dev libmpfr-dev libmpc-dev flex bison gettext autoconf rsync libreadline-dev
+sudo apt install make curl git gcc g++ libgmp-dev libmpfr-dev libmpc-dev flex bison gettext autoconf rsync libreadline-dev
 ```
 
 ### macOS
@@ -41,7 +41,7 @@ Install Homebrew (https://brew.sh/) or any other package manager first. The comp
 
 ```
 brew install autoconf automake bash bison coreutils flex gettext gmp \
-  gnu-sed gnu-tar grep make libmpc mpfr wget xz
+  gnu-sed gnu-tar grep make libmpc mpfr xz
 ```
 
 Apple ships old or BSD versions of many of these tools. Put the Homebrew GNU
@@ -68,7 +68,7 @@ CC=gcc-12 CXX=g++-12 gmake all
 ### Windows with msys2
 
 ```
-pacman -S git base-devel gcc flex gmp-devel mpc-devel mpfr-devel rsync autoconf automake
+pacman -S git base-devel gcc flex gmp-devel mpc-devel mpfr-devel rsync autoconf automake curl
 ```
 
 Also note that you **MUST** cd into an **absolute path** e.g. `cd /c/msys64/home/test/amiga-gcc/` before running make, or builds may fail, because some files aren't found correctly (that's a msys2 bug).

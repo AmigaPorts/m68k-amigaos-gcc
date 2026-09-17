@@ -421,19 +421,10 @@ $(L0)"downloading $(1)"$(L1) cd "$(DOWNLOAD)" || exit 1; \
     url=$$(printf '%s' "$$url" | sed -E "s|^https?://(www\.)?aminet\.net|$$AMINET_MIRROR|"); \
   fi; \
   rm -f "$$archive_tmp"; \
-  download_status=1; \
-  for download_attempt in 1 2 3 4; do \
-    if wget --timeout=10 --tries=1 "$$url" -O "$$archive_tmp"; then \
-      download_status=0; \
-      break; \
-    fi; \
+  if ! curl --fail --location --connect-timeout 10 \
+       --retry 3 --retry-all-errors \
+       "$$url" --output "$$archive_tmp"; then \
     rm -f "$$archive_tmp"; \
-    if [ "$$download_attempt" -lt 4 ]; then \
-      echo "download attempt $$download_attempt/4 failed; retrying" >&2; \
-      sleep "$$download_attempt"; \
-    fi; \
-  done; \
-  if [ "$$download_status" -ne 0 ]; then \
     echo "failed to download $$url" >&2; \
     exit 1; \
   fi; \
@@ -2005,7 +1996,7 @@ $(PROJECTS)/$(ZLIB)/configure: $(DOWNLOAD)/$(ZLIB).tar.gz
 	@touch $@
 
 $(DOWNLOAD)/$(ZLIB).tar.gz:
-	$(call get-file,zlib,https://zlib.net/fossils/$(ZLIB).tar.gz,$(ZLIB).tar.gz,bb329a0a2cd0274d05519d61c667c062e06990d72e125ee2dfa8de64f0119d16)
+	$(call get-file,zlib,https://github.com/madler/zlib/releases/download/v$(subst zlib-,,$(ZLIB))/$(ZLIB).tar.gz,$(ZLIB).tar.gz,bb329a0a2cd0274d05519d61c667c062e06990d72e125ee2dfa8de64f0119d16)
 
 # =================================================
 # libpng
