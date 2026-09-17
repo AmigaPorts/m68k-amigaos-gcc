@@ -21,8 +21,8 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
     make update && \
     make -j $(nproc) GDB_CC=gcc-15 GDB_CXX=g++-15 all && \
     make -j 4 all-sdk && \
-    wget https://raw.githubusercontent.com/aros-development-team/AROS/master/compiler/include/devices/sana2.h -O sana2.h && \
-    wget https://raw.githubusercontent.com/aros-development-team/AROS/master/compiler/include/devices/sana2specialstats.h -O sana2specialstats.h && \
+    curl --fail --location https://raw.githubusercontent.com/aros-development-team/AROS/master/compiler/include/devices/sana2.h --output sana2.h && \
+    curl --fail --location https://raw.githubusercontent.com/aros-development-team/AROS/master/compiler/include/devices/sana2specialstats.h --output sana2specialstats.h && \
     mv -fv sana2.h sana2specialstats.h /opt/${PATHPREFIX}/m68k-amigaos/ndk-include/devices/ && \
     cd / && \
     rm -rf /root/amiga-gcc && \
@@ -39,7 +39,7 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
     libncurses-dev \
     make \
     rsync \
-    texinfo\
+    texinfo \
     wget \
     && apt-get -y autoremove
 

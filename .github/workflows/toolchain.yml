@@ -125,8 +125,8 @@ jobs:
           sudo rm -f /etc/apt/sources.list.d/google-chrome*.list
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
-            autoconf automake bison build-essential ca-certificates flex \
-            gettext git rsync wget xz-utils
+            autoconf automake bison build-essential ca-certificates curl flex \
+            gettext git rsync xz-utils
 
       # Apple ships old or BSD versions of most build tools; put the brew
       # GNU ones first on PATH under their plain names (gnubin) so the
@@ -135,7 +135,7 @@ jobs:
         if: runner.os == 'macOS'
         run: |
           brew install autoconf automake bison coreutils flex gettext \
-            gnu-sed gnu-tar grep make wget xz
+            gnu-sed gnu-tar grep make xz
           echo "$(brew --prefix bison)/bin" >> $GITHUB_PATH
           echo "$(brew --prefix flex)/bin" >> $GITHUB_PATH
           for pkg in coreutils gnu-sed gnu-tar grep make; do
