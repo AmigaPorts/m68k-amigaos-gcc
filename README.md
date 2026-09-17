@@ -58,11 +58,11 @@ done
 
 **NOTE**
 
-* You might need to use the brew version of make when building your projects (e.g.: `gmake`). Link failures are known to happen with GNU Make 3.81, but to succeed with GNU Make 4.4.1 on the same machine and project
+* With the `PATH` above, `make` is Homebrew's GNU make 4.x; Apple's GNU Make 3.81 is known to produce link failures on the same machine and project, so use it for your own projects too
 * If you want `m68k-amigaos-gdb` then you have to build it with `gcc` rather than the default Apple toolchain, e.g. `brew install gcc@12` and then:
 
 ```
-CC=gcc-12 CXX=g++-12 gmake all
+CC=gcc-12 CXX=g++-12 make all
 ```
 
 ### Windows with msys2
