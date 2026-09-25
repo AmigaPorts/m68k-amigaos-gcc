@@ -8,9 +8,6 @@ ARG GCC_BRANCH="amiga6"
 RUN export DEBIAN_FRONTEND=noninteractive && \
     export HOST_ARCH=$(gcc -dumpmachine 2>/dev/null || dpkg-architecture -qDEB_HOST_GNU_TYPE) && \
     export PREFIX=/opt/${PATHPREFIX} && \
-    apt update && \
-    apt install -y gcc-15 g++-15 && \
-    rm -rf /var/lib/apt/lists/* && \
     command -v lha && \
     echo "HOST_ARCH:       ${HOST_ARCH}" && \
     echo "PREFIX:          ${PREFIX}" && \
@@ -19,7 +16,7 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
     make branch mod=binutils branch=${BINUTILS_BRANCH} && \
     make branch mod=gcc branch=${GCC_BRANCH} && \
     make update && \
-    make -j $(nproc) GDB_CC=gcc-15 GDB_CXX=g++-15 all && \
+    make -j $(nproc) all && \
     make -j 4 all-sdk && \
     curl --fail --location https://raw.githubusercontent.com/aros-development-team/AROS/master/compiler/include/devices/sana2.h --output sana2.h && \
     curl --fail --location https://raw.githubusercontent.com/aros-development-team/AROS/master/compiler/include/devices/sana2specialstats.h --output sana2specialstats.h && \
@@ -31,13 +28,10 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
     bison \
     flex \
     g++ \
-    g++-15 \
     gcc \
-    gcc-15 \
     gettext \
     git \
     libncurses-dev \
-    make \
     rsync \
     texinfo \
     wget \
