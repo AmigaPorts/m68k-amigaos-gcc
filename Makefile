@@ -288,6 +288,18 @@ __DOWNLOADDIR := $(shell mkdir -p $(DOWNLOAD))
 
 GCC_VERSION ?= $(shell cat 2>/dev/null $(PROJECTS)/gcc/gcc/BASE-VER)
 
+# Stamp gcc and binutils with the release they were built from, so bug
+# reports carry it: "m68k-amigaos-gcc (AmigaDev v16.2) 16.2.0b 2026...".
+# Untagged builds report the nearest tag plus commit count and hash.
+# Set PKGVERSION on the command line for a tree without git history.
+# The string is captured when the build tree is configured, not tracked
+# afterwards: use a fresh BUILD to refresh it, or reconfigure and remove
+# $(BUILD)/gcc/gcc/build/genversion.o so gcc regenerates version.h.
+PKGVERSION ?= AmigaDev $(shell git describe --tags --dirty --always 2>/dev/null)
+PKGVERSION := $(strip $(PKGVERSION))
+BUGURL ?= https://github.com/AmigaPorts/m68k-amigaos-gcc/issues
+CONFIG_VERSION := --with-pkgversion="$(PKGVERSION)" --with-bugurl="$(BUGURL)"
+
 ifeq ($(UNAME_S), Darwin)
 	SED := gsed
 else ifeq ($(UNAME_S), FreeBSD)
@@ -772,7 +784,7 @@ update-mpc:
 # =================================================
 # binutils
 # =================================================
-CONFIG_BINUTILS = --prefix=$(PREFIX) --target=$(TARGET) $(HOST_CONFIGURE) --disable-werror --disable-nls --without-msgpack
+CONFIG_BINUTILS = --prefix=$(PREFIX) --target=$(TARGET) $(HOST_CONFIGURE) $(CONFIG_VERSION) --disable-werror --disable-nls --without-msgpack
 
 ifeq (,$(strip $(HOST)))
 CONFIG_BINUTILS += --enable-targets=m68k-elf
@@ -847,7 +859,7 @@ $(BUILD)/binutils/_gdb: $(BUILD)/binutils/_done
 # =================================================
 # gprof
 # =================================================
-CONFIG_GPROF := --prefix=$(PREFIX) --target=$(TARGET) $(HOST_CONFIGURE) --disable-werror
+CONFIG_GPROF := --prefix=$(PREFIX) --target=$(TARGET) $(HOST_CONFIGURE) $(CONFIG_VERSION) --disable-werror
 
 gprof: $(BUILD)/binutils/_gprof
 
@@ -863,7 +875,7 @@ $(BUILD)/binutils/gprof/Makefile: $(PROJECTS)/binutils/configure $(BUILD)/binuti
 # =================================================
 # gcc
 # =================================================
-CONFIG_GCC = --prefix=$(PREFIX) --target=$(TARGET) $(HOST_CONFIGURE) --enable-languages=c,c++,objc,$(ADDLANG) --enable-version-specific-runtime-libs --disable-libssp --disable-nls --without-zstd  \
+CONFIG_GCC = --prefix=$(PREFIX) --target=$(TARGET) $(HOST_CONFIGURE) $(CONFIG_VERSION) --enable-languages=c,c++,objc,$(ADDLANG) --enable-version-specific-runtime-libs --disable-libssp --disable-nls --without-zstd  \
 	--disable-shared --enable-threads=$(THREADS)
 
 ifneq ($(strip $(HOST)),$(TARGET))
