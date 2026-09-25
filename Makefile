@@ -809,12 +809,6 @@ BINUTILS_HOST_ALIAS_CMD := addr2line ar as c++filt elfedit ld ld.bfd nm objcopy 
 endif
 endif
 
-BINUTILS_DIR := . bfd gas ld binutils opcodes
-BINUTILSD := $(patsubst %,$(PROJECTS)/binutils/%, $(BINUTILS_DIR))
-
-ALL_GDB := all-gdb
-INSTALL_GDB := install-gdb
-
 binutils: $(BUILD)/binutils/_done
 
 $(BUILD)/binutils/_done: $(BUILD)/binutils/Makefile $(shell find 2>/dev/null $(PROJECTS)/binutils -not \( -path $(PROJECTS)/binutils/.git -prune \) -not \( -path $(PROJECTS)/binutils/gprof -prune \) -not \( -path $(PROJECTS)/binutils/gmp -prune \) -not \( -path $(PROJECTS)/binutils/mpfr -prune \) -type f)
@@ -844,16 +838,13 @@ $(PROJECTS)/binutils/configure:
 # gdb
 # =================================================
 
-GDB_CC ?= $(if $(strip $(HOST)),$(CC),gcc)
-GDB_CXX ?= $(if $(strip $(HOST)),$(CXX),g++)
-
 gdb: $(BUILD)/binutils/_gdb
 
 $(BUILD)/binutils/_gdb: $(BUILD)/binutils/_done
-	$(L0)"make binutils configure gdb"$(L1)$(MAKE) -C $(BUILD)/binutils CC=$(GDB_CC) CXX=$(GDB_CXX) configure-gdb $(L2)
-	$(L0)"make binutils gdb libs"$(L1)$(MAKE) -C $(BUILD)/binutils/gdb CC=$(GDB_CC) CXX=$(GDB_CXX) all-lib $(L2)
-	$(L0)"make binutils gdb"$(L1)$(MAKE) -C $(BUILD)/binutils CC=$(GDB_CC) CXX=$(GDB_CXX) $(ALL_GDB) $(L2)
-	$(L0)"install binutils gdb"$(L1)$(MAKE) -C $(BUILD)/binutils CC=$(GDB_CC) CXX=$(GDB_CXX) install-gas install-binutils install-ld $(INSTALL_GDB) $(L2)
+	$(L0)"make binutils configure gdb"$(L1)$(MAKE) -C $(BUILD)/binutils configure-gdb $(L2)
+	$(L0)"make binutils gdb libs"$(L1)$(MAKE) -C $(BUILD)/binutils/gdb all-lib $(L2)
+	$(L0)"make binutils gdb"$(L1)$(MAKE) -C $(BUILD)/binutils all-gdb $(L2)
+	$(L0)"install binutils gdb"$(L1)$(MAKE) -C $(BUILD)/binutils install-gas install-binutils install-ld install-gdb $(L2)
 	@echo "done" >$@
 
 # =================================================
