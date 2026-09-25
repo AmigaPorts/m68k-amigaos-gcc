@@ -111,6 +111,8 @@ jobs:
         with:
           repository: ${{ inputs.checkout_repo }}
           ref: ${{ inputs.checkout_ref }}
+          # the Makefile stamps the tools with git describe --tags
+          fetch-depth: 0
 
       # PREFIX reaches every make invocation through the environment
       - name: Set prefix
@@ -298,6 +300,8 @@ jobs:
         with:
           repository: ${{ inputs.checkout_repo }}
           ref: ${{ inputs.checkout_ref }}
+          # the Makefile stamps the tools with git describe --tags
+          fetch-depth: 0
 
       - name: Prepare native build tools
         run: |
@@ -383,6 +387,8 @@ jobs:
         with:
           repository: ${{ inputs.checkout_repo }}
           ref: ${{ inputs.checkout_ref }}
+          # the Makefile stamps the tools with git describe --tags
+          fetch-depth: 0
 
       - name: Install host runner
         run: |
