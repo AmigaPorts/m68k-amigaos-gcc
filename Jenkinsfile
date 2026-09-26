@@ -196,11 +196,11 @@ node('master') {
 	def project = readJSON file: "JenkinsEnv.json";
 
 	project.builds.each { v ->
-		branches["Build ${v.DockerRoot}/${v.DockerImage}:${v.DockerTag}-${buildConf.GCCBranch.replace('amiga', 'gcc')}-${buildConf.BinutilsBranch.replace('amiga', 'binutils')}"] = {
+		branches["Build ${v.DockerRoot}/${v.DockerImage}:${v.DockerTag}-${v.GCCBranch.replace('amiga', 'gcc')}-${v.BinutilsBranch.replace('amiga', 'binutils')}"] = {
 			def platforms = [:];
 
 			v.Platforms.each { p -> 
-				platforms["Build ${v.DockerRoot}/${v.DockerImage}:${v.DockerTag}-${buildConf.GCCBranch.replace('amiga', 'gcc')}-${buildConf.BinutilsBranch.replace('amiga', 'binutils')}_${p}"] = {
+				platforms["Build ${v.DockerRoot}/${v.DockerImage}:${v.DockerTag}-${v.GCCBranch.replace('amiga', 'gcc')}-${v.BinutilsBranch.replace('amiga', 'binutils')}_${p}"] = {
 					stage("Build ${p} version") {
 						node(p) {
 							buildStep(v, v.DockerRoot, v.DockerImage, v.DockerTag, p, v.Dockerfile, [], v.BuildParam);
