@@ -29,7 +29,7 @@ def notifyFailure(labels, target) {
 
 @NonCPS
 def shouldPublish(branchName, isPullRequest) {
-	return !isPullRequest && ['master', 'gcc10', 'dev'].contains(branchName)
+	return !isPullRequest && ['master', 'gcc10', 'dev', 'feature/push-on-tags-not-master'].contains(branchName)
 }
 
 @NonCPS
