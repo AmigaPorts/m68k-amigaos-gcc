@@ -14,11 +14,9 @@ Currently, these tools are built:
 
 ## Branches
 ### Notable branches of gcc
-* `amiga6`: The legacy gcc-6.5.0b branch
-* `amiga10.4`: gcc-10.4.0
-* `amiga13.4`: gcc-13.4.0
-* `amiga15.2`: gcc-15.2.0
-* `amiga16.2`: gcc-16.2.0, the default branch, built and tested by CI
+* `amiga6`: The legacy GCC 6.5.0b
+* `amiga13.4`: GCC 13.4, unsupported but still widely used
+* `amiga16.2`: GCC 16.2, the default branch, built and tested by CI
 
 ### Notable branches of binutils
 * `amiga-2.46`: binutils 2.46 with amigaos support and dwarf2 debugging (the default)
@@ -68,13 +66,7 @@ CC=gcc-12 CXX=g++-12 make all
 ### Windows with msys2
 
 ```
-<<<<<<< HEAD
-pacman -S git base-devel gcc flex rsync autoconf automake
-||||||| parent of b4d65ca (Download with curl everywhere, drop wget)
-pacman -S git base-devel gcc flex gmp-devel mpc-devel mpfr-devel rsync autoconf automake
-=======
-pacman -S git base-devel gcc flex gmp-devel mpc-devel mpfr-devel rsync autoconf automake curl
->>>>>>> b4d65ca (Download with curl everywhere, drop wget)
+pacman -S curl git base-devel gcc flex rsync autoconf automake
 ```
 
 Also note that you **MUST** cd into an **absolute path** e.g. `cd /c/msys64/home/test/amiga-gcc/` before running make, or builds may fail, because some files aren't found correctly (that's a msys2 bug).
@@ -123,6 +115,7 @@ time make all -j$(nproc)
 A full bootstrap takes roughly 10 to 30 minutes on current Linux hardware, dominated by multilib phases.
 
 ## Packaging
+
 This packages the PREFIX folder into a redistributable archive:
 
 ```
@@ -134,6 +127,7 @@ Cross builds use `HOST`, so their filenames identify the system on which the too
 will run rather than the build machine.
 
 ## Continuous integration
+
 The GitHub Actions workflow in `.github/workflows/toolchain.yml`
 bootstraps the toolchain from scratch, optionally runs the gcc
 testsuite under vamos, and uploads the native `.tar.xz` packages as build
@@ -156,13 +150,16 @@ with the gcc testsuite as a release gate.
 
 You can select one of the various runtimes:
 
-* Nothing specified: newlib-based static runtime for Kickstart 2.0+ (**default, but uncommon nowadays**)
-* `-mcrt=nix20` or `-noixemul`: the libnix runtime for Kickstart 2.0+ (**recommended option for most projects**)
-* `-mcrt=nix13`: the libnix static runtime for Kickstart 1.3 (also uses headers from `<PREFIX>/m68k-amigaos/ndk13-include`)
+* `-mcrt=nix20`: the libnix runtime for Kickstart 2.0+ (**recommended for most projects**)
+* `-mcrt=nix13`: the libnix static runtime for Kickstart 1.3 (also uses headers from `ndk13-include`)
+* `-mcrt=newlib`: the newlib-based static runtime for Kickstart 2.0+ (**default, but uncommon nowadays**)
 * `-mcrt=clib2`: the clib2 static runtime
 * `-mcrt=ixemul`: the ixemul dynamic runtime for Kickstart 2.0+, requires an installed `ixemul.library`
+* `-noixemul`: a misleadingly named alias for `-mcrt=nix20` (**deprecated**)
 
-Always specify this as the last parameter and only once.
+Always specify the runtime, even when you want the default:
+it affects the include path as well as the libraries, so
+**compiling for one runtime and linking against another breaks quietly**.
 
 ## Checking gcc
 
@@ -196,6 +193,7 @@ make -j$(nproc) check board=volamos
 `volamos-020`, `volamos-baserel`, ... counterparts).
 
 ## Version management
+
 The **Makefile** provides some targets to switch to an older state
 for all modules.
 
