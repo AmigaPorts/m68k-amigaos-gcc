@@ -258,8 +258,8 @@ case $1 in
 				run_sfdc --mode=autoopen --target=m68k-amigaos --output=build/$2/$name.c $3/m68k-amigaos/lib/sfd/$name.sfd || exit 1
 				sed -i.bak -e 's/__inline//g' -e 's/: \"d0\",/:/g' build/$2/$name.c || exit 1
 				rm build/$2/$name.c.bak
-				echo $3/bin/m68k-amigaos-gcc -Os -noixemul -fomit-frame-pointer build/$2/$name.c -c
-				run_target_cc -Os -noixemul -fomit-frame-pointer build/$2/$name.c -c -o build/$2/$name.o || exit 1
+				echo $3/bin/m68k-amigaos-gcc -Os -mcrt=nix20 -fomit-frame-pointer build/$2/$name.c -c
+				run_target_cc -Os -mcrt=nix20 -fomit-frame-pointer build/$2/$name.c -c -o build/$2/$name.o || exit 1
 				echo $3/bin/m68k-amigaos-ar r $3/m68k-amigaos/lib/libstubs.a build/$2/$name.o
 				(
 					flock -x 200
@@ -274,8 +274,8 @@ case $1 in
 				run_sfdc --mode=stubs --target=m68k-amigaos --output=build/$2/lib$2.c $3/m68k-amigaos/lib/sfd/$name.sfd || exit 1
 				sed -i.bak -e 's/__inline//g' -e 's/: \"d0\",/:/g' build/$2/lib$2.c || exit 1
 				rm build/$2/lib$2.c.bak
-				echo $3/bin/m68k-amigaos-gcc -Os -noixemul -fomit-frame-pointer build/$2/lib$2.c -c
-				run_target_cc -Os -noixemul -fomit-frame-pointer build/$2/lib$2.c -c -o build/$2/lib$2.o || exit 1
+				echo $3/bin/m68k-amigaos-gcc -Os -mcrt=nix20 -fomit-frame-pointer build/$2/lib$2.c -c
+				run_target_cc -Os -mcrt=nix20 -fomit-frame-pointer build/$2/lib$2.c -c -o build/$2/lib$2.o || exit 1
 				echo $3/bin/m68k-amigaos-ar r $3/m68k-amigaos/lib/lib$2.a build/$2/lib$2.o
 				run_target_ar r $3/m68k-amigaos/lib/lib$2.a build/$2/lib$2.o || exit 1
 			;;
@@ -288,8 +288,8 @@ case $1 in
 				rm build/$2/lib$2.c.bak
 			;;
 			libc)
-				echo $3/bin/m68k-amigaos-gcc -Os -noixemul -fomit-frame-pointer build/$2/lib$2.c -c
-				run_target_cc -Os -noixemul -fomit-frame-pointer build/$2/lib$2.c -c -o build/$2/lib$2.o || exit 1
+				echo $3/bin/m68k-amigaos-gcc -Os -mcrt=nix20 -fomit-frame-pointer build/$2/lib$2.c -c
+				run_target_cc -Os -mcrt=nix20 -fomit-frame-pointer build/$2/lib$2.c -c -o build/$2/lib$2.o || exit 1
 				echo $3/bin/m68k-amigaos-ar r $3/m68k-amigaos/lib/lib$2.a build/$2/lib$2.o
 				run_target_ar r $3/m68k-amigaos/lib/lib$2.a build/$2/lib$2.o || exit 1
 			;;
