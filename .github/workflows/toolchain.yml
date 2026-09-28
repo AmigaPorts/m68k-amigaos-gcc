@@ -6,7 +6,8 @@
 #   ci-linux         - the Linux toolchain (plus the amigaos.exp testsuite)
 #   ci-linux-arm     - the same on an arm64 Linux runner
 #   ci-macos         - the macOS toolchain
-#   ci-amigaos       - the AmigaOS-hosted toolchain
+#   ci-amigaos       - the AmigaOS-hosted toolchain (builds the Linux
+#                      cross toolchain first, to bootstrap from)
 #   ci-mingw         - the MinGW-hosted toolchain
 #   ci-testsuite-c   - the Linux toolchain with the gcc C testsuite
 #   ci-testsuite-cxx - the Linux toolchain with the g++ testsuite (slow)
@@ -85,7 +86,7 @@ jobs:
   build:
     if: >-
       github.event_name != 'pull_request' ||
-      contains(fromJSON('["ci-linux", "ci-linux-arm", "ci-macos", "ci-testsuite-c", "ci-testsuite-cxx"]'),
+      contains(fromJSON('["ci-linux", "ci-linux-arm", "ci-macos", "ci-testsuite-c", "ci-testsuite-cxx", "ci-amigaos"]'),
                github.event.label.name)
     runs-on: >-
       ${{ inputs.runner
