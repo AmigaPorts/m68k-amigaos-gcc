@@ -496,6 +496,7 @@ help:
 	@echo "make drop-prefix         remove all content from the prefix folder"
 	@echo "make package             package the prefix folder for the destination host"
 	@echo "make package-lha         package the prefix folder as an .lha archive"
+	@echo "make volamos             install the volamos simulator used by the testsuite"
 	@echo "make update              perform git pull for all targets"
 	@echo "make update-<target>     perform git pull for the given target"
 	@echo "make sdk=<sdk>           install the sdk <sdk>"
@@ -1738,6 +1739,55 @@ update-repos:
 			popd; \
 		fi; \
 	done
+
+# =================================================
+# volamos
+# =================================================
+# The simulator the volamos* boards run the target testsuite under.  A
+# published release binary is used rather than a source build, so neither CI
+# nor a contributor needs a Rust toolchain; hosts without a release build it
+# themselves and put it on PATH.
+VOLAMOS_VERSION ?= 0.7
+VOLAMOS_UNAME_S := $(shell uname -s)
+VOLAMOS_UNAME_M := $(shell uname -m)
+
+ifeq ($(VOLAMOS_UNAME_S),Linux)
+  ifeq ($(VOLAMOS_UNAME_M),x86_64)
+    VOLAMOS_HOST := x86_64-unknown-linux-musl
+    VOLAMOS_SHA256 := 4801c3c11c095585100e923efcecdbf2eef248c28bf57ec468cd2dcaa9ed2ec0
+  endif
+  ifneq (,$(filter $(VOLAMOS_UNAME_M),aarch64 arm64))
+    VOLAMOS_HOST := aarch64-unknown-linux-musl
+    VOLAMOS_SHA256 := df9df34f3c35539c24eba6bee8d52ede4b84a2bd10bf002d299140ea154e3e98
+  endif
+endif
+ifeq ($(VOLAMOS_UNAME_S),Darwin)
+  ifneq (,$(filter $(VOLAMOS_UNAME_M),aarch64 arm64))
+    VOLAMOS_HOST := aarch64-apple-darwin
+    VOLAMOS_SHA256 := 7dd3495c29e143364c912e72a154598fdff3bd611855b334dc96d841a39ca4ae
+  endif
+endif
+
+.PHONY: volamos
+volamos: $(PREFIX)/bin/volamos
+
+ifeq (,$(VOLAMOS_HOST))
+$(PREFIX)/bin/volamos:
+	@echo "volamos $(VOLAMOS_VERSION) has no release for $(VOLAMOS_UNAME_S) $(VOLAMOS_UNAME_M)." >&2
+	@echo "Build it from https://github.com/sidick/volamos and copy it to $(PREFIX)/bin." >&2
+	@exit 1
+else
+VOLAMOS_DIR := volamos-v$(VOLAMOS_VERSION)-$(VOLAMOS_HOST)
+VOLAMOS_ARC := $(VOLAMOS_DIR).tar.gz
+
+$(DOWNLOAD)/$(VOLAMOS_ARC):
+	$(call get-file,volamos,https://github.com/sidick/volamos/releases/download/v$(VOLAMOS_VERSION)/$(VOLAMOS_ARC),$(VOLAMOS_ARC),$(VOLAMOS_SHA256))
+
+$(PREFIX)/bin/volamos: $(DOWNLOAD)/$(VOLAMOS_ARC)
+	@mkdir -p $(PREFIX)/bin
+	$(L0)"unpack volamos"$(L1) tar xzf $(DOWNLOAD)/$(VOLAMOS_ARC) -C $(PREFIX)/bin \
+	  --strip-components=1 $(VOLAMOS_DIR)/volamos && touch $@$(L2)
+endif
 
 # =================================================
 # run gcc torture check
