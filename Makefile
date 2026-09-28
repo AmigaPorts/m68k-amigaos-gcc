@@ -1747,24 +1747,24 @@ update-repos:
 # published release binary is used rather than a source build, so neither CI
 # nor a contributor needs a Rust toolchain; hosts without a release build it
 # themselves and put it on PATH.
-VOLAMOS_VERSION ?= 0.7
+VOLAMOS_VERSION ?= 0.8
 VOLAMOS_UNAME_S := $(shell uname -s)
 VOLAMOS_UNAME_M := $(shell uname -m)
 
 ifeq ($(VOLAMOS_UNAME_S),Linux)
   ifeq ($(VOLAMOS_UNAME_M),x86_64)
     VOLAMOS_HOST := x86_64-unknown-linux-musl
-    VOLAMOS_SHA256 := 4801c3c11c095585100e923efcecdbf2eef248c28bf57ec468cd2dcaa9ed2ec0
+    VOLAMOS_SHA256 := b6e1027645acf3340e2e48297520e820d522a60dc62bf7b87a35c148c87ce63a
   endif
   ifneq (,$(filter $(VOLAMOS_UNAME_M),aarch64 arm64))
     VOLAMOS_HOST := aarch64-unknown-linux-musl
-    VOLAMOS_SHA256 := df9df34f3c35539c24eba6bee8d52ede4b84a2bd10bf002d299140ea154e3e98
+    VOLAMOS_SHA256 := 027752195c354f46bd2667ba743e5a87e6b43089e39eef6d8c5f05bd655e1959
   endif
 endif
 ifeq ($(VOLAMOS_UNAME_S),Darwin)
   ifneq (,$(filter $(VOLAMOS_UNAME_M),aarch64 arm64))
     VOLAMOS_HOST := aarch64-apple-darwin
-    VOLAMOS_SHA256 := 7dd3495c29e143364c912e72a154598fdff3bd611855b334dc96d841a39ca4ae
+    VOLAMOS_SHA256 := 4e225b2fab4cbd9c2d20f9a027ec63a5bce9030cc2dbdff4282ceb863b831ba8
   endif
 endif
 
