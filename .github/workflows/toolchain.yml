@@ -23,15 +23,18 @@ on:
         default: "16.2"
         required: true
       run_testsuite:
-        description: run the gcc testsuite under vamos
+        description: run the gcc testsuite under the simulator
         type: boolean
         default: false
       run_cxx_testsuite:
-        description: run the g++ testsuite under vamos (slow)
+        description: run the g++ testsuite under the simulator (slow)
         type: boolean
         default: false
+      simulator:
+        description: "simulator for the target testsuite: volamos or vamos"
+        default: volamos
       amitools_git:
-        description: pip source for amitools (vamos)
+        description: pip source for amitools (only used with simulator=vamos)
         default: git+https://github.com/AmigaPorts/amitools.git
       runner:
         description: runner label (e.g. papert for self-hosted)
@@ -56,6 +59,9 @@ on:
       run_cxx_testsuite:
         type: boolean
         default: false
+      simulator:
+        type: string
+        default: volamos
       amitools_git:
         type: string
         default: git+https://github.com/AmigaPorts/amitools.git
@@ -97,6 +103,10 @@ jobs:
     env:
       RUN_TESTSUITE: ${{ inputs.run_testsuite || github.event.label.name == 'ci-testsuite-c' }}
       RUN_TESTSUITE_CXX: ${{ inputs.run_cxx_testsuite || github.event.label.name == 'ci-testsuite-cxx' }}
+      # the two simulators are kept side by side so their results can be
+      # compared; SIMULATOR picks one and BOARD is the baseboards/ file for it
+      SIMULATOR: ${{ inputs.simulator || 'volamos' }}
+      BOARD: ${{ (inputs.simulator || 'volamos') == 'vamos' && 'amigaos' || 'volamos' }}
       AMITOOLS_GIT: ${{ inputs.amitools_git || 'git+https://github.com/AmigaPorts/amitools.git' }}
       # not GCC_VERSION: the Makefile reads that from gcc's BASE-VER
       # (16.2.0b) for gcc's own lib/gcc/<target>/<version> layout
@@ -210,19 +220,30 @@ jobs:
 
       - name: Install testsuite dependencies (Linux)
         if: runner.os == 'Linux'
-        run: sudo apt-get install -y --no-install-recommends dejagnu python3-dev python3-venv
+        run: sudo apt-get install -y --no-install-recommends dejagnu
 
       - name: Install testsuite dependencies (macOS)
         if: runner.os == 'macOS'
         run: brew install dejagnu
 
+      # the volamos* boards run the target tests under this binary, which the
+      # Makefile installs into $PREFIX/bin, already on the PATH make exports
+      - name: Install volamos
+        if: env.SIMULATOR == 'volamos'
+        run: make volamos
+
       - name: Install amitools (vamos)
+        if: env.SIMULATOR == 'vamos'
         run: |
+          if [ "$RUNNER_OS" = Linux ]; then
+            sudo apt-get install -y --no-install-recommends python3-dev python3-venv
+          fi
           python3 -m venv $HOME/amitools-venv
           $HOME/amitools-venv/bin/pip install "amitools[vamos] @ $AMITOOLS_GIT"
+          echo "$HOME/amitools-venv/bin" >> "$GITHUB_PATH"
 
       # gas and ld dump tests for the hunk target; they run on the build
-      # machine, no vamos needed
+      # machine, no simulator needed
       - name: Run the binutils testsuite
         run: |
           set +e
@@ -235,7 +256,7 @@ jobs:
       - name: Run the AmigaOS target testsuite
         run: |
           set +e
-          PATH="$HOME/amitools-venv/bin:$PATH" make -j $NPROC check-gcc-amigaos
+          make -j $NPROC check-gcc-amigaos board=$BOARD
           rc=$?
           { echo '```'; cat check-gcc-amigaos.summary.txt 2>/dev/null; echo '```'; } >> $GITHUB_STEP_SUMMARY
           exit $rc
@@ -244,7 +265,7 @@ jobs:
         if: env.RUN_TESTSUITE == 'true' && runner.os == 'Linux'
         run: |
           set +e
-          PATH="$HOME/amitools-venv/bin:$PATH" make -j $NPROC check-gcc-execute
+          make -j $NPROC check-gcc-execute board=$BOARD
           rc=$?
           { echo '```'; cat check-gcc-execute.summary.txt 2>/dev/null; echo '```'; } >> $GITHUB_STEP_SUMMARY
           exit $rc
@@ -254,7 +275,7 @@ jobs:
         if: env.RUN_TESTSUITE_CXX == 'true' && runner.os == 'Linux'
         run: |
           set +e
-          PATH="$HOME/amitools-venv/bin:$PATH" make -j $NPROC check-gcc-c++
+          make -j $NPROC check-gcc-c++ board=$BOARD
           rc=$?
           { echo '```'; cat check-gcc-c++.summary.txt 2>/dev/null; echo '```'; } >> $GITHUB_STEP_SUMMARY
           exit $rc
