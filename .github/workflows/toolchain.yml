@@ -277,22 +277,18 @@ jobs:
     if: >-
       (github.event_name == 'pull_request' && github.event.label.name == 'ci-amigaos') ||
       (github.event_name != 'pull_request' && inputs.build_hosted)
+    # bootstrapped with the cross toolchain the build job just produced, so
+    # this exercises the branch's own compiler, assembler and linker rather
+    # than a container's copy, and the runner supplies the native compiler
+    needs: build
     runs-on: ubuntu-24.04
     timeout-minutes: 300
-    container:
-      image: amigadev/crosstools:m68k-amigaos-gcc10
     defaults:
       run:
         shell: bash
     env:
       PREFIX: ${{ github.workspace }}/output/amigaos/m68k-amigaos-gcc-${{ inputs.gcc_version || '16.2' }}
       HOST: m68k-amigaos
-      BUILD_TRIPLET: x86_64-linux-gnu
-      HOST_RUNNER: vamos -C 68040 --
-      BUILD_CC: x86_64-linux-gnu-gcc -B/opt/build-binutils/
-      BUILD_CXX: x86_64-linux-gnu-g++ -B/opt/build-binutils/
-      CC_FOR_BUILD: x86_64-linux-gnu-gcc -B/opt/build-binutils/
-      CXX_FOR_BUILD: x86_64-linux-gnu-g++ -B/opt/build-binutils/
       GCC_VER: ${{ inputs.gcc_version || '16.2' }}
 
     steps:
@@ -303,19 +299,39 @@ jobs:
           # the Makefile stamps the tools with git describe --tags
           fetch-depth: 0
 
-      - name: Prepare native build tools
+      - name: Install build dependencies
         run: |
-          mkdir -p /opt/build-binutils
-          for tool in as ld gcc g++ ar ranlib strip; do
-            ln -sf "/usr/bin/x86_64-linux-gnu-$tool" "/opt/build-binutils/$tool"
-          done
-          ln -sf /usr/bin/x86_64-linux-gnu-gcc /opt/build-binutils/cc
-          ln -sf /usr/bin/x86_64-linux-gnu-g++ /opt/build-binutils/c++
-          echo "/opt/build-binutils" >> "$GITHUB_PATH"
-          test "$($CC -dumpmachine)" = "$HOST"
-          test "$(x86_64-linux-gnu-gcc -dumpmachine)" = "$BUILD_TRIPLET"
-          command -v vamos
-          command -v lha
+          sudo rm -f /etc/apt/sources.list.d/google-chrome*.list
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            autoconf automake bison build-essential ca-certificates curl flex \
+            gettext git rsync xz-utils
+
+      - name: Download the cross toolchain
+        uses: actions/download-artifact@v7
+        with:
+          name: m68k-amigaos-gcc-${{ env.GCC_VER }}-Linux-X64
+
+      # make package archives from the parent of PREFIX, so the tarball's top
+      # directory is the prefix basename: unpacking it in $HOME restores the
+      # toolchain at the very path it was configured with, and nothing has to
+      # be relocatable
+      - name: Unpack it as the bootstrap toolchain
+        run: |
+          tar -xJf m68k-amigaos-gcc-*.tar.xz -C "$HOME"
+          boot="$HOME/m68k-amigaos-gcc-$GCC_VER"
+          test "$("$boot/bin/m68k-amigaos-gcc" -dumpmachine)" = "$HOST"
+          test -x "$boot/bin/lha"
+          # that prefix also carries unprefixed as/ld/ar, so name the host
+          # tools by prefix rather than putting its bin/ on PATH, which would
+          # shadow the runner's native binutils
+          echo "HOST_TOOL_PREFIX=$boot/bin/m68k-amigaos-" >> "$GITHUB_ENV"
+          echo "CC=$boot/bin/m68k-amigaos-gcc" >> "$GITHUB_ENV"
+          echo "CXX=$boot/bin/m68k-amigaos-g++" >> "$GITHUB_ENV"
+          # unpacking the NDK and vbcc archives, and writing the .lha
+          # package, both need a build-machine lha: this prefix has one
+          echo "LHA_FOR_BUILD=$boot/bin/lha" >> "$GITHUB_ENV"
+          echo "PACKAGE_LHA=$boot/bin/lha" >> "$GITHUB_ENV"
 
       - name: Build AmigaOS hosted toolchain
         env:
