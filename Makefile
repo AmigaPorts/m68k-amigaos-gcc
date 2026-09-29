@@ -2044,4 +2044,4 @@ $(PROJECTS)/$(LIBFREETYPE)/configure: $(DOWNLOAD)/$(LIBFREETYPE).tar.xz $(BUILD)
 	@touch $@
 
 $(DOWNLOAD)/$(LIBFREETYPE).tar.xz:
-	$(call get-file,$(LIBFREETYPE),https://download-mirror.savannah.gnu.org/releases/freetype/$(LIBFREETYPE).tar.xz,$(LIBFREETYPE).tar.xz)
+	$(call get-file,$(LIBFREETYPE),https://downloads.sourceforge.net/project/freetype/freetype2/$(subst freetype-,,$(LIBFREETYPE))/$(LIBFREETYPE).tar.xz,$(LIBFREETYPE).tar.xz,4766f20157cc4cf0cd292f80bf917f92d1c439b243ac3018debf6b9140c41a7f)
