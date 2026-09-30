@@ -43,12 +43,11 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ github.ref_name }}
         run: |
-          # The tag's message body becomes the prose at the top of the
-          # release; write it with "git tag -a -e". The script appends the
-          # "What's Changed" PR list and the collapsed commit list, and can
-          # be run locally to preview the notes before pushing a tag.
+          # The tag's message body is the release body, written by hand
+          # across all the module repositories and tagged with
+          # "git tag -s -F notes.md --cleanup=verbatim".
           # --notes-file, so a tag message or commit subject can never be
           # read as workflow syntax the way a $GITHUB_OUTPUT heredoc can.
-          .github/scripts/gen-release-notes.sh "$TAG" > notes.md
+          git tag -l --format='%(contents:body)' "$TAG" > notes.md
           gh release create "$TAG" m68k-amigaos-gcc-* \
             --title "Release ${TAG#v}" --notes-file notes.md
