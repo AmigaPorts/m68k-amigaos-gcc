@@ -420,58 +420,6 @@ L2 = )
 endif
 
 # =================================================
-# download files
-# =================================================
-# get-file(label, url, archive name, optional SHA-256)
-define get-file
-$(L0)"downloading $(1)"$(L1) cd "$(DOWNLOAD)" || exit 1; \
-  archive="$(3)"; \
-  archive_tmp="$${archive}.neu"; \
-  expected_sha256="$(4)"; \
-  url="$(2)"; \
-  if [ -n "$$AMINET_MIRROR" ]; then \
-    url=$$(printf '%s' "$$url" | sed -E "s|^https?://(www\.)?aminet\.net|$$AMINET_MIRROR|"); \
-  fi; \
-  rm -f "$$archive_tmp"; \
-  if ! curl --fail --location --connect-timeout 10 \
-       --retry 3 --retry-all-errors \
-       "$$url" --output "$$archive_tmp"; then \
-    rm -f "$$archive_tmp"; \
-    echo "failed to download $$url" >&2; \
-    exit 1; \
-  fi; \
-  if [ ! -s "$$archive_tmp" ]; then \
-    echo "downloaded archive is empty: $$archive_tmp" >&2; \
-    rm -f "$$archive_tmp"; \
-    exit 1; \
-  fi; \
-  if [ -n "$$expected_sha256" ]; then \
-    if command -v sha256sum >/dev/null 2>&1; then \
-      actual_sha256=$$(sha256sum "$$archive_tmp"); \
-    elif command -v shasum >/dev/null 2>&1; then \
-      actual_sha256=$$(shasum -a 256 "$$archive_tmp"); \
-    else \
-      echo "cannot verify $$archive_tmp: sha256sum or shasum is required" >&2; \
-      rm -f "$$archive_tmp"; \
-      exit 1; \
-    fi; \
-    actual_sha256=$${actual_sha256%%[[:space:]]*}; \
-    if [ "$$actual_sha256" != "$$expected_sha256" ]; then \
-      echo "checksum mismatch for $$archive_tmp" >&2; \
-      echo "expected: $$expected_sha256" >&2; \
-      echo "actual:   $$actual_sha256" >&2; \
-      rm -f "$$archive_tmp"; \
-      exit 1; \
-    fi; \
-  fi; \
-  if [ -e "$$archive" ] && cmp --silent "$$archive_tmp" "$$archive"; then \
-    rm -f "$$archive_tmp"; \
-  else \
-    mv -f "$$archive_tmp" "$$archive"; \
-  fi $(L2)
-endef
-
-# =================================================
 
 .PHONY: x init
 x:
@@ -726,13 +674,13 @@ update-netinclude: $(PROJECTS)/amiga-netinclude/README.md
 gcc-prerequisites: $(PROJECTS)/$(GMP)/configure $(PROJECTS)/$(MPFR)/configure $(PROJECTS)/$(MPC)/configure
 
 $(DOWNLOAD)/$(GMPFILE):
-	$(call get-file,gmp,$(GCC_INFRASTRUCTURE)/$(GMPFILE),$(GMPFILE),$(GMP_SHA256))
+	@$(PWD)/sdk/download --sha256 $(GMP_SHA256) $@ $(GCC_INFRASTRUCTURE)/$(GMPFILE)
 
 $(DOWNLOAD)/$(MPFRFILE):
-	$(call get-file,mpfr,$(GCC_INFRASTRUCTURE)/$(MPFRFILE),$(MPFRFILE),$(MPFR_SHA256))
+	@$(PWD)/sdk/download --sha256 $(MPFR_SHA256) $@ $(GCC_INFRASTRUCTURE)/$(MPFRFILE)
 
 $(DOWNLOAD)/$(MPCFILE):
-	$(call get-file,mpc,$(GCC_INFRASTRUCTURE)/$(MPCFILE),$(MPCFILE),$(MPC_SHA256))
+	@$(PWD)/sdk/download --sha256 $(MPC_SHA256) $@ $(GCC_INFRASTRUCTURE)/$(MPCFILE)
 
 define extract-gcc-prerequisite
 	@tmp=$$(mktemp -d "$(PROJECTS)/.$(1).XXXXXX"); \
@@ -1358,10 +1306,10 @@ $(BUILD)/vbcc_target_m68k-amigaos.info: $(DOWNLOAD)/vbcc_target_m68k-amigaos.lha
 	@touch $(BUILD)/vbcc_target_m68k-amigaos.info
 
 $(DOWNLOAD)/vbcc_target_m68k-kick13.lha:
-	$(call get-file,vbcc_target13,http://aminet.net/dev/c/vbcc_target_m68k-kick13.lha,vbcc_target_m68k-kick13.lha,8815948604eb50ec8b82d4fd2c9d673f5ec59a6623778edfcb29a7df608ea711)
+	@$(PWD)/sdk/download --sha256 8815948604eb50ec8b82d4fd2c9d673f5ec59a6623778edfcb29a7df608ea711 $@ http://aminet.net/dev/c/vbcc_target_m68k-kick13.lha
 
 $(DOWNLOAD)/vbcc_target_m68k-amigaos.lha:
-	$(call get-file,vbcc_target,http://aminet.net/dev/c/vbcc_target_m68k-amiga.lha,vbcc_target_m68k-amigaos.lha,ec734d7115359cdb5d1c70349284ecbd5712ef47e8bc28d4150117c6f8c73289)
+	@$(PWD)/sdk/download --sha256 ec734d7115359cdb5d1c70349284ecbd5712ef47e8bc28d4150117c6f8c73289 $@ http://aminet.net/dev/c/vbcc_target_m68k-amiga.lha
 
 # =================================================
 # NDK - no git
@@ -1459,7 +1407,7 @@ $(PROJECTS)/$(NDK_FOLDER_NAME).info: $(LHA_PREREQ) $(DOWNLOAD)/$(NDK_ARC_NAME).l
 	@touch $(PROJECTS)/$(NDK_FOLDER_NAME).info
 
 $(DOWNLOAD)/$(NDK_ARC_NAME).lha:
-	$(call get-file,$(NDK_ARC_NAME),$(NDK_URL),$(NDK_ARC_NAME).lha,$(NDK_SHA256))
+	@$(PWD)/sdk/download --sha256 $(NDK_SHA256) $@ $(NDK_URL)
 
 
 # =================================================
@@ -1701,7 +1649,7 @@ $(BUILD)/ixemul/lib/libc.a: $(DOWNLOAD)/ixemul-sdk.lha $(LHA_PREREQ)
 	$(L0)"unpacking ixemul-sdk.lha"$(L1) cd $(BUILD)/ixemul && $(LHA_FOR_BUILD) xf $(DOWNLOAD)/ixemul-sdk.lha $(L2)
 
 $(DOWNLOAD)/ixemul-sdk.lha:
-	$(call get-file,ixemul-sdk,https://aminet.net/util/libs/ixemul-sdk.lha,ixemul-sdk.lha,00b4054283b99d22f6b353194fa8c75917ec0cc08a3a64395a891da446db07fc)
+	@$(PWD)/sdk/download --sha256 00b4054283b99d22f6b353194fa8c75917ec0cc08a3a64395a891da446db07fc $@ https://aminet.net/util/libs/ixemul-sdk.lha
 
 # =================================================
 # sdk installation
@@ -1781,7 +1729,7 @@ VOLAMOS_DIR := volamos-v$(VOLAMOS_VERSION)-$(VOLAMOS_HOST)
 VOLAMOS_ARC := $(VOLAMOS_DIR).tar.gz
 
 $(DOWNLOAD)/$(VOLAMOS_ARC):
-	$(call get-file,volamos,https://github.com/sidick/volamos/releases/download/v$(VOLAMOS_VERSION)/$(VOLAMOS_ARC),$(VOLAMOS_ARC),$(VOLAMOS_SHA256))
+	@$(PWD)/sdk/download --sha256 $(VOLAMOS_SHA256) $@ https://github.com/sidick/volamos/releases/download/v$(VOLAMOS_VERSION)/$(VOLAMOS_ARC)
 
 $(PREFIX)/bin/volamos: $(DOWNLOAD)/$(VOLAMOS_ARC)
 	@mkdir -p $(PREFIX)/bin
@@ -2045,7 +1993,7 @@ $(PROJECTS)/$(ZLIB)/configure: $(DOWNLOAD)/$(ZLIB).tar.gz
 	@touch $@
 
 $(DOWNLOAD)/$(ZLIB).tar.gz:
-	$(call get-file,zlib,https://github.com/madler/zlib/releases/download/v$(subst zlib-,,$(ZLIB))/$(ZLIB).tar.gz,$(ZLIB).tar.gz,bb329a0a2cd0274d05519d61c667c062e06990d72e125ee2dfa8de64f0119d16)
+	@$(PWD)/sdk/download --sha256 bb329a0a2cd0274d05519d61c667c062e06990d72e125ee2dfa8de64f0119d16 $@ https://github.com/madler/zlib/releases/download/v$(subst zlib-,,$(ZLIB))/$(ZLIB).tar.gz
 
 # =================================================
 # libpng
@@ -2083,7 +2031,7 @@ $(PROJECTS)/$(LIBPNG)/configure: $(DOWNLOAD)/$(LIBPNG).tar.xz $(BUILD)/$(ZLIB)/_
 	@touch $@
 
 $(DOWNLOAD)/$(LIBPNG).tar.xz:
-	$(call get-file,libpng16,https://sourceforge.net/projects/libpng/files/libpng16/$(subst libpng-,,$(LIBPNG))/$(LIBPNG).tar.xz,$(LIBPNG).tar.xz,28eb403f51f0f7405249132cecfe82ea5c0ef97f1b32c5a65828814ae0d34775)
+	@$(PWD)/sdk/download --sha256 28eb403f51f0f7405249132cecfe82ea5c0ef97f1b32c5a65828814ae0d34775 $@ https://sourceforge.net/projects/libpng/files/libpng16/$(subst libpng-,,$(LIBPNG))/$(LIBPNG).tar.xz
 
 # =================================================
 # libfreetype
@@ -2120,4 +2068,4 @@ $(PROJECTS)/$(LIBFREETYPE)/configure: $(DOWNLOAD)/$(LIBFREETYPE).tar.xz $(BUILD)
 	@touch $@
 
 $(DOWNLOAD)/$(LIBFREETYPE).tar.xz:
-	$(call get-file,$(LIBFREETYPE),https://downloads.sourceforge.net/project/freetype/freetype2/$(subst freetype-,,$(LIBFREETYPE))/$(LIBFREETYPE).tar.xz,$(LIBFREETYPE).tar.xz,4766f20157cc4cf0cd292f80bf917f92d1c439b243ac3018debf6b9140c41a7f)
+	@$(PWD)/sdk/download --sha256 4766f20157cc4cf0cd292f80bf917f92d1c439b243ac3018debf6b9140c41a7f $@ https://downloads.sourceforge.net/project/freetype/freetype2/$(subst freetype-,,$(LIBFREETYPE))/$(LIBFREETYPE).tar.xz

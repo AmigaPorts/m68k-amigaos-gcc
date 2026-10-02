@@ -1,0 +1,101 @@
+#!/bin/bash
+# Download an archive from the first URL that yields a verified copy.
+#
+#   sdk/download --sha256 HEX OUTPUT URL [URL...]
+#
+# An existing OUTPUT that verifies is left alone. A download that does
+# not match is discarded and the next URL is tried.
+
+set -o pipefail
+
+expected_sha256=
+while [ $# -gt 0 ]; do
+	case $1 in
+		--sha256) expected_sha256=$2; shift 2 ;;
+		--sha256=*) expected_sha256=${1#--sha256=}; shift ;;
+		--) shift; break ;;
+		-*) echo "sdk/download: unknown option $1" >&2; exit 2 ;;
+		*) break ;;
+	esac
+done
+if [ $# -lt 2 ]; then
+	echo "usage: sdk/download --sha256 HEX OUTPUT URL [URL...]" >&2
+	exit 2
+fi
+output=$1
+shift
+expected_sha256=$(printf '%s' "$expected_sha256" | tr '[:upper:]' '[:lower:]')
+if ! [[ $expected_sha256 =~ ^[[:xdigit:]]{64}$ ]]; then
+	echo "sdk/download: $(basename "$output") needs a 64-digit --sha256, got '$expected_sha256'" >&2
+	exit 2
+fi
+
+verify_archive()
+{
+	local archive=$1
+	local checksum_output actual_sha256
+
+	if [ ! -s "$archive" ]; then
+		echo "downloaded archive is empty: $archive" >&2
+		return 1
+	fi
+	if command -v sha256sum >/dev/null 2>&1; then
+		checksum_output=$(sha256sum "$archive") || return 1
+	elif command -v shasum >/dev/null 2>&1; then
+		checksum_output=$(shasum -a 256 "$archive") || return 1
+	else
+		echo "cannot verify $archive: sha256sum or shasum is required" >&2
+		return 1
+	fi
+	actual_sha256=$(printf '%s' "${checksum_output%%[[:space:]]*}" | tr '[:upper:]' '[:lower:]')
+	if [ "$actual_sha256" != "$expected_sha256" ]; then
+		echo "checksum mismatch for $archive" >&2
+		echo "expected: $expected_sha256" >&2
+		echo "actual:   $actual_sha256" >&2
+		return 1
+	fi
+	echo "verified sha256 $expected_sha256  ${archive%.tmp}"
+}
+
+fetch_archive()
+{
+	local url=$1
+	local archive_tmp=$2
+
+	# aminet.net redirects each download to a random mirror, some of
+	# which are broken or slow; allow pinning a known-good one
+	if [ -n "$AMINET_MIRROR" ]; then
+		url=$(printf '%s' "$url" | \
+			sed -E "s|^https?://(www\.)?aminet\.net|$AMINET_MIRROR|")
+	fi
+
+	rm -f "$archive_tmp"
+	echo "downloading $(basename "$output") from $url"
+	# --retry alone only covers timeouts and 408/429/5xx; aminet
+	# sometimes closes the connection mid-transfer (curl error 18),
+	# so retry on all errors. The sha256 check catches bad data.
+	curl --fail --silent --show-error --location --connect-timeout 10 \
+		--retry 3 --retry-all-errors \
+		"$url" --output "$archive_tmp"
+}
+
+if [ -e "$output" ]; then
+	if verify_archive "$output" >/dev/null 2>&1; then
+		exit 0
+	fi
+	echo "discarding unverified cached archive $output" >&2
+	rm -f "$output"
+fi
+
+mkdir -p "$(dirname "$output")" || exit 1
+output_tmp=$output.tmp
+for url in "$@"; do
+	if fetch_archive "$url" "$output_tmp" && verify_archive "$output_tmp"; then
+		mv -f "$output_tmp" "$output" || exit 1
+		exit 0
+	fi
+	rm -f "$output_tmp"
+	echo "download from $url failed or did not verify" >&2
+done
+echo "failed to download a verified copy of $(basename "$output")" >&2
+exit 1
