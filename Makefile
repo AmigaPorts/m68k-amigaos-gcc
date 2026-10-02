@@ -328,7 +328,7 @@ NDK_FOLDER_NAME_SFD  := NDK3.2/SFD
 NDK_FOLDER_NAME_LIBS := NDK3.2/lib
 else
 NDK_URL              := http://hp.alinea-computer.de/AmigaOS/NDK39.lha
-NDK_SHA256           :=
+NDK_SHA256           := ca5d8f923158d69a9c15b59d6e1580555ca6c0a48be21c5226c71f90fc927ca6
 NDK_ARC_NAME         := NDK3.9
 NDK_FOLDER_NAME      := NDK_3.9/Include
 NDK_FOLDER_NAME_H    := NDK_3.9/Include/include_h
@@ -1358,10 +1358,10 @@ $(BUILD)/vbcc_target_m68k-amigaos.info: $(DOWNLOAD)/vbcc_target_m68k-amigaos.lha
 	@touch $(BUILD)/vbcc_target_m68k-amigaos.info
 
 $(DOWNLOAD)/vbcc_target_m68k-kick13.lha:
-	$(call get-file,vbcc_target13,http://aminet.net/dev/c/vbcc_target_m68k-kick13.lha,vbcc_target_m68k-kick13.lha)
+	$(call get-file,vbcc_target13,http://aminet.net/dev/c/vbcc_target_m68k-kick13.lha,vbcc_target_m68k-kick13.lha,8815948604eb50ec8b82d4fd2c9d673f5ec59a6623778edfcb29a7df608ea711)
 
 $(DOWNLOAD)/vbcc_target_m68k-amigaos.lha:
-	$(call get-file,vbcc_target,http://aminet.net/dev/c/vbcc_target_m68k-amiga.lha,vbcc_target_m68k-amigaos.lha)
+	$(call get-file,vbcc_target,http://aminet.net/dev/c/vbcc_target_m68k-amiga.lha,vbcc_target_m68k-amigaos.lha,ec734d7115359cdb5d1c70349284ecbd5712ef47e8bc28d4150117c6f8c73289)
 
 # =================================================
 # NDK - no git
@@ -1701,7 +1701,7 @@ $(BUILD)/ixemul/lib/libc.a: $(DOWNLOAD)/ixemul-sdk.lha $(LHA_PREREQ)
 	$(L0)"unpacking ixemul-sdk.lha"$(L1) cd $(BUILD)/ixemul && $(LHA_FOR_BUILD) xf $(DOWNLOAD)/ixemul-sdk.lha $(L2)
 
 $(DOWNLOAD)/ixemul-sdk.lha:
-	$(call get-file,ixemul-sdk,https://aminet.net/util/libs/ixemul-sdk.lha,ixemul-sdk.lha)
+	$(call get-file,ixemul-sdk,https://aminet.net/util/libs/ixemul-sdk.lha,ixemul-sdk.lha,00b4054283b99d22f6b353194fa8c75917ec0cc08a3a64395a891da446db07fc)
 
 # =================================================
 # sdk installation
