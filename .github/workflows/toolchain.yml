@@ -111,9 +111,9 @@ jobs:
       # not GCC_VERSION: the Makefile reads that from gcc's BASE-VER
       # (16.2.0b) for gcc's own lib/gcc/<target>/<version> layout
       GCC_VER: ${{ inputs.gcc_version || '16.2' }}
-      # aminet.net picks a random mirror per download, some broken or
-      # slow; pin one that is fast and healthy from the CI runners
-      AMINET_MIRROR: http://nl.aminet.net
+      # mirrors to try, in order, before aminet.net itself; see
+      # https://wiki.aminet.net/Mirrors (some serve the tree under /aminet)
+      AMINET_MIRROR: http://us4.aminet.net/aminet http://de4.aminet.net
     steps:
       # empty repository/ref check out this repo at the triggering event's
       # ref (the normal PR, dispatch and release paths); a module caller

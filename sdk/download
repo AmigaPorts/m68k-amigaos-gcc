@@ -62,13 +62,6 @@ fetch_archive()
 	local url=$1
 	local archive_tmp=$2
 
-	# aminet.net redirects each download to a random mirror, some of
-	# which are broken or slow; allow pinning a known-good one
-	if [ -n "$AMINET_MIRROR" ]; then
-		url=$(printf '%s' "$url" | \
-			sed -E "s|^https?://(www\.)?aminet\.net|$AMINET_MIRROR|")
-	fi
-
 	rm -f "$archive_tmp"
 	echo "downloading $(basename "$output") from $url"
 	# --retry alone only covers timeouts and 408/429/5xx; aminet
@@ -87,9 +80,23 @@ if [ -e "$output" ]; then
 	rm -f "$output"
 fi
 
+# Aminet mirrors come and go; AMINET_MIRROR lists base URLs (space
+# separated, with the path prefix the mirror serves the tree under,
+# e.g. "http://de4.aminet.net http://us4.aminet.net/aminet") to try
+# in order before falling back to aminet.net itself.
+urls=()
+for url in "$@"; do
+	if [[ $url =~ ^https?://(www\.)?aminet\.net/(.*)$ ]]; then
+		for mirror in $AMINET_MIRROR; do
+			urls+=("${mirror%/}/${BASH_REMATCH[2]}")
+		done
+	fi
+	urls+=("$url")
+done
+
 mkdir -p "$(dirname "$output")" || exit 1
 output_tmp=$output.tmp
-for url in "$@"; do
+for url in "${urls[@]}"; do
 	if fetch_archive "$url" "$output_tmp" && verify_archive "$output_tmp"; then
 		mv -f "$output_tmp" "$output" || exit 1
 		exit 0
