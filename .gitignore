@@ -1,7 +1,6 @@
 build*
 projects
-download
-Output
+/download/
 *.log
 *.summary.txt
 .lock

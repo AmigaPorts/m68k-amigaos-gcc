@@ -53,93 +53,6 @@ sdk_trim()
 	printf '%s' "$sdk_trimmed_value"
 }
 
-sdk_verify_archive()
-{
-	local sdk_archive=$1
-	local sdk_expected_sha256=$2
-	local sdk_checksum_output
-	local sdk_actual_sha256
-
-	if [ -z "$sdk_expected_sha256" ]; then
-		return 0
-	fi
-
-	if command -v sha256sum >/dev/null 2>&1; then
-		sdk_checksum_output=$(sha256sum "$sdk_archive") || return 1
-	elif command -v shasum >/dev/null 2>&1; then
-		sdk_checksum_output=$(shasum -a 256 "$sdk_archive") || return 1
-	else
-		echo "cannot verify $sdk_archive: sha256sum or shasum is required" >&2
-		return 1
-	fi
-
-	sdk_actual_sha256=${sdk_checksum_output%%[[:space:]]*}
-	sdk_actual_sha256=$(printf '%s' "$sdk_actual_sha256" | tr '[:upper:]' '[:lower:]')
-	sdk_expected_sha256=$(printf '%s' "$sdk_expected_sha256" | tr '[:upper:]' '[:lower:]')
-
-	if [ "$sdk_actual_sha256" != "$sdk_expected_sha256" ]; then
-		echo "checksum mismatch for $sdk_archive" >&2
-		echo "expected: $sdk_expected_sha256" >&2
-		echo "actual:   $sdk_actual_sha256" >&2
-		return 1
-	fi
-
-	echo "verified sha256 $sdk_expected_sha256  $sdk_archive"
-}
-
-sdk_fetch_archive()
-{
-	local sdk_archive_url=$1
-	local sdk_archive_tmp=$2
-
-	# aminet.net redirects each download to a random mirror, some of
-	# which are broken or slow; allow pinning a known-good one
-	if [ -n "$AMINET_MIRROR" ]; then
-		sdk_archive_url=$(printf '%s' "$sdk_archive_url" | \
-			sed -E "s|^https?://(www\.)?aminet\.net|$AMINET_MIRROR|")
-	fi
-
-	rm -f "$sdk_archive_tmp"
-	# --retry alone only covers timeouts and 408/429/5xx; aminet
-	# sometimes closes the connection mid-transfer (curl error 18),
-	# so retry on all errors. The sha256 check catches bad data.
-	echo curl --fail --location --connect-timeout 10 \
-		--retry 3 --retry-all-errors \
-		"$sdk_archive_url" --output "$sdk_archive_tmp"
-	curl --fail --location --connect-timeout 10 \
-		--retry 3 --retry-all-errors \
-		"$sdk_archive_url" --output "$sdk_archive_tmp"
-}
-
-sdk_download_archive()
-{
-	local sdk_primary_url=$1
-	local sdk_fallback_url=$2
-	local sdk_archive=$3
-	local sdk_expected_sha256=$4
-	local sdk_archive_tmp=${sdk_archive}.tmp
-
-	if sdk_fetch_archive "$sdk_primary_url" "$sdk_archive_tmp" && \
-		sdk_verify_archive "$sdk_archive_tmp" "$sdk_expected_sha256"; then
-		mv "$sdk_archive_tmp" "$sdk_archive" || return 1
-		return 0
-	fi
-
-	rm -f "$sdk_archive_tmp"
-	if [ -n "$sdk_fallback_url" ]; then
-		echo "primary download failed or did not verify; trying $sdk_fallback_url" >&2
-		if sdk_fetch_archive "$sdk_fallback_url" "$sdk_archive_tmp" && \
-			sdk_verify_archive "$sdk_archive_tmp" "$sdk_expected_sha256"; then
-			mv "$sdk_archive_tmp" "$sdk_archive" || return 1
-			return 0
-		fi
-	fi
-
-	rm -f "$sdk_archive_tmp"
-	echo "failed to download a verified archive from $sdk_primary_url" >&2
-	return 1
-}
-
 sdk_fallback_url=""
 sdk_sha256=""
 while IFS='' read -r sdk_metadata_line || [[ -n "$sdk_metadata_line" ]]; do
@@ -152,16 +65,6 @@ while IFS='' read -r sdk_metadata_line || [[ -n "$sdk_metadata_line" ]]; do
 			;;
 	esac
 done < "$sdk_descriptor"
-
-if [ -n "$sdk_sha256" ] && ! [[ $sdk_sha256 =~ ^[[:xdigit:]]{64}$ ]]; then
-	echo "invalid Sha256 value in $sdk_descriptor" >&2
-	exit 1
-fi
-
-if [ -n "$sdk_fallback_url" ] && [ -z "$sdk_sha256" ]; then
-	echo "FallbackUrl in $sdk_descriptor requires Sha256" >&2
-	exit 1
-fi
 
 case $1 in
   install)
@@ -190,17 +93,14 @@ case $1 in
 					rsync -r projects/$file/* build/$2/
 				else
 					archive="download/$file"
-					if [ -e "$archive" ] && ! sdk_verify_archive "$archive" "$sdk_sha256"; then
-						echo "discarding unverified cached archive $archive" >&2
-						rm -f "$archive"
-						rm -rf "build/$2"
-					fi
-					if [ ! -e "$archive" ]; then
-						url=${a[1]}:${a[2]}
-						sdk_download_archive "$url" "$sdk_fallback_url" \
-							"$archive" "$sdk_sha256" || exit 1
-					fi
-					if [ ! -e "build/$2" ] || [ "$(ls -l build/$2)" == "total 0" ]; then
+					url=${a[1]}:${a[2]}
+					sdk/download --sha256 "$sdk_sha256" \
+						"$archive" "$url" $sdk_fallback_url || exit 1
+					# a re-downloaded archive (e.g. after a Sha256 bump)
+					# is newer than the tree extracted from the old one
+					if [ ! -e "build/$2" ] || [ -z "$(ls -A build/$2)" ] || \
+						[ "$archive" -nt "build/$2" ]; then
+						rm -rf build/$2
 						mkdir -p build/$2
 						pushd build/$2
 							"$LHA_FOR_BUILD" x "../../download/$file"
