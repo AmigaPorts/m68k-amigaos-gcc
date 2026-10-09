@@ -1814,10 +1814,12 @@ check-gcc-amigaos:
 	@! grep -qE '^(FAIL|ERROR|XPASS)' $(TESTSUITE)/gcc-amigaos.sum
 
 # The full C++ testsuite is large and slow under vamos, so it is not part of
-# `check`; run it on demand with `make check-gcc-c++`.
+# `check`; run it on demand with `make check-gcc-c++`.  SANITIZE=0 keeps the
+# volamos boards' --sanitize off here: the -fstrub tests read the scrubbed
+# stack below the stack pointer on purpose.
 check-gcc-c++:
 	@ln -sfn $(PREFIX)/$(TARGET)/libnix $(BUILD)/gcc/$(TARGET)/libnix
-	$(L0)"check c++"$(L1)$(MAKE) -C $(BUILD)/gcc check-gcc-c++ "RUNTESTFLAGS=--target_board=$(board)$(RUNTEST_SIM)"$(L2)
+	$(L0)"check c++"$(L1)$(MAKE) -C $(BUILD)/gcc check-gcc-c++ "RUNTESTFLAGS=--target_board=$(board)$(RUNTEST_SIM) SANITIZE=0"$(L2)
 	@{ echo '----- c++ -----'; grep '^# of' $(CXXTESTSUITE)/g++.sum || echo '(no tests run)'; grep -E '^(FAIL|ERROR|XPASS)' $(CXXTESTSUITE)/g++.sum || true; } | tee $@.summary.txt
 	@echo "results: $(CXXTESTSUITE)/g++.{sum,log}"
 

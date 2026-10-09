@@ -16,7 +16,15 @@ if {![info exists SIM]} {
     set SIM volamos
 }
 setup_sim amigaos
-set_board_info sim,options "--cpu 68020 --stack 4096K --ram 11264K"
+# --sanitize: volamos checks guest memory accesses and fails the run on a
+# violation (exit status 99).  A runtest SANITIZE=0 leaves it out; the
+# Makefile passes that for the C++ suite, whose -fstrub tests read the
+# scrubbed stack below the stack pointer on purpose.
+set volamos_options "--cpu 68020 --stack 4096K --ram 11264K"
+if {![info exists SANITIZE] || $SANITIZE} {
+    append volamos_options " --sanitize"
+}
+set_board_info sim,options $volamos_options
 
 # No multilib options needed by default.
 process_multilib_options ""
