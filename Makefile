@@ -1740,14 +1740,18 @@ endif
 # =================================================
 # run gcc torture check
 # =================================================
+# The volamos* boards are the default; the amigaos* ones run the same tests
+# under vamos, for comparison.
 ifeq (,$(board))
-board = amigaos
+board = volamos
 endif
 
 # The board's own baseboards/*.exp defaults its simulator (vamos/volamos)
 # unless overridden; forward SIM= to runtest only when the caller set one,
 # e.g. `make check SIM=/path/to/wrapper`.
 RUNTEST_SIM = $(if $(SIM), SIM=$(SIM))
+# A volamos board installs volamos first, unless SIM= names another binary.
+BOARD_SIM_PREREQ = $(if $(and $(filter volamos%,$(board)),$(if $(SIM),,y)),$(PREFIX)/bin/volamos)
 
 # Point dejagnu at the in-repo board descriptions in baseboards/ which wire up
 # vamos/volamos as the simulator.
@@ -1797,7 +1801,7 @@ check-binutils-ld:
 # "amiga" object format supports weak symbols, so dg-require-weak tests
 # (20030125-1.c) come out unresolved.  The g++ suite below only reports:
 # it still has hundreds of standing failures.
-check-gcc-execute:
+check-gcc-execute: $(BOARD_SIM_PREREQ)
 	@ln -sfn $(PREFIX)/$(TARGET)/libnix $(BUILD)/gcc/$(TARGET)/libnix
 	$(L0)"check execute.exp"$(L1)$(MAKE) -C $(BUILD)/gcc check-gcc-c "RUNTESTFLAGS=--target_board=$(board) execute.exp=*$(RUNTEST_SIM)"$(L2)
 	@cp -f $(TESTSUITE)/gcc.sum $(TESTSUITE)/gcc-execute.sum; cp -f $(TESTSUITE)/gcc.log $(TESTSUITE)/gcc-execute.log
@@ -1806,7 +1810,7 @@ check-gcc-execute:
 	@! grep -qE '^(FAIL|ERROR|XPASS)' $(TESTSUITE)/gcc-execute.sum
 
 # amiga-specific target tests; a no-op on gcc branches that predate them (a .exp filter matching no file runs nothing).
-check-gcc-amigaos:
+check-gcc-amigaos: $(BOARD_SIM_PREREQ)
 	@ln -sfn $(PREFIX)/$(TARGET)/libnix $(BUILD)/gcc/$(TARGET)/libnix
 	$(L0)"check amigaos.exp"$(L1)$(MAKE) -C $(BUILD)/gcc check-gcc-c "RUNTESTFLAGS=--target_board=$(board) gcc.target/m68k/amigaos/amigaos.exp$(RUNTEST_SIM)"$(L2)
 	@cp -f $(TESTSUITE)/gcc.sum $(TESTSUITE)/gcc-amigaos.sum; cp -f $(TESTSUITE)/gcc.log $(TESTSUITE)/gcc-amigaos.log
@@ -1822,11 +1826,11 @@ check-libnix: $(PREFIX)/bin/volamos
 	  CROSS_CC=$(PREFIX)/bin/$(TARGET)-gcc SIM=$(PREFIX)/bin/volamos \
 	  SIMFLAGS="--stack 4K --sanitize" 2>&1 | tee $@.summary.txt
 
-# The full C++ testsuite is large and slow under vamos, so it is not part of
+# The full C++ testsuite is large and slow, so it is not part of
 # `check`; run it on demand with `make check-gcc-c++`.  SANITIZE=0 keeps the
 # volamos boards' --sanitize off here: the -fstrub tests read the scrubbed
 # stack below the stack pointer on purpose.
-check-gcc-c++:
+check-gcc-c++: $(BOARD_SIM_PREREQ)
 	@ln -sfn $(PREFIX)/$(TARGET)/libnix $(BUILD)/gcc/$(TARGET)/libnix
 	$(L0)"check c++"$(L1)$(MAKE) -C $(BUILD)/gcc check-gcc-c++ "RUNTESTFLAGS=--target_board=$(board)$(RUNTEST_SIM) SANITIZE=0"$(L2)
 	@{ echo '----- c++ -----'; grep '^# of' $(CXXTESTSUITE)/g++.sum || echo '(no tests run)'; grep -E '^(FAIL|ERROR|XPASS)' $(CXXTESTSUITE)/g++.sum || true; } | tee $@.summary.txt

@@ -1,4 +1,4 @@
-# Site file for running the gcc testsuite on the vamos boards in
+# Site file for running the gcc testsuite on the volamos and vamos boards in
 # baseboards/. Pass it as DEJAGNU=$PWD/dejagnu-site.exp; the path is
 # taken from this file's own location, so it works from any directory.
 set here [file dirname [file normalize [info script]]]
