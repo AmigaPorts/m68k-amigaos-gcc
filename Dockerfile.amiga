@@ -27,7 +27,6 @@ ENV PATH="/opt/build-binutils:${PATH}" \
     HOST="m68k-amigaos" \
     BUILD_TRIPLET="x86_64-linux-gnu" \
     HOST_RUNNER="vamos -C 68040 --" \
-    NDK="3.2" \
     VERBOSE="${MAKE_VERBOSE}" \
     BUILD_CC="x86_64-linux-gnu-gcc -B/opt/build-binutils/" \
     BUILD_CXX="x86_64-linux-gnu-g++ -B/opt/build-binutils/"

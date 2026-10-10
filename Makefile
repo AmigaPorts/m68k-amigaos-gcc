@@ -316,7 +316,6 @@ get_branch = $(shell grep '^$(1)[[:blank:]]' .repos | $(SED) -e 's/[[:blank:]]\+
 $(foreach modu,$(modules),$(eval $(modu)_URL=$(call get_url,$(modu))))
 $(foreach modu,$(modules),$(eval $(modu)_BRANCH=$(call get_branch,$(modu))))
 
-ifneq ($(NDK),3.9)
 NDK_URL              := https://aminet.net/dev/misc/NDK3.2.lha
 NDK_SHA256           := 96cabd4ad683dced632e147bf86dee0f50dcb1254386216c25c362916a6409bb
 NDK_ARC_NAME         := NDK3.2
@@ -326,17 +325,6 @@ NDK_FOLDER_NAME_I    := NDK3.2/Include_I
 NDK_FOLDER_NAME_FD   := NDK3.2/FD
 NDK_FOLDER_NAME_SFD  := NDK3.2/SFD
 NDK_FOLDER_NAME_LIBS := NDK3.2/lib
-else
-NDK_URL              := http://hp.alinea-computer.de/AmigaOS/NDK39.lha
-NDK_SHA256           := ca5d8f923158d69a9c15b59d6e1580555ca6c0a48be21c5226c71f90fc927ca6
-NDK_ARC_NAME         := NDK3.9
-NDK_FOLDER_NAME      := NDK_3.9/Include
-NDK_FOLDER_NAME_H    := NDK_3.9/Include/include_h
-NDK_FOLDER_NAME_I    := NDK_3.9/Include/include_i
-NDK_FOLDER_NAME_FD   := NDK_3.9/Include/fd
-NDK_FOLDER_NAME_SFD  := NDK_3.9/Include/sfd
-NDK_FOLDER_NAME_LIBS := NDK_3.9/Include/linker_libs
-endif
 
 ifeq (,$(strip $(HOST)))
 CFLAGS ?= -Os
@@ -1396,8 +1384,7 @@ $(BUILD)/ndk-include_proto: $(PROJECTS)/$(NDK_FOLDER_NAME).info
 	@echo "done" >$@
 
 $(PROJECTS)/$(NDK_FOLDER_NAME).info: $(LHA_PREREQ) $(DOWNLOAD)/$(NDK_ARC_NAME).lha $(shell find 2>/dev/null patches/$(NDK_FOLDER_NAME)/ -type f)
-	$(L0)"unpack ndk"$(L1) cd $(PROJECTS) && if [[ $(NDK_ARC_NAME) == "NDK3.2" ]] ; \
-	   then mkdir NDK3.2 ; cd NDK3.2 ; fi ; \
+	$(L0)"unpack ndk"$(L1) mkdir -p $(PROJECTS)/NDK3.2 && cd $(PROJECTS)/NDK3.2 && \
 	   $(LHA_FOR_BUILD) xf $(DOWNLOAD)/$(NDK_ARC_NAME).lha $(L2)
 	@touch -t 0001010000 $(DOWNLOAD)/$(NDK_ARC_NAME).lha
 	$(L0)"patch ndk"$(L1) for i in $$(find patches/$(NDK_FOLDER_NAME)/ -type f); do \
