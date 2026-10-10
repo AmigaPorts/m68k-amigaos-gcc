@@ -1820,9 +1820,10 @@ check-gcc-amigaos: $(BOARD_SIM_PREREQ)
 
 # libnix's own target tests (test/Makefile check-target): built from the
 # libnix sources with the installed cross compiler and run under volamos
-# with its memory sanitizer.  The objects are left in projects/libnix/test.
+# with its memory sanitizer.  The objects are left in projects/libnix/test
+# and rebuilt on every run (-B), since they do not depend on the compiler.
 check-libnix: $(PREFIX)/bin/volamos
-	@set -o pipefail; $(MAKE) -C $(PROJECTS)/libnix/test check-target \
+	@set -o pipefail; $(MAKE) -B -C $(PROJECTS)/libnix/test check-target \
 	  CROSS_CC=$(PREFIX)/bin/$(TARGET)-gcc SIM=$(PREFIX)/bin/volamos \
 	  SIMFLAGS="--stack 4K --sanitize" 2>&1 | tee $@.summary.txt
 

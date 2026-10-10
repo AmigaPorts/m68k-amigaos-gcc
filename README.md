@@ -130,8 +130,9 @@ will run rather than the build machine.
 
 The GitHub Actions workflow in `.github/workflows/toolchain.yml`
 bootstraps the toolchain from scratch, runs amigaos.exp and the libnix
-tests under volamos (and the full gcc testsuites on request), and uploads the native `.tar.xz` packages as build
-artifacts.
+tests under volamos by default (with `simulator=vamos`, amigaos.exp runs
+under vamos and the libnix tests are skipped), runs the full gcc testsuites
+on request, and uploads the native `.tar.xz` packages as build artifacts.
 
 By default it also Canadian-cross-builds the `amiga16.2` compiler for AmigaOS
 and MinGW hosts, using the published `amigadev/crosstools:m68k-amigaos-gcc10`
