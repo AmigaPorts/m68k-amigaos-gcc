@@ -1757,7 +1757,7 @@ TESTSUITE = $(BUILD)/gcc/gcc/testsuite/gcc
 # The C++ testsuite writes into a separate g++ directory.
 CXXTESTSUITE = $(BUILD)/gcc/gcc/testsuite/g++
 
-.PHONY: check check-gcc-execute check-gcc-amigaos check-gcc-c++ check-binutils check-binutils-gas check-binutils-ld
+.PHONY: check check-gcc-execute check-gcc-amigaos check-gcc-c++ check-libnix check-binutils check-binutils-gas check-binutils-ld
 # Run the two sequentially (recipe lines run in order even under make -j): both
 # drive check-gcc-c in the same build tree, sharing gcc.sum and
 # testsuite/gcc-parallel, so they must not run at the same time.
@@ -1765,6 +1765,7 @@ check:
 	@$(MAKE) --no-print-directory check-multilib
 	@$(MAKE) --no-print-directory check-binutils
 	@$(MAKE) --no-print-directory check-gcc-amigaos
+	@$(MAKE) --no-print-directory check-libnix
 	@$(MAKE) --no-print-directory check-gcc-execute
 
 # The gas and ld dump tests for the hunk target run on the build machine
@@ -1812,6 +1813,14 @@ check-gcc-amigaos:
 	@{ echo '----- amigaos.exp -----'; grep '^# of' $(TESTSUITE)/gcc-amigaos.sum || echo '(no tests run)'; grep -E '^(FAIL|ERROR|XPASS)' $(TESTSUITE)/gcc-amigaos.sum || true; } | tee $@.summary.txt
 	@echo "results: $(TESTSUITE)/gcc-amigaos.{sum,log}"
 	@! grep -qE '^(FAIL|ERROR|XPASS)' $(TESTSUITE)/gcc-amigaos.sum
+
+# libnix's own target tests (test/Makefile check-target): built from the
+# libnix sources with the installed cross compiler and run under volamos
+# with its memory sanitizer.  The objects are left in projects/libnix/test.
+check-libnix: $(PREFIX)/bin/volamos
+	@set -o pipefail; $(MAKE) -C $(PROJECTS)/libnix/test check-target \
+	  CROSS_CC=$(PREFIX)/bin/$(TARGET)-gcc SIM=$(PREFIX)/bin/volamos \
+	  SIMFLAGS="--stack 4K --sanitize" 2>&1 | tee $@.summary.txt
 
 # The full C++ testsuite is large and slow under vamos, so it is not part of
 # `check`; run it on demand with `make check-gcc-c++`.  SANITIZE=0 keeps the
