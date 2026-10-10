@@ -129,8 +129,8 @@ will run rather than the build machine.
 ## Continuous integration
 
 The GitHub Actions workflow in `.github/workflows/toolchain.yml`
-bootstraps the toolchain from scratch, optionally runs the gcc
-testsuite under vamos, and uploads the native `.tar.xz` packages as build
+bootstraps the toolchain from scratch, runs amigaos.exp and the libnix
+tests under volamos (and the full gcc testsuites on request), and uploads the native `.tar.xz` packages as build
 artifacts.
 
 By default it also Canadian-cross-builds the `amiga16.2` compiler for AmigaOS
@@ -166,31 +166,28 @@ it affects the include path as well as the libraries, so
 To check the built toolchain, run the gcc dejagnu execution tests.
 
 This does not cover everything but it's a start. The tests run each
-compiled testcase under [vamos](https://github.com/AmigaPorts/amitools)
-to emulate the AmigaOS APIs, so `vamos` must be on the PATH.
+compiled testcase under [volamos](https://github.com/sidick/volamos), which
+emulates the AmigaOS APIs; `make check` downloads its release binary into
+`$PREFIX/bin` first (`make volamos` does just that).
 
 Install dejagnu (`sudo apt install dejagnu` on Debian/Ubuntu,
-`brew install dejagnu` on macOS) and amitools, in a venv to keep it
-out of the system Python:
-```shell
-python3 -m venv .venv
-.venv/bin/pip install "amitools[vamos] @ git+https://github.com/AmigaPorts/amitools.git"
-source .venv/bin/activate
-```
-
-Then run the testsuite:
+`brew install dejagnu` on macOS), then run the testsuite:
 ```shell
 make -j$(nproc) check
 ```
 
-Alternatively, the `baseboards/volamos*.exp` boards run the same tests under
-[volamos](https://github.com/sidick/volamos), a Rust reimplementation of the
-same idea; install it and put it on the PATH, then select it with `board`:
+The `baseboards/amigaos*.exp` boards run the same tests under
+[vamos](https://github.com/AmigaPorts/amitools) instead, for comparison.
+Install amitools, in a venv to keep it out of the system Python, and
+select one with `board`:
 ```shell
-make -j$(nproc) check board=volamos
+python3 -m venv .venv
+.venv/bin/pip install "amitools[vamos] @ git+https://github.com/AmigaPorts/amitools.git"
+source .venv/bin/activate
+make -j$(nproc) check board=amigaos
 ```
-(matching `board=amigaos-020`, `board=amigaos-baserel`, etc. also have
-`volamos-020`, `volamos-baserel`, ... counterparts).
+(`board=volamos-020`, `board=volamos-baserel`, etc. have matching
+`amigaos-020`, `amigaos-baserel`, ... counterparts).
 
 ## Version management
 
