@@ -3,6 +3,17 @@
 
 /*
     Copyright (C) 2005 Neil Cafferkey
+
+    The contents of this file are subject to the AROS Public License
+    Version 1.1 (the "License"); you may not use this file except in
+    compliance with the License. A copy is in LICENSE.AROS-APL next to
+    this file, and at http://www.aros.org/license.html.
+
+    Software distributed under the License is distributed on an "AS IS"
+    basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See
+    the License for the specific language governing rights and
+    limitations under the License.
+
     $Id$
 
     Desc: Definitions for SANA-II devices
@@ -11,6 +22,7 @@
 
 #include <exec/types.h>
 #include <exec/io.h>
+#include <utility/tagitem.h>
 #include <devices/timer.h>
 
 /* Constants */
