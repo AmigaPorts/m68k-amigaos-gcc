@@ -609,10 +609,16 @@ update: update-gcc update-binutils update-fd2sfd update-fd2pragma update-ira upd
 
 # Pull a module checkout forward. A checkout pinned to an exact commit (CI
 # building a module's pull request) has no branch to pull, so it is left as
-# is; a shallow clone that cannot fast-forward is deepened instead.
+# is. A shallow clone may lack the merge base of a fast-forward, for example
+# when the branch merged history older than the clone; deepen it and pull
+# again. A checkout that still cannot fast-forward (local commits) is left
+# alone with a warning rather than merged or rebased.
 define update-module
 @cd $(PROJECTS)/$1 && if git symbolic-ref -q HEAD >/dev/null; then \
-	git pull --ff-only || git fetch --unshallow || git fetch --deepen 100 || true; fi
+	git pull --ff-only || \
+	{ test "$$(git rev-parse --is-shallow-repository)" = true && \
+	  git fetch --deepen 1000 && git pull --ff-only; } || \
+	echo "warning: $1 not updated: $$(git symbolic-ref --short HEAD) cannot fast-forward to its upstream" >&2; fi
 endef
 
 update-gcc: $(PROJECTS)/gcc/configure
@@ -1907,7 +1913,8 @@ branch:
 	    echo "$(mod) $$url $(branch)" >> .repos; \
 	    if [ -d  projects/$(mod) ]; then \
 	      pushd projects/$(mod); \
-	      git fetch origin +refs/heads/$(branch):refs/remotes/origin/$(branch); \
+	      depth=; test "$$(git rev-parse --is-shallow-repository)" = true && depth="--depth 16"; \
+	      git fetch $$depth origin +refs/heads/$(branch):refs/remotes/origin/$(branch); \
 	      git checkout -B $(branch) refs/remotes/origin/$(branch); \
 	      popd ; \
 	   fi \
