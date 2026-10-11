@@ -460,11 +460,14 @@ help:
 # all
 # =================================================
 .PHONY: all gcc gdb gprof binutils build-target-tools fd2sfd fd2pragma ira sfdc vasm libnix ixemul libgcc clib2 libdebug libpthread ndk ndk13 min libnix4.library
-ifeq (,$(strip $(HOST)))
-all: gcc binutils gdb gprof fd2sfd fd2pragma ira sfdc vasm libnix ixemul libgcc clib2 libdebug libpthread ndk ndk13 libnix4.library
-else
-all: gcc binutils gprof fd2sfd fd2pragma ira sfdc vasm libnix ixemul libgcc clib2 libdebug libpthread ndk ndk13 libnix4.library
+# gdb is built for the native and the MinGW hosts, not for AmigaOS.
+ALL_GDB := gdb
+ifneq (,$(strip $(HOST)))
+ifeq (,$(findstring mingw,$(HOST)))
+ALL_GDB :=
 endif
+endif
+all: gcc binutils $(ALL_GDB) gprof fd2sfd fd2pragma ira sfdc vasm libnix ixemul libgcc clib2 libdebug libpthread ndk ndk13 libnix4.library
 
 min: binutils gcc gprof libnix libgcc libnix4.library
 
@@ -734,11 +737,10 @@ CONFIG_BINUTILS = --prefix=$(PREFIX) --target=$(TARGET) $(HOST_CONFIGURE) $(CONF
 ifeq (,$(strip $(HOST)))
 CONFIG_BINUTILS += --enable-targets=m68k-elf
 else
-CONFIG_BINUTILS += --disable-gdb --disable-gdbserver
 ifneq (,$(findstring mingw,$(HOST)))
-CONFIG_BINUTILS += --enable-plugins
+CONFIG_BINUTILS += --enable-plugins --without-python --without-guile
 else
-CONFIG_BINUTILS += --disable-plugins
+CONFIG_BINUTILS += --disable-gdb --disable-plugins
 endif
 LD_CROSS_MAKE_ENV := bfdplugin_LTLIBRARIES= noinst_LTLIBRARIES=
 LD_CROSS_MAKE_FLAGS := -e
@@ -789,7 +791,8 @@ $(BUILD)/binutils/_gdb: $(BUILD)/binutils/_done
 	$(L0)"make binutils configure gdb"$(L1)$(MAKE) -C $(BUILD)/binutils configure-gdb $(L2)
 	$(L0)"make binutils gdb libs"$(L1)$(MAKE) -C $(BUILD)/binutils/gdb all-lib $(L2)
 	$(L0)"make binutils gdb"$(L1)$(MAKE) -C $(BUILD)/binutils all-gdb $(L2)
-	$(L0)"install binutils gdb"$(L1)$(MAKE) -C $(BUILD)/binutils install-strip-gas install-strip-binutils install-strip-ld install-strip-gdb $(L2)
+	$(L0)"install binutils gdb"$(L1)$(MAKE) -C $(BUILD)/binutils install-strip-gas install-strip-binutils install-strip-gdb $(L2)
+	$(L0)"install binutils ld"$(L1)$(LD_CROSS_MAKE_ENV) $(MAKE) $(LD_CROSS_MAKE_FLAGS) -C $(BUILD)/binutils install-strip-ld $(L2)
 	@echo "done" >$@
 
 # =================================================

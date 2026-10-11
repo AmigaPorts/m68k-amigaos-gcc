@@ -507,6 +507,7 @@ jobs:
             -flto -mcrt=nix20 -mcpu=68040 -mhard-float \
             "$smoke_src" -o "$smoke_out"
           test -s "$smoke_dir/smoke"
+          wine "$PREFIX/bin/m68k-amigaos-gdb.exe" --version
 
       - name: Free build space
         run: |
