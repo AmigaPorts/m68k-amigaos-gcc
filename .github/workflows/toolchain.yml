@@ -189,6 +189,11 @@ jobs:
       - name: Build toolchain
         run: make -j $NPROC all
 
+      # a libpython dependency would tie the release to this runner's distro
+      - name: Check that gdb does not link libpython
+        if: runner.os == 'Linux'
+        run: "! ldd \"$PREFIX/bin/m68k-amigaos-gdb\" | grep libpython"
+
       # modest -j: downloads are network bound, and more jobs just garble the log
       - name: Install SDKs
         run: make -j4 all-sdk
