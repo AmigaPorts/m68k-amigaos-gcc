@@ -18,9 +18,6 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
     make update && \
     make -j $(nproc) all && \
     make -j 4 all-sdk && \
-    curl --fail --location https://raw.githubusercontent.com/aros-development-team/AROS/master/compiler/include/devices/sana2.h --output sana2.h && \
-    curl --fail --location https://raw.githubusercontent.com/aros-development-team/AROS/master/compiler/include/devices/sana2specialstats.h --output sana2specialstats.h && \
-    mv -fv sana2.h sana2specialstats.h /opt/${PATHPREFIX}/m68k-amigaos/ndk-include/devices/ && \
     cd / && \
     rm -rf /root/amiga-gcc && \
     apt-get purge -y \
