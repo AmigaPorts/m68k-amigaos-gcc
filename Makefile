@@ -733,12 +733,15 @@ update-mpc:
 # binutils
 # =================================================
 CONFIG_BINUTILS = --prefix=$(PREFIX) --target=$(TARGET) $(HOST_CONFIGURE) $(CONFIG_VERSION) --disable-werror --disable-nls --without-msgpack
+# No python or guile in gdb: a libpython dependency ties the release
+# binaries to the build machine's distribution.
+CONFIG_BINUTILS += --without-python --without-guile
 
 ifeq (,$(strip $(HOST)))
 CONFIG_BINUTILS += --enable-targets=m68k-elf
 else
 ifneq (,$(findstring mingw,$(HOST)))
-CONFIG_BINUTILS += --enable-plugins --without-python --without-guile
+CONFIG_BINUTILS += --enable-plugins
 else
 CONFIG_BINUTILS += --disable-gdb --disable-plugins
 endif
