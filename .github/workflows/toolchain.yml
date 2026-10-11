@@ -190,7 +190,9 @@ jobs:
       # a libpython dependency would tie the release to this runner's distro
       - name: Check that gdb does not link libpython
         if: runner.os == 'Linux'
-        run: "! ldd \"$PREFIX/bin/m68k-amigaos-gdb\" | grep libpython"
+        run: |
+          ldd "$PREFIX/bin/m68k-amigaos-gdb" > gdb-ldd.txt
+          ! grep libpython gdb-ldd.txt
 
       # modest -j: downloads are network bound, and more jobs just garble the log
       - name: Install SDKs
@@ -512,7 +514,11 @@ jobs:
             -flto -mcrt=nix20 -mcpu=68040 -mhard-float \
             "$smoke_src" -o "$smoke_out"
           test -s "$smoke_dir/smoke"
-          wine "$PREFIX/bin/m68k-amigaos-gdb.exe" --version
+          gdb_exe="$PREFIX/bin/m68k-amigaos-gdb.exe"
+          wine "$gdb_exe" --version || {
+            "$HOST-objdump" -p "$gdb_exe" | grep "DLL Name"
+            exit 1
+          }
 
       - name: Free build space
         run: |
