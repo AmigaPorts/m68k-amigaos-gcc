@@ -194,6 +194,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           ldd "$PREFIX/bin/m68k-amigaos-gdb" > gdb-ldd.txt
+          cat gdb-ldd.txt
           ! grep libpython gdb-ldd.txt
 
       # modest -j: downloads are network bound, and more jobs just garble the log
