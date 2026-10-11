@@ -734,8 +734,11 @@ update-mpc:
 # =================================================
 CONFIG_BINUTILS = --prefix=$(PREFIX) --target=$(TARGET) $(HOST_CONFIGURE) $(CONFIG_VERSION) --disable-werror --disable-nls --without-msgpack
 # No python or guile in gdb: a libpython dependency ties the release
-# binaries to the build machine's distribution.
-CONFIG_BINUTILS += --without-python --without-guile
+# binaries to the build machine's distribution.  For the same reason link
+# libstdc++ and libgcc statically: binutils-gdb does that by default only
+# when gcc is in the same source tree, and the MinGW package ships no
+# libstdc++-6.dll or libgcc_s_seh-1.dll.
+CONFIG_BINUTILS += --without-python --without-guile --with-static-standard-libraries
 
 ifeq (,$(strip $(HOST)))
 CONFIG_BINUTILS += --enable-targets=m68k-elf
