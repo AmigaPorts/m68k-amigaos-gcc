@@ -109,7 +109,7 @@ jobs:
       BOARD: ${{ (inputs.simulator || 'volamos') == 'vamos' && 'amigaos' || 'volamos' }}
       AMITOOLS_GIT: ${{ inputs.amitools_git || 'git+https://github.com/AmigaPorts/amitools.git' }}
       # not GCC_VERSION: the Makefile reads that from gcc's BASE-VER
-      # (16.2.0b) for gcc's own lib/gcc/<target>/<version> layout
+      # (16.2.1b) and derives the lib/gcc/<target>/<version> directory (16)
       GCC_VER: ${{ inputs.gcc_version || '16.2' }}
       # mirrors to try, in order, before aminet.net itself; see
       # https://wiki.aminet.net/Mirrors (some serve the tree under /aminet)

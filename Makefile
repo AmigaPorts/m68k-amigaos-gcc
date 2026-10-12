@@ -140,7 +140,7 @@ ifneq (,$(findstring mingw,$(HOST)))
 # Wine.  Use its Unix spelling while target libraries are built so dependency
 # files remain readable by the build machine's make.
 TARGET_RUNNER_COMPILER_FLAGS = -fno-canonical-system-headers \
-	-isystem "$(PREFIX)/lib/gcc/$(TARGET)/$(GCC_VERSION)/include"
+	-isystem "$(PREFIX)/lib/gcc/$(TARGET)/$(GCC_DIR_VERSION)/include"
 endif
 TARGET_RUNNER_FLAGS = $(if $(filter $*,$(TARGET_RUNNER_COMPILER_TOOL_NAMES)),$(TARGET_RUNNER_COMPILER_FLAGS))
 TARGET_RUNNER_WRAPPERS := $(patsubst %,$(TARGET_RUNNER_WRAPPER_DIR)/$(TARGET)-%,$(TARGET_RUNNER_TOOL_NAMES))
@@ -250,7 +250,7 @@ $(TARGET_COMPILER_WRAPPERS): $(TARGET_COMPILER_WRAPPER_DIR)/$(TARGET)-%: $(TARGE
 	@mkdir -p $(@D)
 	@test -x "$(TARGET_EXEC_PREFIX_FOR_BUILD)$*"
 	@test -n "$(TARGET_GCC_INCLUDE_FOR_BUILD)"
-	@printf '%s\n' '#!/bin/sh' 'exec "$(TARGET_EXEC_PREFIX_FOR_BUILD)$*" -B"$(TARGET_EXEC_WRAPPER_DIR)/" -B"$(PREFIX)/lib/gcc/$(TARGET)/$(GCC_VERSION)/" -B"$(PREFIX)/$(TARGET)/lib/" -isystem "$(TARGET_GCC_INCLUDE_FOR_BUILD)" "$$@"' >$@
+	@printf '%s\n' '#!/bin/sh' 'exec "$(TARGET_EXEC_PREFIX_FOR_BUILD)$*" -B"$(TARGET_EXEC_WRAPPER_DIR)/" -B"$(PREFIX)/lib/gcc/$(TARGET)/$(GCC_DIR_VERSION)/" -B"$(PREFIX)/$(TARGET)/lib/" -isystem "$(TARGET_GCC_INCLUDE_FOR_BUILD)" "$$@"' >$@
 	@chmod +x $@
 
 $(TARGET_PREFIXED_EXEC_WRAPPERS): $(TARGET_COMPILER_WRAPPER_DIR)/$(TARGET)-%: $(TARGET_EXEC_WRAPPER_DIR)/%
@@ -290,6 +290,11 @@ GCC_VERSION ?= $(shell cat 2>/dev/null $(PROJECTS)/gcc/gcc/BASE-VER)
 # gcc 13 and 16 omit the frame pointer at -O1 and up on every target; gcc 6
 # left that to each target, and m68k never turned it on.
 GCC6_OMIT_FRAME_POINTER = $(if $(filter 6.%,$(GCC_VERSION)),-fomit-frame-pointer)
+# gcc 7 and later are configured with --with-gcc-major-version-only, so
+# lib/gcc/<target>/ and the versioned driver are named after the major
+# version (16, not 16.2.1b) and stay put across point releases.  gcc 6
+# predates the option.
+GCC_DIR_VERSION = $(if $(filter 6.%,$(GCC_VERSION)),$(GCC_VERSION),$(firstword $(subst ., ,$(GCC_VERSION))))
 
 # Stamp gcc and binutils with the release they were built from, so bug
 # reports carry it: "m68k-amigaos-gcc (AmigaDev v16.2) 16.2.0b 2026...".
@@ -811,6 +816,9 @@ CONFIG_GCC = --prefix=$(PREFIX) --target=$(TARGET) $(HOST_CONFIGURE) $(CONFIG_VE
 # m68k has no __float128, so libquadmath's configure decides to build
 # nothing; skip its 14 multilib configure runs.
 CONFIG_GCC += --disable-libquadmath
+ifeq (,$(filter 6.%,$(GCC_VERSION)))
+CONFIG_GCC += --with-gcc-major-version-only
+endif
 
 ifneq ($(strip $(HOST)),$(TARGET))
 CONFIG_GCC += --with-headers=$(PROJECTS)/newlib-cygwin/newlib/libc/sys/amigaos/include/
@@ -849,7 +857,7 @@ GCC_HOST_LDFLAGS := LDFLAGS="$(LDFLAGS) -Wl,--whole-archive -L$(BUILD) -lamiga-h
 GCC_HOST_AR := $(if $(strip $(HOST_TOOL_PREFIX)),$(HOST_TOOL_PREFIX)ar,$(TARGET)-ar)
 endif
 
-GCC_CMD := $(TARGET)-c++ $(TARGET)-g++ $(TARGET)-gcc-$(GCC_VERSION) $(TARGET)-gcc-nm \
+GCC_CMD := $(TARGET)-c++ $(TARGET)-g++ $(TARGET)-gcc-$(GCC_DIR_VERSION) $(TARGET)-gcc-nm \
 	$(TARGET)-gcov $(TARGET)-gcov-tool $(TARGET)-cpp $(TARGET)-gcc $(TARGET)-gcc-ar \
 	$(TARGET)-gcc-ranlib $(TARGET)-gcov-dump
 GCC := $(patsubst %,$(PREFIX)/bin/%$(EXEEXT), $(GCC_CMD))
@@ -1478,8 +1486,8 @@ libnix: $(BUILD)/libnix/_done
 $(BUILD)/libnix/_done: $(BUILD)/newlib/_done $(BUILD)/ndk-include_ndk $(BUILD)/ndk-include_ndk13 $(BUILD)/_netinclude $(BUILD)/binutils/_done $(BUILD)/gcc/_done $(PROJECTS)/libnix/Makefile.gcc6 $(LIBAMIGA) $(LIBNIX_SRC)
 	@mkdir -p $(PREFIX)/$(TARGET)/libnix/lib/libnix
 	@mkdir -p $(BUILD)/libnix
-	@mkdir -p $(PREFIX)/lib/gcc/$(TARGET)/$(GCC_VERSION)
-	@if [ ! -e $(PREFIX)/lib/gcc/$(TARGET)/$(GCC_VERSION)/libgcc.a ]; then $(TARGET_AR_FOR_BUILD) rcs $(PREFIX)/lib/gcc/$(TARGET)/$(GCC_VERSION)/libgcc.a; fi
+	@mkdir -p $(PREFIX)/lib/gcc/$(TARGET)/$(GCC_DIR_VERSION)
+	@if [ ! -e $(PREFIX)/lib/gcc/$(TARGET)/$(GCC_DIR_VERSION)/libgcc.a ]; then $(TARGET_AR_FOR_BUILD) rcs $(PREFIX)/lib/gcc/$(TARGET)/$(GCC_DIR_VERSION)/libgcc.a; fi
 	$(L0)"make libnix"$(L1) CFLAGS="$(CFLAGS_FOR_TARGET)" $(MAKE) -C $(BUILD)/libnix -f $(PROJECTS)/libnix/Makefile.gcc6 root=$(PROJECTS)/libnix all $(L2)
 	$(L0)"install libnix"$(L1) $(MAKE) -C $(BUILD)/libnix -f $(PROJECTS)/libnix/Makefile.gcc6 root=$(PROJECTS)/libnix install $(L2)
 	@rsync --delete -a --no-group $(PROJECTS)/libnix/sources/headers/* $(PREFIX)/$(TARGET)/libnix/include/
@@ -1492,7 +1500,7 @@ $(PROJECTS)/libnix/Makefile.gcc6:
 # gcc libs
 # =================================================
 LIBGCCS_NAMES := libgcov.a libstdc++.a libsupc++.a
-LIBGCCS := $(patsubst %,$(PREFIX)/lib/gcc/$(TARGET)/$(GCC_VERSION)/%,$(LIBGCCS_NAMES))
+LIBGCCS := $(patsubst %,$(PREFIX)/lib/gcc/$(TARGET)/$(GCC_DIR_VERSION)/%,$(LIBGCCS_NAMES))
 
 libgcc: $(BUILD)/gcc/_libgcc_done
 
