@@ -671,7 +671,9 @@ define update-module
 	git pull --ff-only || \
 	{ test "$$(git rev-parse --is-shallow-repository)" = true && \
 	  git fetch --deepen 1000 && git pull --ff-only; } || \
-	echo "warning: $1 not updated: $$(git symbolic-ref --short HEAD) cannot fast-forward to its upstream" >&2; fi
+	if test -n "$$(git rev-list -n 1 @{u}..HEAD 2>/dev/null)"; then \
+	  echo "warning: $1 not updated: $$(git symbolic-ref --short HEAD) has commits its upstream lacks" >&2; \
+	else exit 1; fi; fi
 endef
 
 update-gcc: $(PROJECTS)/gcc/configure
@@ -2021,6 +2023,7 @@ branch:
 	    echo "$(mod) $$url $(branch)" >> .repos; \
 	    if [ -d  projects/$(mod) ]; then \
 	      pushd projects/$(mod); \
+	      git remote set-branches --add origin $(branch); \
 	      depth=; test "$$(git rev-parse --is-shallow-repository)" = true && depth="--depth 16"; \
 	      git fetch $$depth origin +refs/heads/$(branch):refs/remotes/origin/$(branch); \
 	      git checkout -B $(branch) refs/remotes/origin/$(branch); \
