@@ -462,9 +462,10 @@ help:
 .PHONY: all gcc gdb gprof binutils build-target-tools fd2sfd fd2pragma ira sfdc vasm libnix ixemul libgcc clib2 libdebug libpthread ndk ndk13 min libnix4.library
 
 # gdb is built for the native and the MinGW hosts, not for AmigaOS.
-ALL_GDB := gdb
 ifneq (,$(findstring amigaos,$(HOST)))
-ALL_GDB :=
+  ALL_GDB :=
+else
+  ALL_GDB := gdb
 endif
 
 all: gcc binutils $(ALL_GDB) gprof fd2sfd fd2pragma ira sfdc vasm libnix ixemul libgcc clib2 libdebug libpthread ndk ndk13 libnix4.library
@@ -740,16 +741,17 @@ CONFIG_BINUTILS += --enable-targets=m68k-elf
 # (the MinGW package ships neither DLL).
 CONFIG_BINUTILS += --without-python --without-guile --with-static-standard-libraries
 
-ifneq (,$(strip $(HOST)))
 ifneq (,$(findstring mingw,$(HOST)))
-CONFIG_BINUTILS += --enable-plugins
+  CONFIG_BINUTILS += --enable-plugins
 endif
 
 ifneq (,$(findstring amigaos,$(HOST)))
-CONFIG_BINUTILS += --disable-gdb --disable-plugins
+  CONFIG_BINUTILS += --disable-gdb --disable-plugins
 endif
-LD_CROSS_MAKE_ENV := bfdplugin_LTLIBRARIES= noinst_LTLIBRARIES=
-LD_CROSS_MAKE_FLAGS := -e
+
+ifneq (,$(strip $(HOST)))
+  LD_CROSS_MAKE_ENV := bfdplugin_LTLIBRARIES= noinst_LTLIBRARIES=
+  LD_CROSS_MAKE_FLAGS := -e
 endif
 
 BINUTILS_CMD := $(TARGET)-addr2line $(TARGET)-ar $(TARGET)-as $(TARGET)-c++filt \
