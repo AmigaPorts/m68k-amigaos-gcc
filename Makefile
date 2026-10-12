@@ -805,6 +805,9 @@ $(BUILD)/binutils/gprof/Makefile: $(PROJECTS)/binutils/configure $(BUILD)/binuti
 # =================================================
 CONFIG_GCC = --prefix=$(PREFIX) --target=$(TARGET) $(HOST_CONFIGURE) $(CONFIG_VERSION) --enable-languages=c,c++,objc,$(ADDLANG) --enable-version-specific-runtime-libs --disable-libssp --disable-nls --without-zstd  \
 	--disable-shared --enable-threads=$(THREADS)
+# m68k has no __float128, so libquadmath's configure decides to build
+# nothing; skip its 14 multilib configure runs.
+CONFIG_GCC += --disable-libquadmath
 
 ifneq ($(strip $(HOST)),$(TARGET))
 CONFIG_GCC += --with-headers=$(PROJECTS)/newlib-cygwin/newlib/libc/sys/amigaos/include/
