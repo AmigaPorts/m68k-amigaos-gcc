@@ -733,14 +733,14 @@ update-mpc:
 # binutils
 # =================================================
 CONFIG_BINUTILS = --prefix=$(PREFIX) --target=$(TARGET) $(HOST_CONFIGURE) $(CONFIG_VERSION) --disable-werror --disable-nls --without-msgpack
+# Also read, convert and link m68k ELF objects.
+CONFIG_BINUTILS += --enable-targets=m68k-elf
 
 # Portable release binaries: no libpython, and a static libstdc++ and libgcc
 # (the MinGW package ships neither DLL).
 CONFIG_BINUTILS += --without-python --without-guile --with-static-standard-libraries
 
-ifeq (,$(strip $(HOST)))
-CONFIG_BINUTILS += --enable-targets=m68k-elf
-else
+ifneq (,$(strip $(HOST)))
 ifneq (,$(findstring mingw,$(HOST)))
 CONFIG_BINUTILS += --enable-plugins
 endif
