@@ -612,15 +612,16 @@ update: update-gcc update-binutils update-fd2sfd update-fd2pragma update-ira upd
 # is. A shallow clone may lack the merge base of a fast-forward, for example
 # when the branch merged history older than the clone; deepen it and pull
 # again. A checkout that still cannot fast-forward (local commits) is left
-# alone with a warning rather than merged or rebased.
+# alone with a warning rather than merged or rebased.  Every output line is
+# prefixed with the module name, since modules may update in parallel.
 define update-module
-@cd $(PROJECTS)/$1 && if git symbolic-ref -q HEAD >/dev/null; then \
-	git pull --ff-only || \
+@set -o pipefail; cd $(PROJECTS)/$1 && { if git symbolic-ref -q HEAD >/dev/null; then \
+	git -c advice.diverging=false pull --ff-only || \
 	{ test "$$(git rev-parse --is-shallow-repository)" = true && \
-	  git fetch --deepen 1000 && git pull --ff-only; } || \
+	  git fetch --deepen 1000 && git -c advice.diverging=false pull --ff-only; } || \
 	if test -n "$$(git rev-list -n 1 @{u}..HEAD 2>/dev/null)"; then \
-	  echo "warning: $1 not updated: $$(git symbolic-ref --short HEAD) has commits its upstream lacks" >&2; \
-	else exit 1; fi; fi
+	  echo "warning: not updated: $$(git symbolic-ref --short HEAD) has commits its upstream lacks"; \
+	else exit 1; fi; fi; } 2>&1 | sed -u 's|^|$1: |'
 endef
 
 update-gcc: $(PROJECTS)/gcc/configure
