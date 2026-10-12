@@ -734,8 +734,13 @@ update-mpc:
 # binutils
 # =================================================
 CONFIG_BINUTILS = --prefix=$(PREFIX) --target=$(TARGET) $(HOST_CONFIGURE) $(CONFIG_VERSION) --disable-werror --disable-nls --without-msgpack
-# Also read, convert and link m68k ELF objects.
-CONFIG_BINUTILS += --enable-targets=m68k-elf
+
+# Also read, convert and link m68k ELF objects.  Not on the AmigaOS host,
+# where bfd's ELF code does not build: elf-sframe.c assumes uint32_t is
+# unsigned int, but there it is unsigned long.
+ifeq (,$(findstring amigaos,$(HOST)))
+  CONFIG_BINUTILS += --enable-targets=m68k-elf
+endif
 
 # Portable release binaries: no libpython, and a static libstdc++ and libgcc
 # (the MinGW package ships neither DLL).
