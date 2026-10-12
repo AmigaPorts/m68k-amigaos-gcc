@@ -460,11 +460,13 @@ help:
 # all
 # =================================================
 .PHONY: all gcc gdb gprof binutils build-target-tools fd2sfd fd2pragma ira sfdc vasm libnix ixemul libgcc clib2 libdebug libpthread ndk ndk13 min libnix4.library
+
 # gdb is built for the native and the MinGW hosts, not for AmigaOS.
 ALL_GDB := gdb
 ifneq (,$(findstring amigaos,$(HOST)))
 ALL_GDB :=
 endif
+
 all: gcc binutils $(ALL_GDB) gprof fd2sfd fd2pragma ira sfdc vasm libnix ixemul libgcc clib2 libdebug libpthread ndk ndk13 libnix4.library
 
 min: binutils gcc gprof libnix libgcc libnix4.library
@@ -731,11 +733,9 @@ update-mpc:
 # binutils
 # =================================================
 CONFIG_BINUTILS = --prefix=$(PREFIX) --target=$(TARGET) $(HOST_CONFIGURE) $(CONFIG_VERSION) --disable-werror --disable-nls --without-msgpack
-# No python or guile in gdb: a libpython dependency ties the release
-# binaries to the build machine's distribution.  For the same reason link
-# libstdc++ and libgcc statically: binutils-gdb does that by default only
-# when gcc is in the same source tree, and the MinGW package ships no
-# libstdc++-6.dll or libgcc_s_seh-1.dll.
+
+# Portable release binaries: no libpython, and a static libstdc++ and libgcc
+# (the MinGW package ships neither DLL).
 CONFIG_BINUTILS += --without-python --without-guile --with-static-standard-libraries
 
 ifeq (,$(strip $(HOST)))
@@ -744,6 +744,7 @@ else
 ifneq (,$(findstring mingw,$(HOST)))
 CONFIG_BINUTILS += --enable-plugins
 endif
+
 ifneq (,$(findstring amigaos,$(HOST)))
 CONFIG_BINUTILS += --disable-gdb --disable-plugins
 endif
