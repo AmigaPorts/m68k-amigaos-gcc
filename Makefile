@@ -1556,17 +1556,9 @@ $(PROJECTS)/libdebug/configure:
 libpthread: $(BUILD)/libpthread/_done
 
 $(BUILD)/libpthread/_done: $(BUILD)/libpthread/Makefile
-	@mkdir -p $(PREFIX)/$(TARGET)/lib/libb \
-		$(PREFIX)/$(TARGET)/lib/libm020 \
-		$(PREFIX)/$(TARGET)/lib/libb/libm020 \
-		$(PREFIX)/$(TARGET)/lib/libb32/libm020
 	@rsync -a --no-group --exclude=debug.h $(BUILD)/libpthread/*.h $(PREFIX)/$(TARGET)/include/
 	$(L0)"make libpthread"$(L1) cd $(BUILD)/libpthread && $(MAKE) -f Makefile.gcc6 $(L2)
-	$(L0)"install libpthread lib"$(L1) cp $(BUILD)/libpthread/lib/libpthread.a $(PREFIX)/$(TARGET)/lib/ $(L2)
-	$(L0)"install libpthread libb"$(L1) cp $(BUILD)/libpthread/libb/libpthread.a $(PREFIX)/$(TARGET)/lib/libb/ $(L2)
-	$(L0)"install libpthread libm020"$(L1) cp $(BUILD)/libpthread/libm020/libpthread.a $(PREFIX)/$(TARGET)/lib/libm020/ $(L2)
-	$(L0)"install libpthread libm020bb"$(L1) cp $(BUILD)/libpthread/libm020bb/libpthread.a $(PREFIX)/$(TARGET)/lib/libb/libm020/ $(L2)
-	$(L0)"install libpthread libm020bb32"$(L1) cp $(BUILD)/libpthread/libm020bb32/libpthread.a $(PREFIX)/$(TARGET)/lib/libb32/libm020/ $(L2)
+	$(L0)"install libpthread"$(L1) cd $(BUILD)/libpthread && $(MAKE) -f Makefile.gcc6 PREFIX=$(PREFIX) install $(L2)
 	@echo "done" >$@
 
 $(BUILD)/libpthread/Makefile: $(BUILD)/libnix/_done $(PROJECTS)/aros-stuff/pthreads/Makefile $(shell find 2>/dev/null $(PROJECTS)/aros-stuff/pthreads -type f)
