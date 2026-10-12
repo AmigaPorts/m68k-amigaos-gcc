@@ -287,6 +287,9 @@ __PROJECTDIR := $(shell mkdir -p $(PROJECTS))
 __DOWNLOADDIR := $(shell mkdir -p $(DOWNLOAD))
 
 GCC_VERSION ?= $(shell cat 2>/dev/null $(PROJECTS)/gcc/gcc/BASE-VER)
+# gcc 13 and 16 omit the frame pointer at -O1 and up on every target; gcc 6
+# left that to each target, and m68k never turned it on.
+GCC6_OMIT_FRAME_POINTER = $(if $(filter 6.%,$(GCC_VERSION)),-fomit-frame-pointer)
 
 # Stamp gcc and binutils with the release they were built from, so bug
 # reports carry it: "m68k-amigaos-gcc (AmigaDev v16.2) 16.2.0b 2026...".
@@ -331,7 +334,7 @@ CFLAGS ?= -Os
 CXXFLAGS ?= $(CFLAGS)
 BUILD_CFLAGS ?= $(CFLAGS)
 BUILD_CXXFLAGS ?= $(CXXFLAGS)
-CFLAGS_FOR_TARGET ?= -O2 -fomit-frame-pointer
+CFLAGS_FOR_TARGET ?= $(strip -O2 $(GCC6_OMIT_FRAME_POINTER))
 CXXFLAGS_FOR_TARGET ?= $(CFLAGS_FOR_TARGET) -fno-exceptions -fno-rtti
 
 # Preserve the original native configure environment exactly.
@@ -343,7 +346,7 @@ LDFLAGS ?= $(HOST_LINK_FLAGS)
 BUILD_CFLAGS ?= -Os
 BUILD_CXXFLAGS ?= $(BUILD_CFLAGS)
 BUILD_LDFLAGS ?=
-CFLAGS_FOR_TARGET ?= -O2 -fomit-frame-pointer
+CFLAGS_FOR_TARGET ?= $(strip -O2 $(GCC6_OMIT_FRAME_POINTER))
 CXXFLAGS_FOR_TARGET ?= $(CFLAGS_FOR_TARGET)
 
 E:=CFLAGS="$(CFLAGS)" CXXFLAGS="$(CXXFLAGS)" LDFLAGS="$(LDFLAGS)" CFLAGS_FOR_BUILD="$(BUILD_CFLAGS)" CXXFLAGS_FOR_BUILD="$(BUILD_CXXFLAGS)" LDFLAGS_FOR_BUILD="$(BUILD_LDFLAGS)" CFLAGS_FOR_TARGET="$(CFLAGS_FOR_TARGET)" CXXFLAGS_FOR_TARGET="$(CXXFLAGS_FOR_TARGET)"
