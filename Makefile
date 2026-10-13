@@ -811,7 +811,7 @@ $(BUILD)/binutils/gprof/Makefile: $(PROJECTS)/binutils/configure $(BUILD)/binuti
 # =================================================
 # gcc
 # =================================================
-CONFIG_GCC = --prefix=$(PREFIX) --target=$(TARGET) $(HOST_CONFIGURE) $(CONFIG_VERSION) --enable-languages=c,c++,objc,$(ADDLANG) --enable-version-specific-runtime-libs --disable-libssp --disable-nls --without-zstd  \
+CONFIG_GCC = --prefix=$(PREFIX) --target=$(TARGET) $(HOST_CONFIGURE) $(CONFIG_VERSION) --enable-languages=c,c++,$(ADDLANG) --enable-version-specific-runtime-libs --disable-libssp --disable-nls --without-zstd  \
 	--disable-shared --enable-threads=$(THREADS)
 # m68k has no __float128, so libquadmath's configure decides to build
 # nothing; skip its 14 multilib configure runs.
@@ -995,7 +995,7 @@ TARGET_BUILD_BINUTILS_CONFIG := --prefix=$(TARGET_BUILD_TOOLS_PREFIX) \
 	--disable-gdb --disable-gdbserver --enable-plugins
 TARGET_BUILD_GCC_CONFIG := --prefix=$(TARGET_BUILD_TOOLS_PREFIX) \
 	--build=$(TARGET_BUILD_MACHINE) --host=$(TARGET_BUILD_MACHINE) \
-	--target=$(TARGET) --enable-languages=c,c++,objc,$(ADDLANG) \
+	--target=$(TARGET) --enable-languages=c,c++,$(ADDLANG) \
 	--enable-version-specific-runtime-libs --enable-lto \
 	--disable-bootstrap --disable-libssp --disable-nls --without-zstd \
 	--disable-shared --disable-werror --enable-threads=$(THREADS) \

@@ -6,7 +6,7 @@ This is the AmigaPorts continuation of bebbo's amiga-gcc; fixes flow both ways.
 Currently, these tools are built:
 
 * binutils with Hunk binary format support
-* gcc with frontends for C/C++/ObjC
+* gcc with frontends for C/C++ (`make ADDLANG=objc` adds Objective-C)
 * libnix, newlib, clib2
 * sfdc, fd2sfd, fd2pragma
 * vbcc, vasm, vlink
