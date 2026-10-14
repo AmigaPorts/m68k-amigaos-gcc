@@ -9,8 +9,8 @@
 #   ci-amigaos       - the AmigaOS-hosted toolchain (builds the Linux
 #                      cross toolchain first, to bootstrap from)
 #   ci-mingw         - the MinGW-hosted toolchain
-#   ci-testsuite-c   - the Linux toolchain with the gcc C testsuite
-#   ci-testsuite-cxx - the Linux toolchain with the g++ testsuite (slow)
+#   ci-testsuite-c   - the arm64 Linux toolchain with the gcc C testsuite
+#   ci-testsuite-cxx - the arm64 Linux toolchain with the g++ testsuite (slow)
 # Re-add the label to rebuild after pushing new commits.
 
 name: Bootstrap toolchain
@@ -94,10 +94,12 @@ jobs:
       github.event_name != 'pull_request' ||
       contains(fromJSON('["ci-linux", "ci-linux-arm", "ci-macos", "ci-testsuite-c", "ci-testsuite-cxx", "ci-amigaos"]'),
                github.event.label.name)
+    # the testsuites run on arm64, whose 4 vCPUs build and test faster
     runs-on: >-
       ${{ inputs.runner
           || (github.event.label.name == 'ci-macos' && 'macos-15')
           || (github.event.label.name == 'ci-linux-arm' && 'ubuntu-24.04-arm')
+          || (startsWith(github.event.label.name, 'ci-testsuite') && 'ubuntu-24.04-arm')
           || 'ubuntu-24.04' }}
     timeout-minutes: 300
     env:
