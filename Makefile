@@ -765,8 +765,8 @@ $(BUILD)/binutils/_done: $(BUILD)/binutils/Makefile $(shell find 2>/dev/null $(P
 	$(L0)"make binutils gas"$(L1)$(MAKE) -C $(BUILD)/binutils all-gas $(L2)
 	$(L0)"make binutils binutils"$(L1)$(MAKE) -C $(BUILD)/binutils all-binutils $(L2)
 	$(L0)"make binutils ld"$(L1)$(LD_CROSS_MAKE_ENV) $(MAKE) $(LD_CROSS_MAKE_FLAGS) -C $(BUILD)/binutils all-ld $(L2)
-	$(L0)"install binutils"$(L1)$(MAKE) -C $(BUILD)/binutils install-gas install-binutils $(L2)
-	$(L0)"install binutils ld"$(L1)$(LD_CROSS_MAKE_ENV) $(MAKE) $(LD_CROSS_MAKE_FLAGS) -C $(BUILD)/binutils install-ld $(L2)
+	$(L0)"install binutils"$(L1)$(MAKE) -C $(BUILD)/binutils install-strip-gas install-strip-binutils $(L2)
+	$(L0)"install binutils ld"$(L1)$(LD_CROSS_MAKE_ENV) $(MAKE) $(LD_CROSS_MAKE_FLAGS) -C $(BUILD)/binutils install-strip-ld $(L2)
 	@for tool in $(BINUTILS_HOST_ALIAS_CMD); do \
 		ln -f "$(PREFIX)/bin/$$tool$(EXEEXT)" "$(PREFIX)/bin/$(TARGET)-$$tool$(EXEEXT)"; \
 	done
@@ -789,7 +789,7 @@ $(BUILD)/binutils/_gdb: $(BUILD)/binutils/_done
 	$(L0)"make binutils configure gdb"$(L1)$(MAKE) -C $(BUILD)/binutils configure-gdb $(L2)
 	$(L0)"make binutils gdb libs"$(L1)$(MAKE) -C $(BUILD)/binutils/gdb all-lib $(L2)
 	$(L0)"make binutils gdb"$(L1)$(MAKE) -C $(BUILD)/binutils all-gdb $(L2)
-	$(L0)"install binutils gdb"$(L1)$(MAKE) -C $(BUILD)/binutils install-gas install-binutils install-ld install-gdb $(L2)
+	$(L0)"install binutils gdb"$(L1)$(MAKE) -C $(BUILD)/binutils install-strip-gas install-strip-binutils install-strip-ld install-strip-gdb $(L2)
 	@echo "done" >$@
 
 # =================================================
@@ -958,7 +958,7 @@ gcc: $(BUILD)/gcc/_done
 
 $(BUILD)/gcc/_done: $(BUILD)/gcc/Makefile $(shell find 2>/dev/null $(GCCD) -maxdepth 1 -type f ) $(HOST_RUNNER_SETUP_PREREQ) $(TARGET_RUNNER_WRAPPERS)
 	$(L0)"make gcc"$(L1) $(MAKE) -C $(BUILD)/gcc $(GCC_HOST_TOOLS) $(GCC_BUILD_MAKE_FLAGS) $(GCC_HOST_LDFLAGS) all-gcc $(L2)
-	$(L0)"install gcc"$(L1) $(MAKE) -C $(BUILD)/gcc $(GCC_HOST_TOOLS) $(GCC_BUILD_MAKE_FLAGS) $(GCC_HOST_LDFLAGS) install-gcc $(L2)
+	$(L0)"install gcc"$(L1) $(MAKE) -C $(BUILD)/gcc $(GCC_HOST_TOOLS) $(GCC_BUILD_MAKE_FLAGS) $(GCC_HOST_LDFLAGS) install-strip-gcc $(L2)
 	@for tool in $(GCC_HOST_ALIAS_CMD); do \
 		ln -f "$(PREFIX)/bin/$$tool$(EXEEXT)" "$(PREFIX)/bin/$(TARGET)-$$tool$(EXEEXT)"; \
 	done
