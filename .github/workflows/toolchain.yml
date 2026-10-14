@@ -11,6 +11,7 @@
 #   ci-mingw         - the MinGW-hosted toolchain
 #   ci-testsuite-c   - the arm64 Linux toolchain with the gcc C testsuite
 #   ci-testsuite-cxx - the arm64 Linux toolchain with the g++ testsuite (slow)
+#   ci-testsuite-newlib - the arm64 Linux toolchain with newlib's testsuite
 # Re-add the label to rebuild after pushing new commits.
 
 name: Bootstrap toolchain
@@ -92,7 +93,7 @@ jobs:
   build:
     if: >-
       github.event_name != 'pull_request' ||
-      contains(fromJSON('["ci-linux", "ci-linux-arm", "ci-macos", "ci-testsuite-c", "ci-testsuite-cxx", "ci-amigaos"]'),
+      contains(fromJSON('["ci-linux", "ci-linux-arm", "ci-macos", "ci-testsuite-c", "ci-testsuite-cxx", "ci-testsuite-newlib", "ci-amigaos"]'),
                github.event.label.name)
     # the testsuites run on arm64, whose 4 vCPUs build and test faster
     runs-on: >-
@@ -105,6 +106,7 @@ jobs:
     env:
       RUN_TESTSUITE: ${{ inputs.run_testsuite || github.event.label.name == 'ci-testsuite-c' }}
       RUN_TESTSUITE_CXX: ${{ inputs.run_cxx_testsuite || github.event.label.name == 'ci-testsuite-cxx' }}
+      RUN_TESTSUITE_NEWLIB: ${{ github.event.label.name == 'ci-testsuite-newlib' }}
       # the two simulators are kept side by side so their results can be
       # compared; SIMULATOR picks one and BOARD is the baseboards/ file for it
       SIMULATOR: ${{ inputs.simulator || 'volamos' }}
@@ -303,6 +305,17 @@ jobs:
           { echo '```'; cat check-gcc-c++.summary.txt 2>/dev/null; echo '```'; } >> $GITHUB_STEP_SUMMARY
           exit $rc
 
+      # newlib's suite still has standing failures, so test failures are
+      # only reported; the step fails when a board produced no results
+      - name: Run the newlib testsuite
+        if: env.RUN_TESTSUITE_NEWLIB == 'true' && env.SIMULATOR == 'volamos'
+        run: |
+          set +e
+          make check-newlib
+          rc=$?
+          { echo '```'; cat check-newlib.summary.txt 2>/dev/null; echo '```'; } >> $GITHUB_STEP_SUMMARY
+          exit $rc
+
       - name: Upload testsuite results
         if: always()
         uses: actions/upload-artifact@v7
@@ -315,6 +328,8 @@ jobs:
             build-*/gcc/gcc/testsuite/gcc/gcc-amigaos.log
             build-*/gcc/gcc/testsuite/g++/g++.sum
             build-*/gcc/gcc/testsuite/g++/g++.log
+            build-*/newlib/newlib/testsuite/*/newlib.sum
+            build-*/newlib/newlib/testsuite/*/newlib.log
           if-no-files-found: ignore
 
   build_amigaos:

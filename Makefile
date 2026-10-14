@@ -1762,7 +1762,7 @@ TESTSUITE = $(BUILD)/gcc/gcc/testsuite/gcc
 # The C++ testsuite writes into a separate g++ directory.
 CXXTESTSUITE = $(BUILD)/gcc/gcc/testsuite/g++
 
-.PHONY: check check-gcc-execute check-gcc-amigaos check-gcc-c++ check-libnix check-binutils check-binutils-gas check-binutils-ld
+.PHONY: check check-gcc-execute check-gcc-amigaos check-gcc-c++ check-libnix check-newlib check-binutils check-binutils-gas check-binutils-ld
 # Run the two sequentially (recipe lines run in order even under make -j): both
 # drive check-gcc-c in the same build tree, sharing gcc.sum and
 # testsuite/gcc-parallel, so they must not run at the same time.
@@ -1827,6 +1827,26 @@ check-libnix: $(PREFIX)/bin/volamos
 	@set -o pipefail; $(MAKE) -B -C $(PROJECTS)/libnix/test check-target \
 	  CROSS_CC=$(PREFIX)/bin/$(TARGET)-gcc SIM=$(PREFIX)/bin/volamos \
 	  SIMFLAGS="--stack 4K --sanitize" 2>&1 | tee $@.summary.txt
+
+# newlib's own testsuite, linked against the installed newlib: the base
+# multilib without an FPU (volamos-newlib) and the 68020/68881 one with an
+# FPU (volamos-newlib-fpu).  It only reports: it has standing failures.
+# One runtest per board, each with its own outdir: dejagnu cannot replay a
+# multi-board --target_board list.  site.exp is regenerated with build_alias
+# as its host_alias, which the automake rule otherwise leaves empty, and
+# CC_FOR_TARGET spares the PATH lookup.  A board without results fails.
+NEWLIBTESTSUITE = $(BUILD)/newlib/newlib/testsuite
+NEWLIB_BOARDS = volamos-newlib volamos-newlib-fpu
+check-newlib: $(PREFIX)/bin/volamos
+	@rm -f $(BUILD)/newlib/newlib/site.exp
+	@for b in $(NEWLIB_BOARDS); do mkdir -p $(NEWLIBTESTSUITE)/$$b; rm -f $(NEWLIBTESTSUITE)/$$b/newlib.sum; done
+	$(L0)"check newlib"$(L1)for b in $(NEWLIB_BOARDS); do \
+	  $(MAKE) -C $(BUILD)/newlib/newlib check-DEJAGNU build_alias=`$(BUILD_CC) -dumpmachine` \
+	    "RUNTESTFLAGS=--target_board=$$b --outdir $(NEWLIBTESTSUITE)/$$b CC_FOR_TARGET=$(PREFIX)/bin/$(TARGET)-gcc" || true; \
+	done$(L2)
+	@for b in $(NEWLIB_BOARDS); do echo "----- newlib $$b -----"; grep -E '^(# of|FAIL|ERROR|XPASS)' $(NEWLIBTESTSUITE)/$$b/newlib.sum || echo '(no tests run)'; done | tee $@.summary.txt
+	@echo "results: $(NEWLIBTESTSUITE)/<board>/newlib.{sum,log}"
+	@for b in $(NEWLIB_BOARDS); do grep -q '^# of expected passes' $(NEWLIBTESTSUITE)/$$b/newlib.sum || exit 1; done
 
 # The full C++ testsuite is large and slow, so it is not part of
 # `check`; run it on demand with `make check-gcc-c++`.  SANITIZE=0 keeps the
