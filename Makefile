@@ -1914,6 +1914,7 @@ export IXEMUL_LIBS ?= $(PREFIX)/$(TARGET)/ixemul/libs
 TESTSUITE = $(BUILD)/gcc/gcc/testsuite/gcc
 # The C++ testsuite writes into a separate g++ directory.
 CXXTESTSUITE = $(BUILD)/gcc/gcc/testsuite/g++
+RUSTTESTSUITE = $(BUILD)/gcc/gcc/testsuite/rust
 
 # Run the two sequentially (recipe lines run in order even under make -j): both
 # drive check-gcc-c in the same build tree, sharing gcc.sum and
@@ -2067,6 +2068,16 @@ check-c++: $(BOARD_SIM_PREREQ)
 .PHONY: check-shell
 check-shell:
 	shellcheck scripts/* .github/scripts/*.sh
+
+# The gccrs testsuite, for a toolchain built with ADDLANG=rust. It only
+# reports: its standing failures are test bugs on a big-endian ILP32 target
+# and CR+LF output through the simulator's pty.
+.PHONY: check-rust
+check-rust: $(BOARD_SIM_PREREQ)
+	@ln -sfn $(PREFIX)/$(TARGET)/libnix $(BUILD)/gcc/$(TARGET)/libnix
+	$(L0)"check rust"$(L1)$(MAKE) -C $(BUILD)/gcc check-gcc-rust "RUNTESTFLAGS=--target_board=$(board)$(RUNTEST_SIM)"$(L2)
+	@{ echo '----- rust -----'; grep '^# of' $(RUSTTESTSUITE)/rust.sum || echo '(no tests run)'; grep -E '^(FAIL|ERROR|XPASS)' $(RUSTTESTSUITE)/rust.sum || true; } | tee $@.summary.txt
+	@echo "results: $(RUSTTESTSUITE)/rust.{sum,log}"
 
 
 # =================================================
