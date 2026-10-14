@@ -1,0 +1,11 @@
+# The volamos board linking newlib instead of libnix, for newlib's own
+# testsuite (make check-newlib).  Board cflags come after a runtest
+# variant's flags, so a volamos/-mcrt=newlib variant would lose to the
+# board's -mcrt=nix20; replace them instead.  No FPU is fitted, so a stray
+# FPU instruction in the soft-float multilib traps.
+load_board_description "volamos"
+
+unset_board_info cflags
+set_board_info cflags "-mcrt=newlib"
+unset_board_info ldflags
+set_board_info ldflags ""

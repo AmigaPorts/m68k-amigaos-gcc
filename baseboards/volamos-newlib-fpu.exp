@@ -1,0 +1,7 @@
+# volamos-newlib with an FPU fitted, running the 68020/68881 multilib.
+load_board_description "volamos-newlib"
+
+unset_board_info cflags
+set_board_info cflags "-mcrt=newlib -mcpu=68020 -m68881"
+unset_board_info sim,options
+set_board_info sim,options "$volamos_options --fpu"
