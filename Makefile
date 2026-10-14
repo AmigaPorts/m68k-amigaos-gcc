@@ -1761,8 +1761,9 @@ export DEJAGNU ?= $(CURDIR)/dejagnu-site.exp
 TESTSUITE = $(BUILD)/gcc/gcc/testsuite/gcc
 # The C++ testsuite writes into a separate g++ directory.
 CXXTESTSUITE = $(BUILD)/gcc/gcc/testsuite/g++
+RUSTTESTSUITE = $(BUILD)/gcc/gcc/testsuite/rust
 
-.PHONY: check check-gcc-execute check-gcc-amigaos check-gcc-c++ check-libnix check-binutils check-binutils-gas check-binutils-ld
+.PHONY: check check-gcc-execute check-gcc-amigaos check-gcc-c++ check-gcc-rust check-libnix check-binutils check-binutils-gas check-binutils-ld
 # Run the two sequentially (recipe lines run in order even under make -j): both
 # drive check-gcc-c in the same build tree, sharing gcc.sum and
 # testsuite/gcc-parallel, so they must not run at the same time.
@@ -1837,6 +1838,15 @@ check-gcc-c++: $(BOARD_SIM_PREREQ)
 	$(L0)"check c++"$(L1)$(MAKE) -C $(BUILD)/gcc check-gcc-c++ "RUNTESTFLAGS=--target_board=$(board)$(RUNTEST_SIM) SANITIZE=0"$(L2)
 	@{ echo '----- c++ -----'; grep '^# of' $(CXXTESTSUITE)/g++.sum || echo '(no tests run)'; grep -E '^(FAIL|ERROR|XPASS)' $(CXXTESTSUITE)/g++.sum || true; } | tee $@.summary.txt
 	@echo "results: $(CXXTESTSUITE)/g++.{sum,log}"
+
+# The gccrs testsuite, for a toolchain built with ADDLANG=rust.  It only
+# reports: its standing failures are test bugs on a big-endian ILP32 target
+# and CR+LF output through the simulator's pty.
+check-gcc-rust: $(BOARD_SIM_PREREQ)
+	@ln -sfn $(PREFIX)/$(TARGET)/libnix $(BUILD)/gcc/$(TARGET)/libnix
+	$(L0)"check rust"$(L1)$(MAKE) -C $(BUILD)/gcc check-gcc-rust "RUNTESTFLAGS=--target_board=$(board)$(RUNTEST_SIM)"$(L2)
+	@{ echo '----- rust -----'; grep '^# of' $(RUSTTESTSUITE)/rust.sum || echo '(no tests run)'; grep -E '^(FAIL|ERROR|XPASS)' $(RUSTTESTSUITE)/rust.sum || true; } | tee $@.summary.txt
+	@echo "results: $(RUSTTESTSUITE)/rust.{sum,log}"
 
 
 # =================================================
