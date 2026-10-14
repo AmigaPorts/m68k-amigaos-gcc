@@ -155,8 +155,14 @@ jobs:
             echo "$(brew --prefix $pkg)/libexec/gnubin" >> $GITHUB_PATH
           done
 
+      # runners of one label differ in CPU, so record it to compare timings
       - name: Set build parallelism
-        run: echo "NPROC=$(nproc 2>/dev/null || sysctl -n hw.ncpu)" >> $GITHUB_ENV
+        run: |
+          nproc=$(nproc 2>/dev/null || sysctl -n hw.ncpu)
+          echo "NPROC=$nproc" >> $GITHUB_ENV
+          cpu=$(lscpu 2>/dev/null | sed -n 's/^Model name: *//p' | head -1)
+          cpu=${cpu:-$(sysctl -n machdep.cpu.brand_string 2>/dev/null)}
+          echo "CPU: $cpu, $nproc vCPUs" | tee -a $GITHUB_STEP_SUMMARY
 
       - name: Select gcc branch
         run: make branch branch=amiga$GCC_VER mod=gcc
