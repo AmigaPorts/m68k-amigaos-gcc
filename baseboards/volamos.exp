@@ -20,7 +20,9 @@ setup_sim amigaos
 # violation (exit status 99).  A runtest SANITIZE=0 leaves it out; the
 # Makefile passes that for the C++ suite, whose -fstrub tests read the
 # scrubbed stack below the stack pointer on purpose.
-set volamos_options "--cpu 68020 --stack 4096K --ram 11264K"
+# --cpu 68000: this board builds 68000 code, so run it on one, which traps
+# the misaligned word and long accesses a 68020 tolerates.
+set volamos_options "--cpu 68000 --stack 4096K --ram 11264K"
 if {![info exists SANITIZE] || $SANITIZE} {
     append volamos_options " --sanitize"
 }
