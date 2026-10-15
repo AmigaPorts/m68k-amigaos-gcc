@@ -4,4 +4,5 @@ load_board_description "volamos-newlib"
 unset_board_info cflags
 set_board_info cflags "-mcrt=newlib -mcpu=68020 -m68881"
 unset_board_info sim,options
+regsub -- {--cpu \S+} $volamos_options {--cpu 68020} volamos_options
 set_board_info sim,options "$volamos_options --fpu"
