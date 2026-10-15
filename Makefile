@@ -832,6 +832,8 @@ CONFIG_GCC = --prefix=$(PREFIX) --target=$(TARGET) $(HOST_CONFIGURE) $(CONFIG_VE
 # m68k has no __float128, so libquadmath's configure decides to build
 # nothing; skip its 14 multilib configure runs.
 CONFIG_GCC += --disable-libquadmath
+# libstdc++: no experimental filesystem TS, and only the "C" locale.
+CONFIG_GCC += --disable-libstdcxx-filesystem-ts --enable-clocale=generic
 ifeq (,$(filter 6.%,$(GCC_VERSION)))
 CONFIG_GCC += --with-gcc-major-version-only
 endif
