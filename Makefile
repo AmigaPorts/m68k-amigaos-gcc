@@ -1586,17 +1586,9 @@ $(PROJECTS)/libdebug/configure:
 libpthread: $(BUILD)/libpthread/_done
 
 $(BUILD)/libpthread/_done: $(BUILD)/libpthread/Makefile
-	@mkdir -p $(PREFIX)/$(TARGET)/lib/libb \
-		$(PREFIX)/$(TARGET)/lib/libm020 \
-		$(PREFIX)/$(TARGET)/lib/libb/libm020 \
-		$(PREFIX)/$(TARGET)/lib/libb32/libm020
 	@rsync -a --no-group --exclude=debug.h $(BUILD)/libpthread/*.h $(PREFIX)/$(TARGET)/include/
 	$(L0)"make libpthread"$(L1) cd $(BUILD)/libpthread && $(MAKE) -f Makefile.gcc6 $(L2)
-	$(L0)"install libpthread lib"$(L1) cp $(BUILD)/libpthread/lib/libpthread.a $(PREFIX)/$(TARGET)/lib/ $(L2)
-	$(L0)"install libpthread libb"$(L1) cp $(BUILD)/libpthread/libb/libpthread.a $(PREFIX)/$(TARGET)/lib/libb/ $(L2)
-	$(L0)"install libpthread libm020"$(L1) cp $(BUILD)/libpthread/libm020/libpthread.a $(PREFIX)/$(TARGET)/lib/libm020/ $(L2)
-	$(L0)"install libpthread libm020bb"$(L1) cp $(BUILD)/libpthread/libm020bb/libpthread.a $(PREFIX)/$(TARGET)/lib/libb/libm020/ $(L2)
-	$(L0)"install libpthread libm020bb32"$(L1) cp $(BUILD)/libpthread/libm020bb32/libpthread.a $(PREFIX)/$(TARGET)/lib/libb32/libm020/ $(L2)
+	$(L0)"install libpthread"$(L1) cd $(BUILD)/libpthread && $(MAKE) -f Makefile.gcc6 PREFIX=$(PREFIX) install $(L2)
 	@echo "done" >$@
 
 $(BUILD)/libpthread/Makefile: $(BUILD)/libnix/_done $(PROJECTS)/aros-stuff/pthreads/Makefile $(shell find 2>/dev/null $(PROJECTS)/aros-stuff/pthreads -type f)
@@ -1957,13 +1949,16 @@ branch:
 # =================================================
 MULTI = MODNAME/.: \
 		MODNAME/libm060:-m68060 \
+		MODNAME/libm060/libm881:-m68060_-m68881 \
 		MODNAME/libm020:-m68020 \
 		MODNAME/libm020/libm881:-m68020_-m68881 \
 		MODNAME/libb:-fbaserel \
 		MODNAME/libb/libm060:-fbaserel_-m68060 \
+		MODNAME/libb/libm060/libm881:-fbaserel_-m68060_-m68881 \
 		MODNAME/libb/libm020:-fbaserel_-m68020 \
 		MODNAME/libb/libm020/libm881:-fbaserel_-m68020_-m68881 \
 		MODNAME/libb32/libm060:-fbaserel32_-m68060 \
+		MODNAME/libb32/libm060/libm881:-fbaserel32_-m68060_-m68881 \
 		MODNAME/libb32/libm020:-fbaserel32_-m68020 \
 		MODNAME/libb32/libm020/libm881:-fbaserel32_-m68020_-m68881
 
