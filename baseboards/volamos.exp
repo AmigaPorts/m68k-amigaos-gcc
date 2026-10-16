@@ -25,6 +25,10 @@ if {![info exists SANITIZE] || $SANITIZE} {
     append volamos_options " --sanitize"
 }
 set_board_info sim,options $volamos_options
+# Wall-clock limit for each program run; sim.exp's default is 240 s.  The
+# slowest tests take about 10 s, 40 s on a loaded machine, so a hang costs a
+# parallel slot 2 minutes rather than 4.
+set_board_info sim_time_limit 120
 
 # No multilib options needed by default.
 process_multilib_options ""
