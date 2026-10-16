@@ -25,6 +25,8 @@ if {![info exists SANITIZE] || $SANITIZE} {
     append volamos_options " --sanitize"
 }
 set_board_info sim,options $volamos_options
+# Wall-clock limit for each program run, as in volamos.exp.
+set_board_info sim_time_limit 120
 
 # No multilib options needed by default.
 process_multilib_options ""
