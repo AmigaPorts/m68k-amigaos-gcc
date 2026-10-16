@@ -845,9 +845,10 @@ ifneq (,$(findstring amigaos,$(HOST)))
 CONFIG_GCC += --disable-libcc1 --without-static-standard-libraries
 # The bootstrap toolchain may predate C++ linkage fixes in the AmigaOS
 # headers.  Its libnix also declares popen/pclose despite not providing a
-# usable pair.  Keep GCC's optional host probes from enabling those paths;
-# this affects only the compiler executables that run on HOST.
-GCC_HOST_CONFIGURE_ENV := host_configargs="ac_cv_func_clock_gettime=no ac_cv_func_getrlimit=no ac_cv_func_pclose=no ac_cv_func_popen=no ac_cv_func_setrlimit=no"
+# usable pair, and newlib installs <ftw.h> while libnix has no ftw/nftw.
+# Keep GCC's optional host probes from enabling those paths; this affects
+# only the compiler executables that run on HOST.
+GCC_HOST_CONFIGURE_ENV := host_configargs="ac_cv_func_clock_gettime=no ac_cv_func_getrlimit=no ac_cv_func_pclose=no ac_cv_func_popen=no ac_cv_func_setrlimit=no ac_cv_header_ftw_h=no"
 GCC_HOST_COMPAT_LIBRARY := $(BUILD)/libamiga-host-compat.a
 GCC_HOST_COMPAT_PREREQ := $(GCC_HOST_COMPAT_LIBRARY)
 # Use a library here rather than adding the object directly: GCC's top-level
