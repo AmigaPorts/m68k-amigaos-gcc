@@ -858,13 +858,16 @@ else
 CONFIG_GCC += --disable-werror
 endif
 ifneq (,$(findstring amigaos,$(HOST)))
-# LTO remains enabled for AmigaOS hosts.  GCC omits only the shared
-# lto-plugin, which AmigaOS cannot load, while retaining lto1/lto-wrapper.
+# AmigaOS cannot load shared objects: skip libcc1 (gdb's compile plugin).
+# GCC leaves out lto-plugin by itself and keeps lto1/lto-wrapper, so -flto
+# still works.  Host programs are static anyway; don't add
+# -static-libstdc++ -static-libgcc to their links.
 CONFIG_GCC += --disable-libcc1 --without-static-standard-libraries
 # The bootstrap toolchain may predate C++ linkage fixes in the AmigaOS
-# headers.  Its libnix also declares popen/pclose despite not providing a
-# usable pair.  Keep GCC's optional host probes from enabling those paths;
-# this affects only the compiler executables that run on HOST.
+# headers, and older libnix versions (including the bootstrap image's)
+# declare popen/pclose without a usable pair; GCC uses them only in a
+# debugging helper.  Keep GCC's optional host probes from enabling those
+# paths; this affects only the compiler executables that run on HOST.
 GCC_HOST_CONFIGURE_ENV := host_configargs="ac_cv_func_clock_gettime=no ac_cv_func_getrlimit=no ac_cv_func_pclose=no ac_cv_func_popen=no ac_cv_func_setrlimit=no"
 GCC_HOST_COMPAT_LIBRARY := $(BUILD)/libamiga-host-compat.a
 GCC_HOST_COMPAT_PREREQ := $(GCC_HOST_COMPAT_LIBRARY)
