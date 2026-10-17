@@ -1855,19 +1855,42 @@ check-libnix: $(PREFIX)/bin/volamos
 # newlib's own testsuite, linked against the installed newlib: the base
 # multilib without an FPU (volamos-newlib) and the 68020/68881 one with an
 # FPU (volamos-newlib-fpu).  It only reports: it has standing failures.
-# One runtest per board, each with its own outdir: dejagnu cannot replay a
-# multi-board --target_board list.  site.exp is regenerated with build_alias
-# as its host_alias, which the automake rule otherwise leaves empty, and
-# CC_FOR_TARGET spares the PATH lookup.  A board without results fails.
+# newlib's check-DEJAGNU runs a single runtest in one directory, where every
+# test program is written to a fixed name, so it uses one core.  Instead, one
+# runtest per board and .exp file runs in its own directory, with a site.exp
+# whose tmpdir points there, and make -j runs them side by side; the results
+# are merged per board with gcc's dg-extract-results.sh.  site.exp is
+# regenerated with build_alias as its host_alias, which the automake rule
+# otherwise leaves empty, and CC_FOR_TARGET spares the PATH lookup.  A board
+# without results fails.
 NEWLIBTESTSUITE = $(BUILD)/newlib/newlib/testsuite
 NEWLIB_BOARDS = volamos-newlib volamos-newlib-fpu
-check-newlib: $(PREFIX)/bin/volamos
+NEWLIB_TESTSRC = $(PROJECTS)/newlib-cygwin/newlib/testsuite
+NEWLIB_EXPS = $(patsubst $(NEWLIB_TESTSRC)/%,%,$(sort $(wildcard $(NEWLIB_TESTSRC)/newlib.*/*.exp)))
+# the results directory of board $(1) and .exp file $(2)
+newlib-check-dir = $(NEWLIBTESTSUITE)/$(1)/$(subst /,_,$(2:.exp=))
+NEWLIB_CHECKS = $(foreach b,$(NEWLIB_BOARDS),$(foreach e,$(NEWLIB_EXPS),$(call newlib-check-dir,$(b),$(e))/newlib.sum))
+
+.PHONY: newlib-site-exp $(NEWLIB_CHECKS)
+newlib-site-exp: $(PREFIX)/bin/volamos
 	@rm -f $(BUILD)/newlib/newlib/site.exp
-	@for b in $(NEWLIB_BOARDS); do mkdir -p $(NEWLIBTESTSUITE)/$$b; rm -f $(NEWLIBTESTSUITE)/$$b/newlib.sum; done
-	$(L0)"check newlib"$(L1)for b in $(NEWLIB_BOARDS); do \
-	  $(MAKE) -C $(BUILD)/newlib/newlib check-DEJAGNU build_alias=`$(BUILD_CC) -dumpmachine` \
-	    "RUNTESTFLAGS=--target_board=$$b --outdir $(NEWLIBTESTSUITE)/$$b CC_FOR_TARGET=$(PREFIX)/bin/$(TARGET)-gcc" || true; \
-	done$(L2)
+	@$(MAKE) --no-print-directory -C $(BUILD)/newlib/newlib site.exp build_alias=`$(BUILD_CC) -dumpmachine` >/dev/null
+
+define newlib-check-rule
+$(call newlib-check-dir,$(1),$(2))/newlib.sum: newlib-site-exp
+	@mkdir -p $$(@D)
+	@sed 's|^set tmpdir .*|set tmpdir $$(@D)|' $(BUILD)/newlib/newlib/site.exp >$$(@D)/site.exp
+	@cd $$(@D) && runtest --tool newlib --srcdir $(NEWLIB_TESTSRC) --target_board=$(1) \
+	  --outdir $$(@D) CC_FOR_TARGET=$(PREFIX)/bin/$(TARGET)-gcc $(2) >runtest.out 2>&1 || true
+endef
+$(foreach b,$(NEWLIB_BOARDS),$(foreach e,$(NEWLIB_EXPS),$(eval $(call newlib-check-rule,$(b),$(e)))))
+
+check-newlib: $(NEWLIB_CHECKS)
+	@for b in $(NEWLIB_BOARDS); do \
+	  sums=; for e in $(NEWLIB_EXPS); do sums="$$sums $(NEWLIBTESTSUITE)/$$b/`echo $${e%.exp} | tr / _`/newlib.sum"; done; \
+	  $(PROJECTS)/gcc/contrib/dg-extract-results.sh $$sums >$(NEWLIBTESTSUITE)/$$b/newlib.sum; \
+	  $(PROJECTS)/gcc/contrib/dg-extract-results.sh -L `echo $$sums | sed 's/newlib\.sum/newlib.log/g'` >$(NEWLIBTESTSUITE)/$$b/newlib.log; \
+	done
 	@for b in $(NEWLIB_BOARDS); do echo "----- newlib $$b -----"; grep -E '^(# of|FAIL|ERROR|XPASS)' $(NEWLIBTESTSUITE)/$$b/newlib.sum || echo '(no tests run)'; done | tee $@.summary.txt
 	@echo "results: $(NEWLIBTESTSUITE)/<board>/newlib.{sum,log}"
 	@for b in $(NEWLIB_BOARDS); do grep -q '^# of expected passes' $(NEWLIBTESTSUITE)/$$b/newlib.sum || exit 1; done
