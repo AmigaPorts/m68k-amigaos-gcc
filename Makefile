@@ -1964,16 +1964,19 @@ branch:
 # multilib support
 # =================================================
 MULTI = MODNAME/.: \
-		MODNAME/libm060:-m68060 \
 		MODNAME/libm020:-m68020 \
 		MODNAME/libm020/libm881:-m68020_-m68881 \
 		MODNAME/libb:-fbaserel \
-		MODNAME/libb/libm060:-fbaserel_-m68060 \
 		MODNAME/libb/libm020:-fbaserel_-m68020 \
 		MODNAME/libb/libm020/libm881:-fbaserel_-m68020_-m68881 \
-		MODNAME/libb32/libm060:-fbaserel32_-m68060 \
 		MODNAME/libb32/libm020:-fbaserel32_-m68020 \
 		MODNAME/libb32/libm020/libm881:-fbaserel32_-m68020_-m68881
+# gcc 6's t-amigaos has no 68060 multilib; 13 and later do.
+ifeq (,$(filter 6.%,$(GCC_VERSION)))
+MULTI += MODNAME/libm060:-m68060 \
+		MODNAME/libb/libm060:-fbaserel_-m68060 \
+		MODNAME/libb32/libm060:-fbaserel32_-m68060
+endif
 
 # MULTI and gcc/config/m68k/t-amigaos describe the same set of multilibs
 # twice: t-amigaos tells the driver which directory a set of flags selects,
