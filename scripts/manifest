@@ -3,11 +3,15 @@
 # module with the commit of its checkout, suffixed with "-dirty" when the
 # checkout has uncommitted changes or untracked files that git does not
 # ignore, like git describe --dirty.  The first line, a comment, is this
-# repository.
+# repository.  --markdown prints the same as a table, with each commit
+# linked and its subject, for a CI run summary.
 #
-#   PROJECTS=... scripts/manifest > .manifest
+#   PROJECTS=... scripts/manifest [--markdown] > .manifest
 
 set -euo pipefail
+
+format=${1-}
+[ -z "$format" ] || [ "$format" = --markdown ] || { echo "usage: $0 [--markdown]" >&2; exit 1; }
 
 # The top of this repository, wherever in it the script is.
 here=$(git -C "$(dirname "$(readlink -f "$0")")" rev-parse --show-toplevel)
@@ -16,21 +20,37 @@ projects=${PROJECTS:-$here/projects}
 dirty() { [ -z "$(git -C "$1" status --porcelain)" ] || echo "-dirty"; }
 
 # Collect the lines first, to align the commits in a column.
-names=() urls=() commits=()
-add() { names+=("$1"); urls+=("$2"); commits+=("$3"); }
+names=() urls=() commits=() dirs=()
+add() { names+=("$1"); urls+=("$2"); commits+=("$3$(dirty "$4")"); dirs+=("$4"); }
 
 # This repository's URL: the remote of the branch's upstream, else origin.
 up=$(git -C "$here" rev-parse --abbrev-ref --symbolic-full-name '@{u}' 2>/dev/null |
 	cut -d/ -f1) || true
 add "# m68k-amigaos-gcc" "$(git -C "$here" remote get-url "${up:-origin}" 2>/dev/null)" \
-	"$(git -C "$here" rev-parse HEAD)$(dirty "$here")"
+	"$(git -C "$here" rev-parse HEAD)" "$here"
 
 while read -r name url _; do
 	case $name in ''|'#'*) continue ;; esac
 	dir=$projects/$name
 	[ -e "$dir/.git" ] || continue
-	add "$name" "$url" "$(git -C "$dir" rev-parse HEAD)$(dirty "$dir")"
+	add "$name" "$url" "$(git -C "$dir" rev-parse HEAD)" "$dir"
 done < "$here/.repos"
+
+if [ "$format" = --markdown ]; then
+	echo "### Module revisions"
+	echo "| module | commit | subject |"
+	echo "|---|---|---|"
+	for i in "${!names[@]}"; do
+		# a browsable https URL, also for ssh remotes
+		web=$(printf '%s' "${urls[i]}" | sed 's|^git@\([^:]*\):|https://\1/|; s|\.git$||')
+		sha=${commits[i]%-dirty}
+		subject=$(git -C "${dirs[i]}" log -1 --format=%s | tr '|' '/')
+		# shellcheck disable=SC2016 # the backticks are markdown
+		printf '| %s | [`%s`](%s/commit/%s)%s | %s |\n' "${names[i]#\# }" \
+			"${sha:0:12}" "$web" "$sha" "${commits[i]#"$sha"}" "$subject"
+	done
+	exit 0
+fi
 
 nw=0 uw=0
 for i in "${!names[@]}"; do
