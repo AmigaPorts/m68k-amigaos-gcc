@@ -644,7 +644,7 @@ update-binutils: $(PROJECTS)/binutils/configure
 update-fd2sfd: $(PROJECTS)/fd2sfd/configure
 	$(call update-module,fd2sfd)
 
-update-lha: $(PROJECTS)/lha/configure.ac
+update-lha: $(PROJECTS)/lha/configure
 	$(call update-module,lha)
 
 update-fd2pragma: $(PROJECTS)/fd2pragma/makefile
@@ -1307,14 +1307,11 @@ $(LHA): $(BUILD)/lha/Makefile
 	$(L0)"make lha"$(L1) $(MAKE) -C $(BUILD)/lha all $(L2)
 	$(L0)"install lha"$(L1) mkdir -p $(PREFIX)/bin && install $(BUILD)/lha/src/lha$(EXEEXT) $(LHA) $(L2)
 
-# lha keeps no generated configure in git: autoreconf runs on a copy of the
-# checkout, so projects/lha stays clean
-$(BUILD)/lha/Makefile: $(PROJECTS)/lha/configure.ac $(shell find 2>/dev/null $(PROJECTS)/lha -not \( -path $(PROJECTS)/lha/.git -prune \) -type f)
-	@rm -rf $(BUILD)/lha && mkdir -p $(BUILD)
-	@rsync -a --no-group $(PROJECTS)/lha $(BUILD)/ --exclude .git
-	$(L0)"configure lha"$(L1) cd $(BUILD)/lha && autoreconf -fi && ./configure $(HOST_CONFIGURE) $(L2)
+$(BUILD)/lha/Makefile: $(PROJECTS)/lha/configure $(shell find 2>/dev/null $(PROJECTS)/lha -not \( -path $(PROJECTS)/lha/.git -prune \) -type f)
+	@rm -rf $(BUILD)/lha && mkdir -p $(BUILD)/lha
+	$(L0)"configure lha"$(L1) cd $(BUILD)/lha && $(PROJECTS)/lha/configure $(HOST_CONFIGURE) $(L2)
 
-$(PROJECTS)/lha/configure.ac:
+$(PROJECTS)/lha/configure:
 	@cd $(PROJECTS) && git clone -b $(lha_BRANCH) --depth 4 $(lha_URL)
 
 
