@@ -5,13 +5,12 @@
 # ignore, like git describe --dirty.  The first line, a comment, is this
 # repository.
 #
-#   BUILD=... PROJECTS=... scripts/manifest > .manifest
+#   PROJECTS=... scripts/manifest > .manifest
 
 set -euo pipefail
 
 # The top of this repository, wherever in it the script is.
 here=$(git -C "$(dirname "$(readlink -f "$0")")" rev-parse --show-toplevel)
-build=${BUILD-}
 projects=${PROJECTS:-$here/projects}
 
 dirty() { [ -z "$(git -C "$1" status --porcelain)" ] || echo "-dirty"; }
@@ -28,9 +27,7 @@ add "# m68k-amigaos-gcc" "$(git -C "$here" remote get-url "${up:-origin}" 2>/dev
 
 while read -r name url _; do
 	case $name in ''|'#'*) continue ;; esac
-	# lha is cloned into $(BUILD); the other modules into projects/.
-	dir=$build/$name
-	[ -n "$build" ] && [ -e "$dir/.git" ] || dir=$projects/$name
+	dir=$projects/$name
 	[ -e "$dir/.git" ] || continue
 	add "$name" "$url" "$(git -C "$dir" rev-parse HEAD)$(dirty "$dir")"
 done < "$here/.repos"

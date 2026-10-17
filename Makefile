@@ -479,7 +479,7 @@ all: gcc binutils $(ALL_GDB) gprof fd2sfd fd2pragma ira sfdc vasm libnix ixemul 
 # that the release packages carry it.
 .PHONY: manifest
 manifest:
-	@BUILD=$(BUILD) PROJECTS=$(PROJECTS) scripts/manifest > .manifest
+	@PROJECTS=$(PROJECTS) scripts/manifest > .manifest
 	@mkdir -p $(PREFIX)
 	@install -m 644 .manifest $(PREFIX)/.manifest
 
@@ -490,8 +490,8 @@ build-target-tools: $(TARGET_BUILD_TOOLS_PREREQ)
 # =================================================
 # clean
 # =================================================
-.PHONY: drop-prefix clean clean-gcc clean-binutils clean-fd2sfd clean-fd2pragma clean-ira clean-sfdc clean-vasm clean-vbcc clean-vlink clean-libnix clean-ixemul clean-libgcc clean-clib2 clean-libdebug clean-libpthread clean-newlib clean-ndk clean-gmp clean-mpc clean-mpfr
-clean: clean-gcc clean-binutils clean-fd2sfd clean-fd2pragma clean-ira clean-sfdc clean-vasm clean-vbcc clean-vlink clean-libnix clean-ixemul clean-clib2 clean-libdebug clean-libpthread clean-newlib clean-ndk clean-gmp clean-mpc clean-mpfr
+.PHONY: drop-prefix clean clean-gcc clean-binutils clean-fd2sfd clean-lha clean-fd2pragma clean-ira clean-sfdc clean-vasm clean-vbcc clean-vlink clean-libnix clean-ixemul clean-libgcc clean-clib2 clean-libdebug clean-libpthread clean-newlib clean-ndk clean-gmp clean-mpc clean-mpfr
+clean: clean-gcc clean-binutils clean-fd2sfd clean-lha clean-fd2pragma clean-ira clean-sfdc clean-vasm clean-vbcc clean-vlink clean-libnix clean-ixemul clean-clib2 clean-libdebug clean-libpthread clean-newlib clean-ndk clean-gmp clean-mpc clean-mpfr
 	rm -rf $(BUILD)
 	rm -rf *.log
 	mkdir -p $(BUILD)
@@ -529,6 +529,9 @@ clean-ira:
 
 clean-sfdc:
 	rm -rf $(BUILD)/sfdc
+
+clean-lha:
+	rm -rf $(BUILD)/lha
 
 clean-vasm:
 	rm -rf $(BUILD)/vasm
@@ -614,8 +617,8 @@ package:
 # update all projects
 # =================================================
 
-.PHONY: update update-gcc update-binutils update-fd2sfd update-fd2pragma update-ira update-sfdc update-vasm update-vbcc update-vlink update-libnix update-ixemul update-clib2 update-libdebug update-libpthread update-ndk update-newlib update-netinclude
-update: update-gcc update-binutils update-fd2sfd update-fd2pragma update-ira update-sfdc update-vasm update-vbcc update-vlink update-libnix update-ixemul update-clib2 update-libdebug update-libpthread update-ndk update-newlib update-netinclude
+.PHONY: update update-gcc update-binutils update-fd2sfd update-lha update-fd2pragma update-ira update-sfdc update-vasm update-vbcc update-vlink update-libnix update-ixemul update-clib2 update-libdebug update-libpthread update-ndk update-newlib update-netinclude
+update: update-gcc update-binutils update-fd2sfd update-lha update-fd2pragma update-ira update-sfdc update-vasm update-vbcc update-vlink update-libnix update-ixemul update-clib2 update-libdebug update-libpthread update-ndk update-newlib update-netinclude
 	+$(MAKE) -B $(DOWNLOAD)/vbcc_target_m68k-amigaos.lha
 	+$(MAKE) -B $(DOWNLOAD)/vbcc_target_m68k-kick13.lha
 	+$(MAKE) -B $(DOWNLOAD)/$(NDK_ARC_NAME).lha
@@ -640,6 +643,9 @@ update-binutils: $(PROJECTS)/binutils/configure
 
 update-fd2sfd: $(PROJECTS)/fd2sfd/configure
 	$(call update-module,fd2sfd)
+
+update-lha: $(PROJECTS)/lha/configure.ac
+	$(call update-module,lha)
 
 update-fd2pragma: $(PROJECTS)/fd2pragma/makefile
 	$(call update-module,fd2pragma)
@@ -1297,12 +1303,19 @@ SFDC_FOR_BUILD ?= $(PREFIX)/bin/sfdc
 .PHONY: lha
 lha: $(LHA)
 
-$(LHA):
-	@mkdir -p $(BUILD) && rm -rf $(BUILD)/lha
-	$(L0)"clone lha"$(L1) cd $(BUILD) && git clone -b $(lha_BRANCH) --depth 1 $(lha_URL) $(L2)
-	$(L0)"configure lha"$(L1) cd $(BUILD)/lha && autoreconf -fi && ./configure $(HOST_CONFIGURE) $(L2)
-	$(L0)"make lha"$(L1) cd $(BUILD)/lha && $(MAKE) all $(L2)
+$(LHA): $(BUILD)/lha/Makefile
+	$(L0)"make lha"$(L1) $(MAKE) -C $(BUILD)/lha all $(L2)
 	$(L0)"install lha"$(L1) mkdir -p $(PREFIX)/bin && install $(BUILD)/lha/src/lha$(EXEEXT) $(LHA) $(L2)
+
+# lha keeps no generated configure in git: autoreconf runs on a copy of the
+# checkout, so projects/lha stays clean
+$(BUILD)/lha/Makefile: $(PROJECTS)/lha/configure.ac $(shell find 2>/dev/null $(PROJECTS)/lha -not \( -path $(PROJECTS)/lha/.git -prune \) -type f)
+	@rm -rf $(BUILD)/lha && mkdir -p $(BUILD)
+	@rsync -a --no-group $(PROJECTS)/lha $(BUILD)/ --exclude .git
+	$(L0)"configure lha"$(L1) cd $(BUILD)/lha && autoreconf -fi && ./configure $(HOST_CONFIGURE) $(L2)
+
+$(PROJECTS)/lha/configure.ac:
+	@cd $(PROJECTS) && git clone -b $(lha_BRANCH) --depth 4 $(lha_URL)
 
 
 .PHONY: vbcc-target
