@@ -66,9 +66,10 @@ on:
       amitools_git:
         type: string
         default: git+https://github.com/AmigaPorts/amitools.git
+      # empty, so a module repo's ci-* label picks the runner as here
       runner:
         type: string
-        default: ubuntu-24.04
+        default: ""
       repos:
         type: string
         default: ""
