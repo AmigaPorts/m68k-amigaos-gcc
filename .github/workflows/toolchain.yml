@@ -335,7 +335,7 @@ jobs:
         if: env.RUN_TESTSUITE_NEWLIB == 'true' && env.SIMULATOR == 'volamos'
         run: |
           set +e
-          make check-newlib
+          make -j $NPROC check-newlib
           rc=$?
           { echo '```'; cat check-newlib.summary.txt 2>/dev/null; echo '```'; } >> $GITHUB_STEP_SUMMARY
           exit $rc
