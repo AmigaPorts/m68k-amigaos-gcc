@@ -342,7 +342,7 @@ CXXFLAGS ?= $(CFLAGS)
 BUILD_CFLAGS ?= $(CFLAGS)
 BUILD_CXXFLAGS ?= $(CXXFLAGS)
 CFLAGS_FOR_TARGET ?= $(strip -O2 $(GCC6_OMIT_FRAME_POINTER))
-CXXFLAGS_FOR_TARGET ?= $(CFLAGS_FOR_TARGET) -fno-exceptions -fno-rtti
+CXXFLAGS_FOR_TARGET ?= $(CFLAGS_FOR_TARGET)
 
 # Preserve the original native configure environment exactly.
 E:=CFLAGS="$(CFLAGS)" CXXFLAGS="$(CXXFLAGS)" CFLAGS_FOR_BUILD="$(CFLAGS)" CXXFLAGS_FOR_BUILD="$(CXXFLAGS)"  CFLAGS_FOR_TARGET="$(CFLAGS_FOR_TARGET)" CXXFLAGS_FOR_TARGET="$(CFLAGS_FOR_TARGET)"
@@ -1620,6 +1620,11 @@ $(PROJECTS)/aros-stuff/pthreads/Makefile:
 # =================================================
 # newlib
 # =================================================
+# The only C++ in newlib, its AmigaOS malloc, must not need the C++ runtime,
+# in hosted builds too.
+NEWLIB_CFLAGS ?= $(CFLAGS_FOR_TARGET)
+NEWLIB_CXXFLAGS ?= $(NEWLIB_CFLAGS) -fno-exceptions -fno-rtti
+
 NEWLIB_CONFIG := CC=$(TARGET)-gcc CXX=$(TARGET)-g++
 ifneq (,$(strip $(HOST)))
 # A Canadian-cross build inherits HOST binutils from the environment.  Newlib
@@ -1654,7 +1659,7 @@ $(BUILD)/newlib/newlib/libc.a: $(BUILD)/newlib/newlib/Makefile $(NEWLIB_BINUTILS
 $(BUILD)/newlib/newlib/Makefile: $(PROJECTS)/newlib-cygwin/newlib/configure $(BUILD)/ndk-include_ndk $(BUILD)/gcc/_done | $(PREFIX_STAMP)
 	@mkdir -p $(BUILD)/newlib/newlib
 	@if [ ! -f "$(BUILD)/newlib/newlib/Makefile" ]; then \
-	$(L00)"configure newlib"$(L1) cd $(BUILD)/newlib/newlib && $(NEWLIB_CONFIG) CFLAGS="$(CFLAGS_FOR_TARGET)" CC_FOR_BUILD="$(CC)" CXXFLAGS="$(CXXFLAGS_FOR_TARGET)" $(PROJECTS)/newlib-cygwin/newlib/configure --host=$(TARGET) --prefix=$(PREFIX) --enable-newlib-io-long-long --enable-newlib-io-c99-formats --enable-newlib-reent-small --enable-newlib-mb --enable-newlib-long-time_t --disable-newlib-reent-check-verify $(L2) \
+	$(L00)"configure newlib"$(L1) cd $(BUILD)/newlib/newlib && $(NEWLIB_CONFIG) CFLAGS="$(NEWLIB_CFLAGS)" CC_FOR_BUILD="$(CC)" CXXFLAGS="$(NEWLIB_CXXFLAGS)" $(PROJECTS)/newlib-cygwin/newlib/configure --host=$(TARGET) --prefix=$(PREFIX) --enable-newlib-io-long-long --enable-newlib-io-c99-formats --enable-newlib-reent-small --enable-newlib-mb --enable-newlib-long-time_t --disable-newlib-reent-check-verify $(L2) \
 	; else touch "$(BUILD)/newlib/newlib/Makefile"; fi
 
 $(PROJECTS)/newlib-cygwin/newlib/configure:
