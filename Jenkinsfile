@@ -164,6 +164,13 @@ def buildManifest(DOCKER_ROOT, DOCKERIMAGE, DOCKERTAG, DOCKERFILE, PLATFORMS, BU
 }
 
 node('master') {
+	def isPullRequest = env.CHANGE_ID?.trim();
+	def branchName = isPullRequest ? env.CHANGE_TARGET : env.BRANCH_NAME;
+
+	if (branchName != 'master' || branchName == 'staging') {
+		return;
+	}
+	
 	killall_jobs();
 	def labels = jobLabels(env.JOB_NAME)
 	
