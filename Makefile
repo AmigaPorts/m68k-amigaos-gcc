@@ -269,7 +269,7 @@ MAKEOVERRIDES += MAKEINFO=$(MAKEINFO)
 # binutils, gcc and newlib record the prefix in their configured build
 # trees: building the same tree for another PREFIX installs into both
 PREFIX_STAMP := $(BUILD)/.prefix
-ifeq ($(filter clean% drop-prefix help info update% branch,$(MAKECMDGOALS)),)
+ifeq ($(filter clean% drop-prefix help info update% branch release-tag,$(MAKECMDGOALS)),)
 ifneq ($(wildcard $(PREFIX_STAMP)),)
 ifneq ($(shell cat $(PREFIX_STAMP)),$(abspath $(PREFIX)))
 $(error $(BUILD) was configured for PREFIX=$(shell cat $(PREFIX_STAMP)); use that PREFIX, another BUILD, or make clean)
@@ -1720,6 +1720,16 @@ all-sdk: $(SDKS)
 
 $(SDKS): libnix $(LHA_PREREQ)
 	$(MAKE) sdk sdk=$@
+
+# =================================================
+# tag a release
+# =================================================
+# Tag TAG in every module of default-repos and in this repository; see
+# scripts/release-tag.  A dry run unless CONFIRM=yes:
+#   make release-tag TAG=v16.2-rc18 NOTES=notes.md [CONFIRM=yes]
+.PHONY: release-tag
+release-tag:
+	@PROJECTS=$(PROJECTS) scripts/release-tag "$(TAG)" "$(NOTES)" $(if $(filter yes,$(CONFIRM)),--confirm)
 
 # =================================================
 # update repos
