@@ -302,6 +302,15 @@ jobs:
           { echo '```'; cat check-libnix.summary.txt 2>/dev/null; echo '```'; } >> $GITHUB_STEP_SUMMARY
           exit $rc
 
+      # The simulator cannot create Exec tasks; link every pthread test here.
+      - name: Build the libpthread regression programs
+        run: |
+          set +e
+          make check-libpthread
+          rc=$?
+          { echo '```'; cat check-libpthread.summary.txt 2>/dev/null; echo '```'; } >> $GITHUB_STEP_SUMMARY
+          exit $rc
+
       - name: Run the gcc C testsuite
         if: env.RUN_TESTSUITE == 'true' && runner.os == 'Linux'
         run: |

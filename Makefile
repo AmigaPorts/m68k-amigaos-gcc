@@ -1816,7 +1816,7 @@ TESTSUITE = $(BUILD)/gcc/gcc/testsuite/gcc
 # The C++ testsuite writes into a separate g++ directory.
 CXXTESTSUITE = $(BUILD)/gcc/gcc/testsuite/g++
 
-.PHONY: check check-gcc-execute check-gcc-amigaos check-gcc-c++ check-libnix check-newlib check-binutils check-binutils-gas check-binutils-ld
+.PHONY: check check-gcc-execute check-gcc-amigaos check-gcc-c++ check-libnix check-libpthread check-newlib check-binutils check-binutils-gas check-binutils-ld
 # Run the two sequentially (recipe lines run in order even under make -j): both
 # drive check-gcc-c in the same build tree, sharing gcc.sum and
 # testsuite/gcc-parallel, so they must not run at the same time.
@@ -1825,6 +1825,7 @@ check:
 	@$(MAKE) --no-print-directory check-binutils
 	@$(MAKE) --no-print-directory check-gcc-amigaos
 	@$(MAKE) --no-print-directory check-libnix
+	@$(MAKE) --no-print-directory check-libpthread
 	@$(MAKE) --no-print-directory check-gcc-execute
 
 # The gas and ld dump tests for the hunk target run on the build machine
@@ -1881,6 +1882,16 @@ check-libnix: $(PREFIX)/bin/volamos
 	@set -o pipefail; $(MAKE) -B -C $(PROJECTS)/libnix/test check-target \
 	  CROSS_CC=$(PREFIX)/bin/$(TARGET)-gcc SIM=$(PREFIX)/bin/volamos \
 	  SIMFLAGS="--stack 4K --sanitize" 2>&1 | tee $@.summary.txt
+
+# Build libpthread's regression programs for each multilib.  They cannot run
+# under the single-tasking simulator because it lacks CreateNewProc().
+check-libpthread: $(BUILD)/libpthread/_done
+	@set -o pipefail; if grep -q '^check:' $(BUILD)/libpthread/Makefile.gcc6; then \
+	  $(MAKE) -C $(BUILD)/libpthread -f Makefile.gcc6 check \
+	    CC=$(PREFIX)/bin/$(TARGET)-gcc CXX=$(PREFIX)/bin/$(TARGET)-g++ \
+	    AR=$(PREFIX)/bin/$(TARGET)-ar; \
+	  else echo 'SKIP: aros-stuff does not yet have the pthread check target'; fi \
+	  2>&1 | tee $@.summary.txt
 
 # newlib's own testsuite, linked against the installed newlib: the base
 # multilib without an FPU (volamos-newlib) and the 68020/68881 one with an
