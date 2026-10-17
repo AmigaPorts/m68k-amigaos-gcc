@@ -318,7 +318,9 @@ endif
 
 # get git urls and branches from .repos file
 $(shell  [ ! -f .repos ] && cp default-repos .repos)
-modules := $(shell cat .repos | $(SED) -e 's/[[:blank:]]\+/ /g' | cut -d' ' -f1)
+# Blank lines and comments are skipped (a .manifest records this repository
+# in its first line, as a comment).
+modules := $(shell $(SED) -e '/^[[:blank:]]*\#/d' -e '/^[[:blank:]]*$$/d' -e 's/[[:blank:]]\+/ /g' .repos | cut -d' ' -f1)
 get_url = $(shell grep '^$(1)[[:blank:]]' .repos | $(SED) -e 's/[[:blank:]]\+/ /g' | cut -d' ' -f2)
 get_branch = $(shell grep '^$(1)[[:blank:]]' .repos | $(SED) -e 's/[[:blank:]]\+/ /g' | cut -d' ' -f3)
 $(foreach modu,$(modules),$(eval $(modu)_URL=$(call get_url,$(modu))))
@@ -469,6 +471,17 @@ else
 endif
 
 all: gcc binutils $(ALL_GDB) gprof fd2sfd fd2pragma ira sfdc vasm libnix ixemul libgcc clib2 libdebug libpthread ndk ndk13 libnix4.library
+	@echo "Creating .manifest..."
+	@$(MAKE) --no-print-directory manifest
+
+# Record what was built in .manifest, in the format of .repos with the
+# commit of each checkout; see scripts/manifest.  Installed to $(PREFIX), so
+# that the release packages carry it.
+.PHONY: manifest
+manifest:
+	@BUILD=$(BUILD) PROJECTS=$(PROJECTS) scripts/manifest > .manifest
+	@mkdir -p $(PREFIX)
+	@install -m 644 .manifest $(PREFIX)/.manifest
 
 min: binutils gcc gprof libnix libgcc libnix4.library
 
@@ -1919,7 +1932,7 @@ b:
 v:
 	@D="$(date)"; \
 	for i in $(modules); do \
-		bra=$$(grep $$i .repos | $(SED) -e 's/[[:blank:]]\+/ /g' | cut -d' ' -f3); \
+		bra=$$(grep "^$$i[[:blank:]]" .repos | $(SED) -e 's/[[:blank:]]\+/ /g' | cut -d' ' -f3); \
 		bra=$${bra/$$'\n'} ;\
 		bra=$${bra/$$'\r'} ;\
 		if [ -e projects/$$i ]; then \

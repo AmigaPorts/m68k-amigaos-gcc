@@ -1,0 +1,45 @@
+#!/bin/bash
+# Print what this tree is built from, in the format of .repos: a line per
+# module with the commit of its checkout, suffixed with "-dirty" when the
+# checkout has uncommitted changes or untracked files that git does not
+# ignore, like git describe --dirty.  The first line, a comment, is this
+# repository.
+#
+#   BUILD=... PROJECTS=... scripts/manifest > .manifest
+
+set -euo pipefail
+
+# The top of this repository, wherever in it the script is.
+here=$(git -C "$(dirname "$(readlink -f "$0")")" rev-parse --show-toplevel)
+build=${BUILD-}
+projects=${PROJECTS:-$here/projects}
+
+dirty() { [ -z "$(git -C "$1" status --porcelain)" ] || echo "-dirty"; }
+
+# Collect the lines first, to align the commits in a column.
+names=() urls=() commits=()
+add() { names+=("$1"); urls+=("$2"); commits+=("$3"); }
+
+# This repository's URL: the remote of the branch's upstream, else origin.
+up=$(git -C "$here" rev-parse --abbrev-ref --symbolic-full-name '@{u}' 2>/dev/null |
+	cut -d/ -f1) || true
+add "# m68k-amigaos-gcc" "$(git -C "$here" remote get-url "${up:-origin}" 2>/dev/null)" \
+	"$(git -C "$here" rev-parse HEAD)$(dirty "$here")"
+
+while read -r name url _; do
+	case $name in ''|'#'*) continue ;; esac
+	# lha is cloned into $(BUILD); the other modules into projects/.
+	dir=$build/$name
+	[ -n "$build" ] && [ -e "$dir/.git" ] || dir=$projects/$name
+	[ -e "$dir/.git" ] || continue
+	add "$name" "$url" "$(git -C "$dir" rev-parse HEAD)$(dirty "$dir")"
+done < "$here/.repos"
+
+nw=0 uw=0
+for i in "${!names[@]}"; do
+	(( ${#names[i]} > nw )) && nw=${#names[i]}
+	(( ${#urls[i]} > uw )) && uw=${#urls[i]}
+done
+for i in "${!names[@]}"; do
+	printf '%-*s %-*s %s\n' "$nw" "${names[i]}" "$uw" "${urls[i]}" "${commits[i]}"
+done

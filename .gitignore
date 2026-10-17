@@ -8,5 +8,6 @@ projects
 .vscode
 .DS_Store
 .repos*
+.manifest
 tickets
 amiga
