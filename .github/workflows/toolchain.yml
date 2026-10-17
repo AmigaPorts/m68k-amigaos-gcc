@@ -91,6 +91,9 @@ on:
 
 jobs:
   build:
+    # each ci-* label starts its own run of this job: name it after the
+    # label, or a PR's checks list keeps only the latest of them
+    name: build (${{ github.event.label.name || github.event_name }})
     if: >-
       github.event_name != 'pull_request' ||
       contains(fromJSON('["ci-linux", "ci-linux-arm", "ci-macos", "ci-testsuite-c", "ci-testsuite-cxx", "ci-testsuite-newlib", "ci-amigaos"]'),
