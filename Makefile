@@ -1389,12 +1389,12 @@ $(BUILD)/ndk-include_ndk0: $(PROJECTS)/$(NDK_FOLDER_NAME).info $(NDK_INCLUDE) $(
 	@rsync -a --no-group $(PROJECTS)/$(NDK_FOLDER_NAME_SFD)/* $(PREFIX)/$(TARGET)/ndk/lib/sfd
 	@rsync -a --no-group $(PROJECTS)/$(NDK_FOLDER_NAME_LIBS)/* $(PREFIX)/$(TARGET)/ndk/lib/libs
 	@mkdir -p $(PREFIX)/$(TARGET)/ndk-include/proto
-	@cp -p $(PROJECTS)/$(NDK_FOLDER_NAME_H)/proto/alib.h $(PREFIX)/$(TARGET)/ndk-include/proto
-	@cp -p $(PROJECTS)/$(NDK_FOLDER_NAME_H)/proto/cardres.h $(PREFIX)/$(TARGET)/ndk-include/proto
+	@install -p -m 644 $(PROJECTS)/$(NDK_FOLDER_NAME_H)/proto/alib.h $(PREFIX)/$(TARGET)/ndk-include/proto
+	@install -p -m 644 $(PROJECTS)/$(NDK_FOLDER_NAME_H)/proto/cardres.h $(PREFIX)/$(TARGET)/ndk-include/proto
 	@mkdir -p $(PREFIX)/$(TARGET)/ndk-include/inline
-	@cp -p $(PROJECTS)/fd2sfd/cross/share/m68k-amigaos/alib.h $(PREFIX)/$(TARGET)/ndk-include/inline
-	@cp -p $(PROJECTS)/fd2pragma/Include/inline/stubs.h $(PREFIX)/$(TARGET)/ndk-include/inline
-	@cp -p $(PROJECTS)/fd2pragma/Include/inline/macros.h $(PREFIX)/$(TARGET)/ndk-include/inline
+	@install -p -m 644 $(PROJECTS)/fd2sfd/cross/share/m68k-amigaos/alib.h $(PREFIX)/$(TARGET)/ndk-include/inline
+	@install -p -m 644 $(PROJECTS)/fd2pragma/Include/inline/stubs.h $(PREFIX)/$(TARGET)/ndk-include/inline
+	@install -p -m 644 $(PROJECTS)/fd2pragma/Include/inline/macros.h $(PREFIX)/$(TARGET)/ndk-include/inline
 	@mkdir -p $(BUILD)/ndk-include/
 	@echo "done" >$@
 
@@ -1452,7 +1452,7 @@ $(DOWNLOAD)/$(NDK_ARC_NAME).lha:
 ndk13: $(BUILD)/ndk-include_ndk13
 
 $(BUILD)/ndk-include_ndk13: $(BUILD)/ndk-include_ndk $(NDK_FD2SFD_PREREQ) $(BUILD)/sfdc/_done
-	@while read p; do p=$$(echo $$p|tr -d '\n'); mkdir -p $(PREFIX)/$(TARGET)/ndk13-include/$$(dirname $$p); cp $(PREFIX)/$(TARGET)/ndk-include/$$p $(PREFIX)/$(TARGET)/ndk13-include/$$p; done < patches/ndk13/hfiles
+	@while read p; do p=$$(echo $$p|tr -d '\n'); mkdir -p $(PREFIX)/$(TARGET)/ndk13-include/$$(dirname $$p); install -m 644 $(PREFIX)/$(TARGET)/ndk-include/$$p $(PREFIX)/$(TARGET)/ndk13-include/$$p; done < patches/ndk13/hfiles
 	$(L0)"extract ndk13"$(L1) while read p; do p=$$(echo $$p|tr -d '\n'); \
 	  mkdir -p $(PREFIX)/$(TARGET)/ndk13-include/$$(dirname $$p); \
 	  if grep V36 $(PREFIX)/$(TARGET)/ndk-include/$$p; then \
@@ -1503,11 +1503,11 @@ libamiga: $(LIBAMIGA) $(LIBBAMIGA)
 $(LIBAMIGA):
 	@mkdir -p $(@D)
 	#@cp $(PROJECTS)/$(NDK_FOLDER_NAME_LIBS)/amiga.lib $@
-	@cp lib/libamiga.a $@
+	@install -m 644 lib/libamiga.a $@
 
 $(LIBBAMIGA):
 	@mkdir -p $(@D)
-	@cp lib/libb/libamiga.a $@
+	@install -m 644 lib/libb/libamiga.a $@
 
 # =================================================
 # libnix
@@ -1586,7 +1586,7 @@ libdebug: $(BUILD)/libdebug/_done
 
 $(BUILD)/libdebug/_done: $(BUILD)/libdebug/Makefile
 	$(L0)"make libdebug"$(L1) $(MAKE) -C $(BUILD)/libdebug $(L2)
-	@cp $(BUILD)/libdebug/libdebug.a $(PREFIX)/$(TARGET)/lib/
+	@install -m 644 $(BUILD)/libdebug/libdebug.a $(PREFIX)/$(TARGET)/lib/
 	@echo "done" >$@
 
 $(BUILD)/libdebug/Makefile: $(BUILD)/gcc/_libgcc_done $(BUILD)/libnix/_done $(PROJECTS)/libdebug/configure $(shell find 2>/dev/null $(PROJECTS)/libdebug -not \( -path $(PROJECTS)/libdebug/.git -prune \) -type f)
@@ -1604,17 +1604,9 @@ $(PROJECTS)/libdebug/configure:
 libpthread: $(BUILD)/libpthread/_done
 
 $(BUILD)/libpthread/_done: $(BUILD)/libpthread/Makefile
-	@mkdir -p $(PREFIX)/$(TARGET)/lib/libb \
-		$(PREFIX)/$(TARGET)/lib/libm020 \
-		$(PREFIX)/$(TARGET)/lib/libb/libm020 \
-		$(PREFIX)/$(TARGET)/lib/libb32/libm020
 	@rsync -a --no-group --exclude=debug.h $(BUILD)/libpthread/*.h $(PREFIX)/$(TARGET)/include/
 	$(L0)"make libpthread"$(L1) cd $(BUILD)/libpthread && $(MAKE) -f Makefile.gcc6 $(L2)
-	$(L0)"install libpthread lib"$(L1) cp $(BUILD)/libpthread/lib/libpthread.a $(PREFIX)/$(TARGET)/lib/ $(L2)
-	$(L0)"install libpthread libb"$(L1) cp $(BUILD)/libpthread/libb/libpthread.a $(PREFIX)/$(TARGET)/lib/libb/ $(L2)
-	$(L0)"install libpthread libm020"$(L1) cp $(BUILD)/libpthread/libm020/libpthread.a $(PREFIX)/$(TARGET)/lib/libm020/ $(L2)
-	$(L0)"install libpthread libm020bb"$(L1) cp $(BUILD)/libpthread/libm020bb/libpthread.a $(PREFIX)/$(TARGET)/lib/libb/libm020/ $(L2)
-	$(L0)"install libpthread libm020bb32"$(L1) cp $(BUILD)/libpthread/libm020bb32/libpthread.a $(PREFIX)/$(TARGET)/lib/libb32/libm020/ $(L2)
+	$(L0)"install libpthread"$(L1) cd $(BUILD)/libpthread && $(MAKE) -f Makefile.gcc6 install PREFIX=$(PREFIX) $(L2)
 	@echo "done" >$@
 
 $(BUILD)/libpthread/Makefile: $(BUILD)/libnix/_done $(PROJECTS)/aros-stuff/pthreads/Makefile $(shell find 2>/dev/null $(PROJECTS)/aros-stuff/pthreads -type f)
