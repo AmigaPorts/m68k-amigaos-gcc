@@ -965,10 +965,16 @@ endif
 endif
 
 ifneq (,$(strip $(GCC6_TARGET_CXX_WRAPPER)))
-$(GCC6_TARGET_CXX_WRAPPER): $(BUILD)/gcc/_done
+# A hosted build puts a wrapper named $(TARGET)-c++ first in PATH
+# (TARGET_COMPILER_WRAPPER_DIR) which adds -B$(PREFIX)/lib/gcc/$(TARGET)/
+# $(GCC_DIR_VERSION)/, so libstdc++ finds the unwind.h that
+# install-target-libgcc put there.  This wrapper shadows that one, and the
+# raw build-to-target g++ has no libgcc installed: exec the -B wrapper when
+# there is one.  A native build has none and keeps the raw compiler.
+$(GCC6_TARGET_CXX_WRAPPER): $(BUILD)/gcc/_done $(TARGET_COMPILER_WRAPPERS)
 	@mkdir -p $(@D)
 	@test -n "$(TARGET_CXX_FOR_BUILD)"
-	@printf '%s\n' '#!/bin/sh' 'exec "$(TARGET_CXX_FOR_BUILD)" -std=gnu++98 "$$@"' > $@
+	@printf '%s\n' '#!/bin/sh' 'exec "$(or $(TARGET_CXX_COMMAND_FOR_BUILD),$(TARGET_CXX_FOR_BUILD))" -std=gnu++98 "$$@"' > $@
 	@chmod +x $@
 endif
 
