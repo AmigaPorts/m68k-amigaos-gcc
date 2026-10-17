@@ -1,0 +1,131 @@
+#!/bin/bash
+# Tag a release in every module listed in default-repos and in this
+# repository.
+#
+#   scripts/release-tag TAG NOTES [--confirm]
+#
+# This repository gets TAG, and the modules m68k-amigaos-gcc-TAG: a module
+# may have tags of its own named like ours (sfdc's v1.13), and workflows
+# that a v* tag starts (sfdc's release).
+#
+# Each module is tagged at the head of its default-repos branch on the
+# remote: the branch is fetched into the module's checkout under projects/
+# (only the new commits; the checked-out branch and the depth are left as
+# they are), and the tag is made on what was fetched.  This repository is
+# tagged at the head of its master branch, with NOTES as the tag message:
+# a subject line, a blank line, then the release notes, which the release
+# workflow publishes.  Pushing that tag starts the release, so it goes
+# last, after all the module tags.
+#
+# Without --confirm it only prints what it would tag.  A rerun after a
+# failure reuses or skips what is already tagged at the right commit.
+#
+# TODO: refuse when the local checkouts are not on their default-repos
+# branches at these commits, i.e. when what is tagged is not what was
+# built and tested here.
+
+set -euo pipefail
+
+tag=${1-} notes=${2-} confirm=${3-}
+mtag=m68k-amigaos-gcc-$tag
+top_url=${TOP_URL:-https://github.com/AmigaPorts/m68k-amigaos-gcc}
+top_branch=${TOP_BRANCH:-master}
+# The top of this repository, wherever in it the script is.
+here=$(git -C "$(dirname "$(readlink -f "$0")")" rev-parse --show-toplevel)
+projects=${PROJECTS:-$here/projects}
+
+die() { echo "release-tag: $*" >&2; exit 1; }
+
+[ -n "$tag" ] && [ -n "$notes" ] || die "usage: release-tag TAG NOTES [--confirm]"
+[ -z "$confirm" ] || [ "$confirm" = --confirm ] || die "unknown option: $confirm"
+[ -s "$notes" ] || die "$notes: missing or empty"
+notes=$(readlink -f "$notes")	# git -C below would resolve it elsewhere
+# The release body is the tag message after its first paragraph (leading
+# blank lines do not count as the separator).
+release_body() {
+	awk 'NF && s == 0 { s = 1 } !NF && s == 1 { s = 2 } NF && s == 2 { found = 1 }
+	     END { exit !found }'
+}
+release_body < "$notes" ||
+	die "$notes: no release notes after the subject line and a blank line"
+
+# Push over ssh: the https remotes are read-only without credentials.
+push_url() {
+	case $1 in
+	https://github.com/*) echo "git@github.com:${1#https://github.com/}.git" ;;
+	*) echo "$1" ;;
+	esac
+}
+
+# The commit that tag $2 names in repository $1, or nothing if there is no
+# such tag; a failed lookup is an error, never "no tag".
+remote_tag() {
+	local refs
+	refs=$(git ls-remote "$1" "refs/tags/$2" "refs/tags/$2^{}") ||
+		die "cannot list the tags of $1"
+	printf '%s\n' "$refs" | tail -1 | cut -f1
+}
+local_tag() {
+	git -C "$1" rev-parse -q --verify "refs/tags/$2" >/dev/null || return 0
+	git -C "$1" rev-parse -q --verify "refs/tags/$2^{commit}" ||
+		die "$1: tag $2 does not name a commit"
+}
+
+top_old=$(remote_tag "$top_url" "$tag") || exit 1
+[ -z "$top_old" ] || die "$tag already exists in $top_url"
+
+# Resolve every commit before tagging anything, so that a missing checkout,
+# an unreachable remote or a conflicting tag stops the release before it
+# starts.
+names=() repos=() urls=() shas=() pushed=() made=()
+while read -r name url branch _; do
+	case $name in ''|'#'*) continue ;; esac
+	repo=$projects/$name
+	[ -e "$repo/.git" ] || die "$name: no checkout in $repo"
+	git -C "$repo" fetch -q "$url" "refs/heads/$branch" ||
+		die "$name: cannot fetch $branch from $url"
+	sha=$(git -C "$repo" rev-parse FETCH_HEAD)
+	old=$(remote_tag "$url" "$mtag") || exit 1
+	[ -z "$old" ] || [ "$old" = "$sha" ] ||
+		die "$name: $mtag already exists at $old, not at $branch ($sha)"
+	mine=$(local_tag "$repo" "$mtag") || exit 1
+	[ -z "$mine" ] || [ "$mine" = "$sha" ] ||
+		die "$name: local tag $mtag in $repo is at $mine, not at $branch ($sha)"
+	names+=("$name") repos+=("$repo") urls+=("$url") shas+=("$sha")
+	pushed+=("$old") made+=("$mine")
+	printf '%-18s %-14s %s%s\n' "$name" "$branch" "$sha" "${old:+ (already tagged)}"
+done < "$here/default-repos"
+
+git -C "$here" fetch -q "$top_url" "refs/heads/$top_branch" ||
+	die "cannot fetch $top_branch from $top_url"
+top_sha=$(git -C "$here" rev-parse FETCH_HEAD)
+top_mine=$(local_tag "$here" "$tag") || exit 1
+[ -z "$top_mine" ] || [ "$top_mine" = "$top_sha" ] ||
+	die "local tag $tag is at $top_mine, not at $top_branch ($top_sha)"
+# A local tag left by a failed push is reused instead of NOTES, so it needs
+# release notes of its own.
+if [ -n "$top_mine" ]; then
+	[ "$(git -C "$here" cat-file -t "refs/tags/$tag")" = tag ] ||
+		die "local tag $tag is not annotated; delete it to tag with $notes"
+	git -C "$here" tag -l --format='%(contents)' "$tag" | release_body ||
+		die "local tag $tag has no release notes; delete it to tag with $notes"
+fi
+printf '%-18s %-14s %s\n' "(this repository)" "$top_branch" "$top_sha"
+
+if [ "$confirm" != --confirm ]; then
+	echo "Dry run: add --confirm (CONFIRM=yes with make) to tag $tag here and $mtag in the modules, and push them."
+	exit 0
+fi
+
+for i in "${!names[@]}"; do
+	[ -z "${pushed[i]}" ] || continue
+	[ -n "${made[i]}" ] ||
+		git -C "${repos[i]}" tag -s -m "m68k-amigaos-gcc $tag" "$mtag" "${shas[i]}"
+	git -C "${repos[i]}" push -q "$(push_url "${urls[i]}")" "refs/tags/$mtag"
+	echo "tagged ${names[i]} with $mtag"
+done
+
+[ -n "$top_mine" ] ||
+	git -C "$here" tag -s -F "$notes" --cleanup=verbatim "$tag" "$top_sha"
+git -C "$here" push -q "$(push_url "$top_url")" "refs/tags/$tag"
+echo "tagged this repository: the release workflow starts now"
