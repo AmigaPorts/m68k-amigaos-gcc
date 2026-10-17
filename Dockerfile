@@ -21,7 +21,6 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
     cd / && \
     rm -rf /root/amiga-gcc && \
     apt-get purge -y \
-    autoconf \
     bison \
     flex \
     g++ \

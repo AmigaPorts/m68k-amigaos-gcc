@@ -26,19 +26,19 @@ Currently, these tools are built:
 
 ### Fedora
 ```
-sudo dnf install curl gcc gcc-c++ patch autoconf automake make bison flex rsync ncurses-devel which
+sudo dnf install curl gcc gcc-c++ patch make bison flex rsync ncurses-devel which
 ```
 
 ### Ubuntu, Debian
 ```
-sudo apt install make curl gcc g++ flex bison gettext autoconf rsync libreadline-dev
+sudo apt install make curl gcc g++ flex bison gettext rsync libreadline-dev
 ```
 
 ### macOS
 Install Homebrew (https://brew.sh/) or any other package manager first. The compiler will be installed together with XCode. Once XCode and Homebrew are up install the required packages:
 
 ```
-brew install autoconf automake bash bison coreutils curl flex gettext \
+brew install bash bison coreutils curl flex gettext \
   gnu-sed gnu-tar grep make wget xz
 ```
 
@@ -66,7 +66,7 @@ CC=gcc-12 CXX=g++-12 make all
 ### Windows with msys2
 
 ```
-pacman -S curl git base-devel gcc flex rsync autoconf automake
+pacman -S curl git base-devel gcc flex rsync
 ```
 
 Also note that you **MUST** cd into an **absolute path** e.g. `cd /c/msys64/home/test/amiga-gcc/` before running make, or builds may fail, because some files aren't found correctly (that's a msys2 bug).
