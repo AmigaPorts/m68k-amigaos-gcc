@@ -965,10 +965,16 @@ endif
 endif
 
 ifneq (,$(strip $(GCC6_TARGET_CXX_WRAPPER)))
-$(GCC6_TARGET_CXX_WRAPPER): $(BUILD)/gcc/_done
+# A hosted build puts a wrapper named $(TARGET)-c++ first in PATH
+# (TARGET_COMPILER_WRAPPER_DIR) which adds -B$(PREFIX)/lib/gcc/$(TARGET)/
+# $(GCC_DIR_VERSION)/, so libstdc++ finds the unwind.h that
+# install-target-libgcc put there.  This wrapper shadows that one, and the
+# raw build-to-target g++ has no libgcc installed: exec the -B wrapper when
+# there is one.  A native build has none and keeps the raw compiler.
+$(GCC6_TARGET_CXX_WRAPPER): $(BUILD)/gcc/_done $(TARGET_COMPILER_WRAPPERS)
 	@mkdir -p $(@D)
 	@test -n "$(TARGET_CXX_FOR_BUILD)"
-	@printf '%s\n' '#!/bin/sh' 'exec "$(TARGET_CXX_FOR_BUILD)" -std=gnu++98 "$$@"' > $@
+	@printf '%s\n' '#!/bin/sh' 'exec "$(or $(TARGET_CXX_COMMAND_FOR_BUILD),$(TARGET_CXX_FOR_BUILD))" -std=gnu++98 "$$@"' > $@
 	@chmod +x $@
 endif
 
@@ -1574,11 +1580,16 @@ libdebug: $(BUILD)/libdebug/_done
 $(BUILD)/libdebug/_done: $(BUILD)/libdebug/Makefile
 	$(L0)"make libdebug"$(L1) $(MAKE) -C $(BUILD)/libdebug $(L2)
 	@cp $(BUILD)/libdebug/libdebug.a $(PREFIX)/$(TARGET)/lib/
+	# libdebug's configure is only told CC and LD; in a hosted build its AR
+	# can resolve to the build machine's, which cannot read hunk objects and
+	# writes the archive without a symbol index ("archive has no index; run
+	# ranlib" at link time, seen with the MinGW amiga6 package). Index it.
+	@$(TARGET_RANLIB_FOR_BUILD) $(PREFIX)/$(TARGET)/lib/libdebug.a
 	@echo "done" >$@
 
 $(BUILD)/libdebug/Makefile: $(BUILD)/gcc/_libgcc_done $(BUILD)/libnix/_done $(PROJECTS)/libdebug/configure $(shell find 2>/dev/null $(PROJECTS)/libdebug -not \( -path $(PROJECTS)/libdebug/.git -prune \) -type f)
 	@mkdir -p $(BUILD)/libdebug
-	$(L0)"configure libdebug"$(L1) cd $(BUILD)/libdebug && LD=$(TARGET)-ld CC=$(TARGET)-gcc CFLAGS="$(CFLAGS_FOR_TARGET)" $(PROJECTS)/libdebug/configure $(CONFIG_LIBDEBUG) $(L2)
+	$(L0)"configure libdebug"$(L1) cd $(BUILD)/libdebug && LD=$(TARGET)-ld CC=$(TARGET)-gcc AR="$(TARGET_AR_FOR_BUILD)" RANLIB="$(TARGET_RANLIB_FOR_BUILD)" CFLAGS="$(CFLAGS_FOR_TARGET)" $(PROJECTS)/libdebug/configure $(CONFIG_LIBDEBUG) $(L2)
 
 $(PROJECTS)/libdebug/configure:
 	@cd $(PROJECTS) && git clone -b $(libdebug_BRANCH) --depth 4 $(libdebug_URL)
@@ -1964,16 +1975,19 @@ branch:
 # multilib support
 # =================================================
 MULTI = MODNAME/.: \
-		MODNAME/libm060:-m68060 \
 		MODNAME/libm020:-m68020 \
 		MODNAME/libm020/libm881:-m68020_-m68881 \
 		MODNAME/libb:-fbaserel \
-		MODNAME/libb/libm060:-fbaserel_-m68060 \
 		MODNAME/libb/libm020:-fbaserel_-m68020 \
 		MODNAME/libb/libm020/libm881:-fbaserel_-m68020_-m68881 \
-		MODNAME/libb32/libm060:-fbaserel32_-m68060 \
 		MODNAME/libb32/libm020:-fbaserel32_-m68020 \
 		MODNAME/libb32/libm020/libm881:-fbaserel32_-m68020_-m68881
+# gcc 6's t-amigaos has no 68060 multilib; 13 and later do.
+ifeq (,$(filter 6.%,$(GCC_VERSION)))
+MULTI += MODNAME/libm060:-m68060 \
+		MODNAME/libb/libm060:-fbaserel_-m68060 \
+		MODNAME/libb32/libm060:-fbaserel32_-m68060
+endif
 
 # MULTI and gcc/config/m68k/t-amigaos describe the same set of multilibs
 # twice: t-amigaos tells the driver which directory a set of flags selects,
