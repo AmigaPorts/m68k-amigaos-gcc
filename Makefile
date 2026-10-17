@@ -1079,7 +1079,7 @@ $(BUILD_TOOLS)/fd2sfd/_done: $(BUILD_TOOLS_PREFIX)/bin/fd2sfd
 	@echo "done" >$@
 
 $(BUILD_TOOLS_PREFIX)/bin/fd2sfd: $(BUILD_TOOLS)/fd2sfd/Makefile $(shell find 2>/dev/null $(PROJECTS)/fd2sfd -not \( -path $(PROJECTS)/fd2sfd/.git -prune \) -type f)
-	$(L0)"make fd2sfd for the build machine"$(L1) $(MAKE) -C $(BUILD_TOOLS)/fd2sfd all $(L2)
+	$(L0)"make fd2sfd for the build machine"$(L1) $(MAKE) -C $(BUILD_TOOLS)/fd2sfd all CC="$(BUILD_CC)" CFLAGS="$(BUILD_CFLAGS)" $(L2)
 	@mkdir -p $(BUILD_TOOLS_PREFIX)/bin
 	$(L0)"install build-machine fd2sfd"$(L1) $(MAKE) -C $(BUILD_TOOLS)/fd2sfd install $(L2)
 
