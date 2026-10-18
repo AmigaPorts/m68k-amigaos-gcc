@@ -1895,11 +1895,12 @@ check-libpthread: $(BUILD)/libpthread/_done
 
 # newlib's own testsuite, linked against the installed newlib: the base
 # multilib without an FPU (volamos-newlib) and the 68020/68881 one with an
-# FPU (volamos-newlib-fpu).  It only reports: it has standing failures.
-# One runtest per board, each with its own outdir: dejagnu cannot replay a
-# multi-board --target_board list.  site.exp is regenerated with build_alias
-# as its host_alias, which the automake rule otherwise leaves empty, and
-# CC_FOR_TARGET spares the PATH lookup.  A board without results fails.
+# FPU (volamos-newlib-fpu).  One runtest per board, each with its own
+# outdir: dejagnu cannot replay a multi-board --target_board list.  site.exp
+# is regenerated with build_alias as its host_alias, which the automake rule
+# otherwise leaves empty, and CC_FOR_TARGET spares the PATH lookup.  Both
+# boards run to the end, then any FAIL, or a board without results, fails
+# the target.
 NEWLIBTESTSUITE = $(BUILD)/newlib/newlib/testsuite
 NEWLIB_BOARDS = volamos-newlib volamos-newlib-fpu
 check-newlib: $(PREFIX)/bin/volamos
@@ -1912,6 +1913,7 @@ check-newlib: $(PREFIX)/bin/volamos
 	@for b in $(NEWLIB_BOARDS); do echo "----- newlib $$b -----"; grep -E '^(# of|FAIL|ERROR|XPASS)' $(NEWLIBTESTSUITE)/$$b/newlib.sum || echo '(no tests run)'; done | tee $@.summary.txt
 	@echo "results: $(NEWLIBTESTSUITE)/<board>/newlib.{sum,log}"
 	@for b in $(NEWLIB_BOARDS); do grep -q '^# of expected passes' $(NEWLIBTESTSUITE)/$$b/newlib.sum || exit 1; done
+	@! grep -qE '^(FAIL|ERROR|XPASS)' $(foreach b,$(NEWLIB_BOARDS),$(NEWLIBTESTSUITE)/$(b)/newlib.sum)
 
 # The full C++ testsuite is large and slow, so it is not part of
 # `check`; run it on demand with `make check-gcc-c++`.  SANITIZE=0 keeps the
