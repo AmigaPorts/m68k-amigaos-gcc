@@ -232,12 +232,16 @@ jobs:
           compression-level: 0
           if-no-files-found: error
 
+      # the configure logs too: a configure failure only says "see config.log"
       - name: Upload build logs on failure
         if: failure()
         uses: actions/upload-artifact@v7
         with:
           name: build-logs-${{ runner.os }}
-          path: log/
+          path: |
+            log/
+            build-*/*/config.log
+            build-*/newlib/newlib/config.log
           if-no-files-found: ignore
 
       - name: Install testsuite dependencies (Linux)
