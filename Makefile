@@ -468,7 +468,7 @@ help:
 	@echo "make help                display this help"
 	@echo "make info                print prefix and other flags"
 	@echo "make all                 build and install all"
-	@echo "make min                 build and install the minimal to use gcc"
+	@echo "make min                 build only the compiler and its runtimes (no gdb, gprof, libnix4.library)"
 	@echo "make <target>            builds a target: binutils, gcc, gprof, fd2sfd, fd2pragma, ira, sfdc, vasm, vbcc, vlink, libnix, ixemul, libgcc, clib2, libdebug, libpthread, ndk, ndk13"
 	@echo "make clean               remove the build folder"
 	@echo "make clean-<target>      remove the target's build folder"
@@ -522,7 +522,8 @@ endif
 	@mkdir -p $(PREFIX)
 	@install -m 644 .manifest $(PREFIX)/.manifest
 
-min: binutils gcc gprof libnix libgcc libnix4.library
+# the compiler and the runtimes it links by default: what the testsuites need
+min: binutils gcc libnix libgcc
 
 build-target-tools: $(TARGET_BUILD_TOOLS_PREREQ)
 
