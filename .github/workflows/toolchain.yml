@@ -47,6 +47,9 @@ on:
       repos:
         description: "module overrides, space separated: sfdc=branch or sfdc=URL#branch"
         default: ""
+      tag:
+        description: "release tag: build every module at m68k-amigaos-gcc-<tag> instead of its branch"
+        default: ""
       build_hosted:
         description: build AmigaOS and MinGW hosted toolchains
         type: boolean
@@ -75,6 +78,9 @@ on:
         type: string
         default: ""
       repos:
+        type: string
+        default: ""
+      tag:
         type: string
         default: ""
       build_hosted:
@@ -182,7 +188,14 @@ jobs:
           echo "CPU: $cpu, $nproc vCPUs" | tee -a $GITHUB_STEP_SUMMARY
 
       - name: Select gcc branch
+        if: inputs.tag == ''
         run: make branch branch=amiga$GCC_VER mod=gcc
+
+      # a release: every module at the tag that release-tag made in it,
+      # named after this repository's; a module without it fails the clone
+      - name: Pin the modules to the release tag
+        if: inputs.tag != ''
+        run: make v ref=m68k-amigaos-gcc-${{ inputs.tag }}
 
       # build with a pull request from another module's repo: each word in
       # repos is module=branch, or module=URL#branch for a fork
@@ -434,8 +447,13 @@ jobs:
       - name: Build AmigaOS hosted toolchain
         env:
           REPOS: ${{ inputs.repos }}
+          TAG: ${{ inputs.tag }}
         run: |
-          make branch mod=gcc branch="amiga$GCC_VER"
+          if [ -z "$TAG" ]; then
+            make branch mod=gcc branch="amiga$GCC_VER"
+          else
+            make v ref="m68k-amigaos-gcc-$TAG"
+          fi
           [ -z "$REPOS" ] || sh .github/scripts/override-repos.sh
           make update
           make gcc-prerequisites
@@ -529,8 +547,13 @@ jobs:
         id: version
         env:
           REPOS: ${{ inputs.repos }}
+          TAG: ${{ inputs.tag }}
         run: |
-          make branch mod=gcc branch="amiga$GCC_VER"
+          if [ -z "$TAG" ]; then
+            make branch mod=gcc branch="amiga$GCC_VER"
+          else
+            make v ref="m68k-amigaos-gcc-$TAG"
+          fi
           [ -z "$REPOS" ] || sh .github/scripts/override-repos.sh
           make update
           make -j "$(nproc)" all

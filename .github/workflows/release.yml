@@ -8,10 +8,13 @@ on:
 jobs:
   # Bootstrap the toolchain and run the gcc testsuite as a release gate.
   # This invocation also creates the AmigaOS and Windows hosted packages.
+  # Every module is built at the tag release-tag made in it, so the release
+  # is what was tagged even if a module's branch has moved since.
   build-linux:
     uses: ./.github/workflows/toolchain.yml
     with:
       run_testsuite: true
+      tag: ${{ github.ref_name }}
 
   # the testsuite only runs on Linux; the macOS build gates on compiling
   build-macos:
@@ -19,6 +22,7 @@ jobs:
     with:
       runner: macos-15
       build_hosted: false
+      tag: ${{ github.ref_name }}
 
   release:
     needs: [build-linux, build-macos]
