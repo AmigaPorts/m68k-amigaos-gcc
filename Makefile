@@ -60,17 +60,26 @@ ifneq (,$(strip $(HOST)))
   BUILD := $(BUILD)-$(HOST)
 endif
 
-# The build tree records the PREFIX it was configured for (written on the
-# first build, checked below), and a make without PREFIX takes it from
-# there: a later check-*, install or sdk needs no PREFIX=... again.
+# Goals that touch nothing under PREFIX, so they run without one
+NO_PREFIX_GOALS := clean% drop-prefix help info update% branch release-tag
+
+# PREFIX has no default: the first build names it, the build tree records
+# it (written on the first build, checked below) and a make without PREFIX
+# takes it from there, so check-*, install and sdk runs need no PREFIX=...
 PREFIX_STAMP := $(BUILD)/.prefix
 ifeq ($(origin PREFIX),undefined)
-ifneq ($(wildcard $(PREFIX_STAMP)),)
-PREFIX := $(shell cat $(PREFIX_STAMP))
-$(info PREFIX=$(PREFIX), from $(PREFIX_STAMP))
+  ifneq ($(wildcard $(PREFIX_STAMP)),)
+    PREFIX := $(shell cat $(PREFIX_STAMP))
+    $(info PREFIX=$(PREFIX), from $(PREFIX_STAMP))
+  else
+    ifneq ($(filter-out $(NO_PREFIX_GOALS),$(MAKECMDGOALS)),)
+      $(error PREFIX is not set: pass PREFIX=<install directory> once, the build tree remembers it)
+    endif
+  endif
 endif
-endif
-PREFIX ?= /opt/amiga
+# the module makefiles (libnix's Makefile.gcc6, ...) have defaults of their
+# own: they see ours the way a PREFIX=... on the command line reached them
+export PREFIX
 ifeq (,$(strip $(HOST)))
 export PATH := $(PREFIX)/bin:$(PATH)
 endif
@@ -278,7 +287,7 @@ MAKEOVERRIDES += MAKEINFO=$(MAKEINFO)
 
 # binutils, gcc and newlib record the prefix in their configured build
 # trees: building the same tree for another PREFIX installs into both
-ifeq ($(filter clean% drop-prefix help info update% branch release-tag,$(MAKECMDGOALS)),)
+ifeq ($(filter $(NO_PREFIX_GOALS),$(MAKECMDGOALS)),)
 ifneq ($(wildcard $(PREFIX_STAMP)),)
 ifneq ($(shell cat $(PREFIX_STAMP)),$(abspath $(PREFIX)))
 $(error $(BUILD) was configured for PREFIX=$(shell cat $(PREFIX_STAMP)); use that PREFIX, another BUILD, or make clean)
@@ -470,7 +479,7 @@ help:
 	@echo "make branch branch=<branch> mod=<module>  switch the module to the given branch"
 	@echo ""
 	@echo "Parameters:"
-	@echo "PREFIX=<path>            defaults to /opt/amiga"
+	@echo "PREFIX=<path>            install directory; required once, the build tree remembers it"
 	@echo "THREADS=posix            build gcc with thread support"
 	@echo "ADDLANG=lang,lang...     configure additional language frontends"
 
