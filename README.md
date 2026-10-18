@@ -103,6 +103,10 @@ You may specify a different prefix by adding `PREFIX=<path>` to the make command
 make all PREFIX=$HOME/m68k-amiga-gcc
 ```
 
+The build tree remembers that prefix, so later invocations in the same
+checkout (`make install`, `make check-...`, `make sdk=...`) need no
+`PREFIX=` unless you want another one.
+
 ## Building
 
 Once the `PREFIX` directory is writable, run `make all`. You can use `-j$(nproc)` to speed up the build.

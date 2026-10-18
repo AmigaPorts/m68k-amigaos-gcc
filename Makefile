@@ -16,12 +16,7 @@ include disable_implicite_rules.mk
 # =================================================
 $(eval SHELL = $(shell which bash 2>/dev/null) )
 
-PREFIX ?= /opt/amiga
 HOST ?=
-ifeq (,$(strip $(HOST)))
-export PATH := $(PREFIX)/bin:$(PATH)
-endif
-
 TARGET ?= m68k-amigaos
 
 # Keep native builds identical to the original build.  HOST is only set when
@@ -63,6 +58,21 @@ UNAME_S := $(shell uname -s)
 BUILD := $(shell pwd)/build-$(UNAME_S)-$(TARGET)
 ifneq (,$(strip $(HOST)))
   BUILD := $(BUILD)-$(HOST)
+endif
+
+# The build tree records the PREFIX it was configured for (written on the
+# first build, checked below), and a make without PREFIX takes it from
+# there: a later check-*, install or sdk needs no PREFIX=... again.
+PREFIX_STAMP := $(BUILD)/.prefix
+ifeq ($(origin PREFIX),undefined)
+ifneq ($(wildcard $(PREFIX_STAMP)),)
+PREFIX := $(shell cat $(PREFIX_STAMP))
+$(info PREFIX=$(PREFIX), from $(PREFIX_STAMP))
+endif
+endif
+PREFIX ?= /opt/amiga
+ifeq (,$(strip $(HOST)))
+export PATH := $(PREFIX)/bin:$(PATH)
 endif
 BUILD_TOOLS := $(BUILD)/build-tools
 # Helpers which must run on the build machine are private build artifacts.
@@ -268,7 +278,6 @@ MAKEOVERRIDES += MAKEINFO=$(MAKEINFO)
 
 # binutils, gcc and newlib record the prefix in their configured build
 # trees: building the same tree for another PREFIX installs into both
-PREFIX_STAMP := $(BUILD)/.prefix
 ifeq ($(filter clean% drop-prefix help info update% branch,$(MAKECMDGOALS)),)
 ifneq ($(wildcard $(PREFIX_STAMP)),)
 ifneq ($(shell cat $(PREFIX_STAMP)),$(abspath $(PREFIX)))
