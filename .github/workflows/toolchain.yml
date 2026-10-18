@@ -321,8 +321,7 @@ jobs:
           { echo '```'; cat check-gcc-c++.summary.txt 2>/dev/null; echo '```'; } >> $GITHUB_STEP_SUMMARY
           exit $rc
 
-      # newlib's suite still has standing failures, so test failures are
-      # only reported; the step fails when a board produced no results
+      # a FAIL on either board, or a board without results, fails the step
       - name: Run the newlib testsuite
         if: env.RUN_TESTSUITE_NEWLIB == 'true' && env.SIMULATOR == 'volamos'
         run: |
