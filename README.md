@@ -94,31 +94,21 @@ Use `make help` to see which targets can be built.
 
 The build performs the installation automatically, there is no separate `make install` step.
 
-The default prefix is `/opt/amiga`. You must make sure that the target `PREFIX` directory
-is writable for the user who is doing the build:
+The first build must set the installation directory with `PREFIX=<path>`,
+which must be writable for the user doing the build:
 
 ```
-sudo mkdir /opt/amiga
-sudo chown $(id -u):$(id -g) /opt/amiga
-```
-
-You may specify a different prefix by adding `PREFIX=<path>` to the make commands:
-
-```
-make all PREFIX=$HOME/m68k-amiga-gcc
+make all PREFIX=$HOME/m68k-amigaos-gcc
 ```
 
 The build tree remembers that prefix, so later invocations in the same
-checkout (`make install`, `make check-...`, `make sdk=...`) need no
-`PREFIX=` unless you want another one.
+checkout need no `PREFIX=` unless you want another one.
 
 ## Building
 
-Once the `PREFIX` directory is writable, run `make all`. You can use `-j$(nproc)` to speed up the build.
+You can use `-j$(nproc)` to speed up the build:
 
 ```
-make clean
-make drop-prefix
 time make all -j$(nproc)
 ```
 A full bootstrap takes roughly 10 to 30 minutes on current Linux hardware, dominated by multilib phases.
@@ -203,7 +193,7 @@ Always specify the runtime, even when you want the default:
 it affects the include path as well as the libraries, so
 **compiling for one runtime and linking against another breaks quietly**.
 
-## Checking gcc
+## Testing
 
 To check the built toolchain, run the gcc dejagnu execution tests.
 
