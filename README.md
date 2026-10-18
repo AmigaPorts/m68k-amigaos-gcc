@@ -111,7 +111,7 @@ You can use `-j$(nproc)` to speed up the build:
 ```
 time make all -j$(nproc)
 ```
-A full bootstrap takes roughly 10 to 30 minutes on current Linux hardware, dominated by multilib phases.
+A full bootstrap takes roughly 5 to 15 minutes on current Linux hardware, dominated by multilib phases.
 
 ## Packaging
 

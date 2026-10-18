@@ -9,7 +9,5 @@ projects
 .DS_Store
 .repos*
 .manifest
-tickets
-amiga
 result
 result-*
