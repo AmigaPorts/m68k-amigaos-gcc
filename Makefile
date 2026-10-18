@@ -476,10 +476,16 @@ all: gcc binutils $(ALL_GDB) gprof fd2sfd fd2pragma ira sfdc vasm libnix ixemul 
 
 # Record what was built in .manifest, in the format of .repos with the
 # commit of each checkout; see scripts/manifest.  Installed to $(PREFIX), so
-# that the release packages carry it.
+# that the release packages carry it.  A build from checkouts without git
+# history, like the Nix package, passes the one it recorded in MANIFEST.
+MANIFEST ?=
 .PHONY: manifest
 manifest:
+ifneq (,$(strip $(MANIFEST)))
+	@cp $(MANIFEST) .manifest
+else
 	@PROJECTS=$(PROJECTS) scripts/manifest > .manifest
+endif
 	@mkdir -p $(PREFIX)
 	@install -m 644 .manifest $(PREFIX)/.manifest
 
