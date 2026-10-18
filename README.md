@@ -119,7 +119,19 @@ time make all -j$(nproc)
 ```
 A full bootstrap takes roughly 10 to 30 minutes on current Linux hardware, dominated by multilib phases.
 
-## Nix package
+## Packaging
+
+This packages the PREFIX folder into a redistributable archive:
+
+```
+make package      # builds a .tar.xz archive
+make package-lha  # builds a .lha archive
+```
+Native builds use the build machine's OS and architecture in the filename.
+Cross builds use `HOST`, so their filenames identify the system on which the tools
+will run rather than the build machine.
+
+### Nix package
 
 The flake builds the toolchain of `make all` as a package, from the modules
 of `default-repos` pinned in `flake.lock` and the archives of
@@ -150,18 +162,6 @@ in a project's development shell:
 `nix flake update gcc` just one. The inputs in `flake.nix` mirror
 `default-repos`; to build another branch, change the input's URL, for
 example `github:AmigaPorts/gcc/amiga13.4`.
-
-## Packaging
-
-This packages the PREFIX folder into a redistributable archive:
-
-```
-make package      # builds a .tar.xz archive
-make package-lha  # builds a .lha archive
-```
-Native builds use the build machine's OS and architecture in the filename.
-Cross builds use `HOST`, so their filenames identify the system on which the tools
-will run rather than the build machine.
 
 ## Continuous integration
 
