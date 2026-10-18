@@ -636,9 +636,9 @@ update: update-gcc update-binutils update-fd2sfd update-lha update-fd2pragma upd
 	+$(MAKE) -B $(DOWNLOAD)/vbcc_target_m68k-kick13.lha
 	+$(MAKE) -B $(DOWNLOAD)/$(NDK_ARC_NAME).lha
 	+$(MAKE) -B $(DOWNLOAD)/ixemul-sdk.lha
-	+$(MAKE) -B $(DOWNLOAD)/$(ZLIB).tar.gz
-	+$(MAKE) -B $(DOWNLOAD)/$(LIBPNG).tar.xz
-	+$(MAKE) -B $(DOWNLOAD)/$(LIBFREETYPE).tar.xz
+	+$(MAKE) -B $(DOWNLOAD)/$(zlib_DIR).tar.gz
+	+$(MAKE) -B $(DOWNLOAD)/$(libpng_DIR).tar.xz
+	+$(MAKE) -B $(DOWNLOAD)/$(freetype_DIR).tar.xz
 
 # Pull a module checkout forward. A checkout pinned to an exact commit (CI
 # building a module's pull request) has no branch to pull, so it is left as
@@ -2061,105 +2061,99 @@ MULTICONFIGURE = $(L0)"configure $1"$(L1) $(foreach T,$(subst MODNAME,$1,$(MULTI
 # =================================================
 # zlib
 # =================================================
-ZLIB=$(zlib_DIR)
-
 .PHONY: zlib clean-zlib
 
 clean-zlib:
-	rm -rf $(BUILD)/$(ZLIB)
+	rm -rf $(BUILD)/$(zlib_DIR)
 
-zlib: $(BUILD)/$(ZLIB)/_done
+zlib: $(BUILD)/$(zlib_DIR)/_done
 
-$(BUILD)/$(ZLIB)/_done: $(PREFIX)/$(TARGET)/lib/libz.a
+$(BUILD)/$(zlib_DIR)/_done: $(PREFIX)/$(TARGET)/lib/libz.a
 	@echo "done" >$@
 
-$(PREFIX)/$(TARGET)/lib/libz.a: $(BUILD)/$(ZLIB)/libz.a
-	@rsync -a --no-group $(PROJECTS)/$(ZLIB)/zlib.h $(PREFIX)/$(TARGET)/include/
-	@rsync -a --no-group $(BUILD)/$(ZLIB)/zconf.h $(PREFIX)/$(TARGET)/include/
-	$(call INSTALL_MULTILIBS,$(ZLIB),libz.a)
+$(PREFIX)/$(TARGET)/lib/libz.a: $(BUILD)/$(zlib_DIR)/libz.a
+	@rsync -a --no-group $(PROJECTS)/$(zlib_DIR)/zlib.h $(PREFIX)/$(TARGET)/include/
+	@rsync -a --no-group $(BUILD)/$(zlib_DIR)/zconf.h $(PREFIX)/$(TARGET)/include/
+	$(call INSTALL_MULTILIBS,$(zlib_DIR),libz.a)
 	@touch $@
 
-$(BUILD)/$(ZLIB)/libz.a: $(BUILD)/$(ZLIB)/Makefile
-	+$(call MULTIMAKE,$(ZLIB),libz.a,AR=$(TARGET)-ar,ARFLAGS=rc)
+$(BUILD)/$(zlib_DIR)/libz.a: $(BUILD)/$(zlib_DIR)/Makefile
+	+$(call MULTIMAKE,$(zlib_DIR),libz.a,AR=$(TARGET)-ar,ARFLAGS=rc)
 	@touch $@
 
-$(BUILD)/$(ZLIB)/Makefile: $(PROJECTS)/$(ZLIB)/configure
-	$(call MULTICONFIGURE,$(ZLIB),libz.a,)
+$(BUILD)/$(zlib_DIR)/Makefile: $(PROJECTS)/$(zlib_DIR)/configure
+	$(call MULTICONFIGURE,$(zlib_DIR),libz.a,)
 	@touch $@
 
 # zlib 1.3.2's configure adds -fPIC unconditionally and test-compiles with
 # it; the hunk linker has no GOT and gcc rejects -fPIC, so drop it before
 # configure runs.
-$(PROJECTS)/$(ZLIB)/configure: $(DOWNLOAD)/$(ZLIB).tar.gz
-	tar -C $(PROJECTS) -xf $(DOWNLOAD)/$(ZLIB).tar.gz
+$(PROJECTS)/$(zlib_DIR)/configure: $(DOWNLOAD)/$(zlib_DIR).tar.gz
+	tar -C $(PROJECTS) -xf $(DOWNLOAD)/$(zlib_DIR).tar.gz
 	$(SED) -i 's/ -fPIC"/"/' $@
 	@touch $@
 
 # =================================================
 # libpng
 # =================================================
-LIBPNG=$(libpng_DIR)
-
 .PHONY: libpng clean-libpng
 
 clean-libpng:
-	rm -rf $(BUILD)/$(LIBPNG)
+	rm -rf $(BUILD)/$(libpng_DIR)
 
-libpng: $(BUILD)/$(LIBPNG)/_done
+libpng: $(BUILD)/$(libpng_DIR)/_done
 
-$(BUILD)/$(LIBPNG)/_done: $(PREFIX)/$(TARGET)/lib/libpng.a
+$(BUILD)/$(libpng_DIR)/_done: $(PREFIX)/$(TARGET)/lib/libpng.a
 	@echo "done" >$@
 
-$(PREFIX)/$(TARGET)/lib/libpng.a: $(BUILD)/$(LIBPNG)/libpng.a
-	@rsync -a --no-group $(PROJECTS)/$(LIBPNG)/png.h $(PREFIX)/$(TARGET)/include/
-	@rsync -a --no-group $(PROJECTS)/$(LIBPNG)/pngconf.h $(PREFIX)/$(TARGET)/include/
-	@rsync -a --no-group $(BUILD)/$(LIBPNG)/pnglibconf.h $(PREFIX)/$(TARGET)/include/
-	@$(call COPY_MULTILIBS,$(LIBPNG),.libs/libpng16.a,libpng.a)
-	$(call INSTALL_MULTILIBS,$(LIBPNG),libpng.a)
+$(PREFIX)/$(TARGET)/lib/libpng.a: $(BUILD)/$(libpng_DIR)/libpng.a
+	@rsync -a --no-group $(PROJECTS)/$(libpng_DIR)/png.h $(PREFIX)/$(TARGET)/include/
+	@rsync -a --no-group $(PROJECTS)/$(libpng_DIR)/pngconf.h $(PREFIX)/$(TARGET)/include/
+	@rsync -a --no-group $(BUILD)/$(libpng_DIR)/pnglibconf.h $(PREFIX)/$(TARGET)/include/
+	@$(call COPY_MULTILIBS,$(libpng_DIR),.libs/libpng16.a,libpng.a)
+	$(call INSTALL_MULTILIBS,$(libpng_DIR),libpng.a)
 	@touch $@
 
-$(BUILD)/$(LIBPNG)/libpng.a: $(BUILD)/$(LIBPNG)/Makefile
-	+$(call MULTIMAKE,$(LIBPNG),libpng.a)
+$(BUILD)/$(libpng_DIR)/libpng.a: $(BUILD)/$(libpng_DIR)/Makefile
+	+$(call MULTIMAKE,$(libpng_DIR),libpng.a)
 	@touch $@
 
-$(BUILD)/$(LIBPNG)/Makefile: $(PROJECTS)/$(LIBPNG)/configure
-	$(call MULTICONFIGURE,$(LIBPNG),libpng.a,--host=$(TARGET))
+$(BUILD)/$(libpng_DIR)/Makefile: $(PROJECTS)/$(libpng_DIR)/configure
+	$(call MULTICONFIGURE,$(libpng_DIR),libpng.a,--host=$(TARGET))
 	@touch $@
 
-$(PROJECTS)/$(LIBPNG)/configure: $(DOWNLOAD)/$(LIBPNG).tar.xz $(BUILD)/$(ZLIB)/_done $(BUILD)/libnix/_done
-	tar -C $(PROJECTS) -xf $(DOWNLOAD)/$(LIBPNG).tar.xz
+$(PROJECTS)/$(libpng_DIR)/configure: $(DOWNLOAD)/$(libpng_DIR).tar.xz $(BUILD)/$(zlib_DIR)/_done $(BUILD)/libnix/_done
+	tar -C $(PROJECTS) -xf $(DOWNLOAD)/$(libpng_DIR).tar.xz
 	@touch $@
 
 # =================================================
 # libfreetype
 # =================================================
-LIBFREETYPE=$(freetype_DIR)
-
 .PHONY: libfreetype2 clean-libfreetype2
 
 clean-libfreetype2:
-	rm -rf $(BUILD)/$(LIBFREETYPE)
+	rm -rf $(BUILD)/$(freetype_DIR)
 
-libfreetype2: $(BUILD)/$(LIBFREETYPE)/_done
+libfreetype2: $(BUILD)/$(freetype_DIR)/_done
 
-$(BUILD)/$(LIBFREETYPE)/_done: $(PREFIX)/$(TARGET)/lib/libfreetype.a
+$(BUILD)/$(freetype_DIR)/_done: $(PREFIX)/$(TARGET)/lib/libfreetype.a
 	@echo "done" >$@
 
-$(PREFIX)/$(TARGET)/lib/libfreetype.a: $(BUILD)/$(LIBFREETYPE)/libfreetype.a
-	@rsync -a --no-group $(PROJECTS)/$(LIBFREETYPE)/include/ft2build.h $(PREFIX)/$(TARGET)/include/
-	@rsync -a --no-group $(PROJECTS)/$(LIBFREETYPE)/include/freetype $(PREFIX)/$(TARGET)/include/
-	@$(call COPY_MULTILIBS,$(LIBFREETYPE),.libs/libfreetype.a,libfreetype.a)
-	$(call INSTALL_MULTILIBS,$(LIBFREETYPE),libfreetype.a)
+$(PREFIX)/$(TARGET)/lib/libfreetype.a: $(BUILD)/$(freetype_DIR)/libfreetype.a
+	@rsync -a --no-group $(PROJECTS)/$(freetype_DIR)/include/ft2build.h $(PREFIX)/$(TARGET)/include/
+	@rsync -a --no-group $(PROJECTS)/$(freetype_DIR)/include/freetype $(PREFIX)/$(TARGET)/include/
+	@$(call COPY_MULTILIBS,$(freetype_DIR),.libs/libfreetype.a,libfreetype.a)
+	$(call INSTALL_MULTILIBS,$(freetype_DIR),libfreetype.a)
 	@touch $@
 
-$(BUILD)/$(LIBFREETYPE)/libfreetype.a: $(BUILD)/$(LIBFREETYPE)/Makefile
-	+$(call MULTIMAKE,$(LIBFREETYPE),libfreetype.a)
+$(BUILD)/$(freetype_DIR)/libfreetype.a: $(BUILD)/$(freetype_DIR)/Makefile
+	+$(call MULTIMAKE,$(freetype_DIR),libfreetype.a)
 	@touch $@
 
-$(BUILD)/$(LIBFREETYPE)/Makefile: $(PROJECTS)/$(LIBFREETYPE)/configure
-	$(call MULTICONFIGURE,$(LIBFREETYPE),libfreetype.a,--host=$(TARGET),--disable-shared)
+$(BUILD)/$(freetype_DIR)/Makefile: $(PROJECTS)/$(freetype_DIR)/configure
+	$(call MULTICONFIGURE,$(freetype_DIR),libfreetype.a,--host=$(TARGET),--disable-shared)
 	@touch $@
 
-$(PROJECTS)/$(LIBFREETYPE)/configure: $(DOWNLOAD)/$(LIBFREETYPE).tar.xz $(BUILD)/libnix/_done
-	tar -C $(PROJECTS) -xf $(DOWNLOAD)/$(LIBFREETYPE).tar.xz
+$(PROJECTS)/$(freetype_DIR)/configure: $(DOWNLOAD)/$(freetype_DIR).tar.xz $(BUILD)/libnix/_done
+	tar -C $(PROJECTS) -xf $(DOWNLOAD)/$(freetype_DIR).tar.xz
 	@touch $@
