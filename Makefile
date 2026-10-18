@@ -326,9 +326,20 @@ get_branch = $(shell grep '^$(1)[[:blank:]]' .repos | $(SED) -e 's/[[:blank:]]\+
 $(foreach modu,$(modules),$(eval $(modu)_URL=$(call get_url,$(modu))))
 $(foreach modu,$(modules),$(eval $(modu)_BRANCH=$(call get_branch,$(modu))))
 
-NDK_URL              := https://aminet.net/dev/misc/NDK3.2.lha
-NDK_SHA256           := 96cabd4ad683dced632e147bf86dee0f50dcb1254386216c25c362916a6409bb
-NDK_ARC_NAME         := NDK3.2
+# get file names, checksums and urls of the downloaded archives from
+# default-archives; <name>_DIR is the file without its extension, the
+# directory most of them unpack into
+archives := $(shell $(SED) -e '/^[[:blank:]]*\#/d' -e '/^[[:blank:]]*$$/d' -e 's/[[:blank:]]\+/ /g' default-archives | cut -d' ' -f1)
+get_archive = $(shell grep '^$(1)[[:blank:]]' default-archives | $(SED) -e 's/[[:blank:]]\+/ /g' | cut -d' ' -f2)
+get_sha256 = $(shell grep '^$(1)[[:blank:]]' default-archives | $(SED) -e 's/[[:blank:]]\+/ /g' | cut -d' ' -f3)
+get_urls = $(shell grep '^$(1)[[:blank:]]' default-archives | $(SED) -e 's/[[:blank:]]\+/ /g' | cut -d' ' -f4-)
+$(foreach arch,$(archives),$(eval $(arch)_ARCHIVE=$(call get_archive,$(arch))))
+$(foreach arch,$(archives),$(eval $(arch)_SHA256=$(call get_sha256,$(arch))))
+$(foreach arch,$(archives),$(eval $(arch)_URLS=$(call get_urls,$(arch))))
+$(foreach arch,$(archives),$(eval $(arch)_DIR=$(patsubst %.tar,%,$(basename $($(arch)_ARCHIVE)))))
+$(foreach arch,$(archives),$(eval $(DOWNLOAD)/$($(arch)_ARCHIVE): ; @$(PWD)/sdk/download --sha256 $($(arch)_SHA256) $$@ $($(arch)_URLS)))
+
+NDK_ARC_NAME         := $(ndk_DIR)
 NDK_FOLDER_NAME      := NDK3.2
 NDK_FOLDER_NAME_H    := NDK3.2/Include_H
 NDK_FOLDER_NAME_I    := NDK3.2/Include_I
@@ -371,16 +382,12 @@ endif
 
 # Files for GMP, MPC and MPFR
 
-GMP := gmp-6.2.1
-GMPFILE := $(GMP).tar.bz2
-GMP_SHA256 := eae9326beb4158c386e39a356818031bd28f3124cf915f8c5b1dc4c7a36b4d7c
-MPC := mpc-1.2.1
-MPCFILE := $(MPC).tar.gz
-MPC_SHA256 := 17503d2c395dfcf106b622dc142683c1199431d095367c6aacba6eec30340459
-MPFR := mpfr-4.1.0
-MPFRFILE := $(MPFR).tar.bz2
-MPFR_SHA256 := feced2d430dd5a97805fa289fed3fc8ff2b094c02d05287fd6133e7f1f0ec926
-GCC_INFRASTRUCTURE ?= https://gcc.gnu.org/pub/gcc/infrastructure
+GMP := $(gmp_DIR)
+GMPFILE := $(gmp_ARCHIVE)
+MPC := $(mpc_DIR)
+MPCFILE := $(mpc_ARCHIVE)
+MPFR := $(mpfr_DIR)
+MPFRFILE := $(mpfr_ARCHIVE)
 
 # =================================================
 # pretty output ^^
@@ -697,15 +704,6 @@ update-netinclude: $(PROJECTS)/amiga-netinclude/README.md
 
 .PHONY: gcc-prerequisites update-gmp update-mpc update-mpfr
 gcc-prerequisites: $(PROJECTS)/$(GMP)/configure $(PROJECTS)/$(MPFR)/configure $(PROJECTS)/$(MPC)/configure
-
-$(DOWNLOAD)/$(GMPFILE):
-	@$(PWD)/sdk/download --sha256 $(GMP_SHA256) $@ $(GCC_INFRASTRUCTURE)/$(GMPFILE)
-
-$(DOWNLOAD)/$(MPFRFILE):
-	@$(PWD)/sdk/download --sha256 $(MPFR_SHA256) $@ $(GCC_INFRASTRUCTURE)/$(MPFRFILE)
-
-$(DOWNLOAD)/$(MPCFILE):
-	@$(PWD)/sdk/download --sha256 $(MPC_SHA256) $@ $(GCC_INFRASTRUCTURE)/$(MPCFILE)
 
 define extract-gcc-prerequisite
 	@tmp=$$(mktemp -d "$(PROJECTS)/.$(1).XXXXXX"); \
@@ -1357,12 +1355,6 @@ $(BUILD)/vbcc_target_m68k-amigaos.info: $(DOWNLOAD)/vbcc_target_m68k-amigaos.lha
 	$(L0)"unpack vbcc_target_m68k-amigaos"$(L1) cd $(BUILD) && $(LHA_FOR_BUILD) xf $(DOWNLOAD)/vbcc_target_m68k-amigaos.lha $(L2)
 	@touch $(BUILD)/vbcc_target_m68k-amigaos.info
 
-$(DOWNLOAD)/vbcc_target_m68k-kick13.lha:
-	@$(PWD)/sdk/download --sha256 8815948604eb50ec8b82d4fd2c9d673f5ec59a6623778edfcb29a7df608ea711 $@ http://aminet.net/dev/c/vbcc_target_m68k-kick13.lha
-
-$(DOWNLOAD)/vbcc_target_m68k-amigaos.lha:
-	@$(PWD)/sdk/download --sha256 ec734d7115359cdb5d1c70349284ecbd5712ef47e8bc28d4150117c6f8c73289 $@ http://aminet.net/dev/c/vbcc_target_m68k-amiga.lha
-
 # =================================================
 # NDK - no git
 # =================================================
@@ -1456,9 +1448,6 @@ $(PROJECTS)/$(NDK_FOLDER_NAME).info: $(LHA_PREREQ) $(DOWNLOAD)/$(NDK_ARC_NAME).l
 		then j=$${i:8}; patch -N "$(PROJECTS)/$${j%.diff}" "$$i"; \
 		else cp -pv "$$i" "$(PROJECTS)/$${i:8}"; fi ; done $(L2)
 	@touch $(PROJECTS)/$(NDK_FOLDER_NAME).info
-
-$(DOWNLOAD)/$(NDK_ARC_NAME).lha:
-	@$(PWD)/sdk/download --sha256 $(NDK_SHA256) $@ $(NDK_URL)
 
 
 # =================================================
@@ -1709,9 +1698,6 @@ $(BUILD)/ixemul/lib/libc.a: $(DOWNLOAD)/ixemul-sdk.lha $(LHA_PREREQ)
 	@mkdir -p $(BUILD)/ixemul
 	$(L0)"unpacking ixemul-sdk.lha"$(L1) cd $(BUILD)/ixemul && $(LHA_FOR_BUILD) xf $(DOWNLOAD)/ixemul-sdk.lha $(L2)
 
-$(DOWNLOAD)/ixemul-sdk.lha:
-	@$(PWD)/sdk/download --sha256 00b4054283b99d22f6b353194fa8c75917ec0cc08a3a64395a891da446db07fc $@ https://aminet.net/util/libs/ixemul-sdk.lha
-
 # =================================================
 # sdk installation
 # =================================================
@@ -1766,24 +1752,20 @@ update-repos:
 # published release binary is used rather than a source build, so neither CI
 # nor a contributor needs a Rust toolchain; hosts without a release build it
 # themselves and put it on PATH.
-VOLAMOS_VERSION ?= 0.10
 VOLAMOS_UNAME_S := $(shell uname -s)
 VOLAMOS_UNAME_M := $(shell uname -m)
 
 ifeq ($(VOLAMOS_UNAME_S),Linux)
   ifeq ($(VOLAMOS_UNAME_M),x86_64)
     VOLAMOS_HOST := x86_64-unknown-linux-musl
-    VOLAMOS_SHA256 := bc2422709b2c0dae297b954236ec814291b1a33d25f5487ca94a55832f0107ae
   endif
   ifneq (,$(filter $(VOLAMOS_UNAME_M),aarch64 arm64))
     VOLAMOS_HOST := aarch64-unknown-linux-musl
-    VOLAMOS_SHA256 := d718b3e8c1dc85f84b15431eac2d2924ce0100f8cc67a2ad2b4e65cf6a9f4d6b
   endif
 endif
 ifeq ($(VOLAMOS_UNAME_S),Darwin)
   ifneq (,$(filter $(VOLAMOS_UNAME_M),aarch64 arm64))
     VOLAMOS_HOST := aarch64-apple-darwin
-    VOLAMOS_SHA256 := fa0e7c4444c7f2cd017664358f9145040aa1c828f341883bff47a861fe05ce22
   endif
 endif
 
@@ -1792,15 +1774,12 @@ volamos: $(PREFIX)/bin/volamos
 
 ifeq (,$(VOLAMOS_HOST))
 $(PREFIX)/bin/volamos:
-	@echo "volamos $(VOLAMOS_VERSION) has no release for $(VOLAMOS_UNAME_S) $(VOLAMOS_UNAME_M)." >&2
+	@echo "volamos has no release for $(VOLAMOS_UNAME_S) $(VOLAMOS_UNAME_M)." >&2
 	@echo "Build it from https://github.com/sidick/volamos and copy it to $(PREFIX)/bin." >&2
 	@exit 1
 else
-VOLAMOS_DIR := volamos-v$(VOLAMOS_VERSION)-$(VOLAMOS_HOST)
-VOLAMOS_ARC := $(VOLAMOS_DIR).tar.gz
-
-$(DOWNLOAD)/$(VOLAMOS_ARC):
-	@$(PWD)/sdk/download --sha256 $(VOLAMOS_SHA256) $@ https://github.com/sidick/volamos/releases/download/v$(VOLAMOS_VERSION)/$(VOLAMOS_ARC)
+VOLAMOS_DIR := $(volamos-$(VOLAMOS_HOST)_DIR)
+VOLAMOS_ARC := $(volamos-$(VOLAMOS_HOST)_ARCHIVE)
 
 $(PREFIX)/bin/volamos: $(DOWNLOAD)/$(VOLAMOS_ARC)
 	@mkdir -p $(PREFIX)/bin
@@ -2082,7 +2061,7 @@ MULTICONFIGURE = $(L0)"configure $1"$(L1) $(foreach T,$(subst MODNAME,$1,$(MULTI
 # =================================================
 # zlib
 # =================================================
-ZLIB=zlib-1.3.2
+ZLIB=$(zlib_DIR)
 
 .PHONY: zlib clean-zlib
 
@@ -2116,13 +2095,10 @@ $(PROJECTS)/$(ZLIB)/configure: $(DOWNLOAD)/$(ZLIB).tar.gz
 	$(SED) -i 's/ -fPIC"/"/' $@
 	@touch $@
 
-$(DOWNLOAD)/$(ZLIB).tar.gz:
-	@$(PWD)/sdk/download --sha256 bb329a0a2cd0274d05519d61c667c062e06990d72e125ee2dfa8de64f0119d16 $@ https://github.com/madler/zlib/releases/download/v$(subst zlib-,,$(ZLIB))/$(ZLIB).tar.gz
-
 # =================================================
 # libpng
 # =================================================
-LIBPNG=libpng-1.6.58
+LIBPNG=$(libpng_DIR)
 
 .PHONY: libpng clean-libpng
 
@@ -2154,13 +2130,10 @@ $(PROJECTS)/$(LIBPNG)/configure: $(DOWNLOAD)/$(LIBPNG).tar.xz $(BUILD)/$(ZLIB)/_
 	tar -C $(PROJECTS) -xf $(DOWNLOAD)/$(LIBPNG).tar.xz
 	@touch $@
 
-$(DOWNLOAD)/$(LIBPNG).tar.xz:
-	@$(PWD)/sdk/download --sha256 28eb403f51f0f7405249132cecfe82ea5c0ef97f1b32c5a65828814ae0d34775 $@ https://sourceforge.net/projects/libpng/files/libpng16/$(subst libpng-,,$(LIBPNG))/$(LIBPNG).tar.xz
-
 # =================================================
 # libfreetype
 # =================================================
-LIBFREETYPE=freetype-2.12.1
+LIBFREETYPE=$(freetype_DIR)
 
 .PHONY: libfreetype2 clean-libfreetype2
 
@@ -2190,6 +2163,3 @@ $(BUILD)/$(LIBFREETYPE)/Makefile: $(PROJECTS)/$(LIBFREETYPE)/configure
 $(PROJECTS)/$(LIBFREETYPE)/configure: $(DOWNLOAD)/$(LIBFREETYPE).tar.xz $(BUILD)/libnix/_done
 	tar -C $(PROJECTS) -xf $(DOWNLOAD)/$(LIBFREETYPE).tar.xz
 	@touch $@
-
-$(DOWNLOAD)/$(LIBFREETYPE).tar.xz:
-	@$(PWD)/sdk/download --sha256 4766f20157cc4cf0cd292f80bf917f92d1c439b243ac3018debf6b9140c41a7f $@ https://downloads.sourceforge.net/project/freetype/freetype2/$(subst freetype-,,$(LIBFREETYPE))/$(LIBFREETYPE).tar.xz
