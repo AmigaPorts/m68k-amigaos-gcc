@@ -9,9 +9,11 @@
 #   ci-amigaos       - the AmigaOS-hosted toolchain (builds the Linux
 #                      cross toolchain first, to bootstrap from)
 #   ci-mingw         - the MinGW-hosted toolchain
-#   ci-testsuite-c   - the arm64 Linux toolchain with the gcc C testsuite
-#   ci-testsuite-cxx - the arm64 Linux toolchain with the g++ testsuite (slow)
-#   ci-testsuite-newlib - the arm64 Linux toolchain with newlib's testsuite
+#   ci-testsuite-c   - the gcc C testsuite on an arm64 Linux runner
+#   ci-testsuite-cxx - the g++ testsuite (slow)
+#   ci-testsuite-newlib - newlib's testsuite
+# The ci-testsuite-* labels build only what the tests need (make min): no
+# gdb, SDKs, vbcc, zlib/libpng or release tarball.
 # Re-add the label to rebuild after pushing new commits.
 
 name: Bootstrap toolchain
@@ -111,6 +113,9 @@ jobs:
       RUN_TESTSUITE: ${{ inputs.run_testsuite || github.event.label.name == 'ci-testsuite-c' }}
       RUN_TESTSUITE_CXX: ${{ inputs.run_cxx_testsuite || github.event.label.name == 'ci-testsuite-cxx' }}
       RUN_TESTSUITE_NEWLIB: ${{ github.event.label.name == 'ci-testsuite-newlib' }}
+      # the testsuite labels build only the compiler and its runtimes; the
+      # steps that need the rest of the distribution check for 'all'
+      BUILD_TARGET: ${{ startsWith(github.event.label.name, 'ci-testsuite') && 'min' || 'all' }}
       # the two simulators are kept side by side so their results can be
       # compared; SIMULATOR picks one and BOARD is the baseboards/ file for it
       SIMULATOR: ${{ inputs.simulator || 'volamos' }}
@@ -191,11 +196,11 @@ jobs:
         run: scripts/manifest --markdown >> $GITHUB_STEP_SUMMARY
 
       - name: Build toolchain
-        run: make -j $NPROC all
+        run: make -j $NPROC $BUILD_TARGET
 
       # a libpython dependency would tie the release to this runner's distro
       - name: Check that gdb does not link libpython
-        if: runner.os == 'Linux'
+        if: runner.os == 'Linux' && env.BUILD_TARGET == 'all'
         run: |
           ldd "$PREFIX/bin/m68k-amigaos-gdb" > gdb-ldd.txt
           cat gdb-ldd.txt
@@ -203,19 +208,23 @@ jobs:
 
       # modest -j: downloads are network bound, and more jobs just garble the log
       - name: Install SDKs
+        if: env.BUILD_TARGET == 'all'
         run: make -j4 all-sdk
 
       # vbcc/vlink/vasm plus the vbcc target archives and vc.config
       - name: Build vbcc toolchain
+        if: env.BUILD_TARGET == 'all'
         run: make -j $NPROC vbcc vlink
 
       # target libraries, one copy per multilib
       - name: Build zlib and libpng
+        if: env.BUILD_TARGET == 'all'
         run: make -j $NPROC zlib libpng
 
       # release tarballs are named after the tag (16.2-rc4), which
       # versions the whole distribution rather than just gcc
       - name: Package
+        if: env.BUILD_TARGET == 'all'
         run: |
           if [[ "$GITHUB_REF" == refs/tags/* ]]; then
             make package \
@@ -225,6 +234,7 @@ jobs:
           fi
 
       - name: Upload toolchain tarball
+        if: env.BUILD_TARGET == 'all'
         uses: actions/upload-artifact@v7
         with:
           name: m68k-amigaos-gcc-${{ env.GCC_VER }}-${{ runner.os }}-${{ runner.arch }}
