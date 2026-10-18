@@ -122,7 +122,8 @@ A full bootstrap takes roughly 10 to 30 minutes on current Linux hardware, domin
 ## Nix package
 
 The flake builds the toolchain of `make all` as a package, from the modules
-of `default-repos` pinned in `flake.lock`:
+of `default-repos` pinned in `flake.lock` and the archives of
+`default-archives`:
 
 ```
 nix build github:AmigaPorts/m68k-amigaos-gcc   # or nix build . in a checkout
@@ -252,6 +253,7 @@ You can switch modules to different branches. E.g.
 make branch mod=binutils branch=devel1
 ```
 The default branches and repositories are in the file **default-repos**, the local state is managed in the file **.repos**.
+The archives the build downloads, with their checksums, are in the file **default-archives**.
 
 ## Copyrights
 

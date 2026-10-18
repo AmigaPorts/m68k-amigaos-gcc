@@ -101,6 +101,7 @@
         fileset = lib.fileset.unions [
           ./Makefile
           ./disable_implicite_rules.mk
+          ./default-archives
           ./default-repos
           ./lib
           ./patches
