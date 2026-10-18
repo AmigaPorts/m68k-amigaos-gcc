@@ -61,7 +61,7 @@ ifneq (,$(strip $(HOST)))
 endif
 
 # Goals that touch nothing under PREFIX, so they run without one
-NO_PREFIX_GOALS := clean% drop-prefix help info update% branch release-tag
+NO_PREFIX_GOALS := clean% drop-prefix help info update% branch release-tag v
 
 # PREFIX has no default: the first build names it, the build tree records
 # it (written on the first build, checked below) and a make without PREFIX
@@ -483,7 +483,7 @@ help:
 	@echo "make l                   print the last log entry for each project"
 	@echo "make b                   print the branch for each project"
 	@echo "make r                   print the remote for each project"
-	@echo "make v [date=<date>]     checkout all projects for a given date, checkout to branch if no date given"
+	@echo "make v [ref=<ref>|date=<date>]  checkout all modules at a tag, branch or commit, or as of a date; or at their branches"
 	@echo "make branch branch=<branch> mod=<module>  switch the module to the given branch"
 	@echo ""
 	@echo "Parameters:"
@@ -1997,31 +1997,13 @@ b:
 	@echo "." && git remote -v
 
 
-# checkout for a given date
+# Check out every module at one point, see scripts/checkout: the tag,
+# branch or commit ref in all of them, or each module's branch as it was at
+# date.  With neither, each module's .repos branch.
+#   make v ref=m68k-amigaos-gcc-v16.2-rc18
+#   make v date=2026-09-01
 v:
-	@D="$(date)"; \
-	for i in $(modules); do \
-		bra=$$(grep "^$$i[[:blank:]]" .repos | $(SED) -e 's/[[:blank:]]\+/ /g' | cut -d' ' -f3); \
-		bra=$${bra/$$'\n'} ;\
-		bra=$${bra/$$'\r'} ;\
-		if [ -e projects/$$i ]; then \
-			pushd projects/$$i >/dev/null; \
-			echo $$i;\
-			git checkout $$bra; \
-			if [ "$$D" != "" ]; then \
-				(export DEPTH=16; while [ "" == "$$( git rev-list -n 1 --first-parent --before="$$D" $$bra)" ]; \
-					do echo "trying depth=$$DEPTH"; git pull --depth $$DEPTH ; export DEPTH=$$(($$DEPTH+$$DEPTH)); done); \
-				git checkout `git rev-list -n 1 --first-parent --before="$$D" $$bra`; \
-			fi;\
-			popd >/dev/null; \
-		fi;\
-	done; \
-	echo .; \
-	B=master; \
-	git checkout $$B; \
-	if [ "$$D" != "" ]; then \
-		git checkout `git rev-list -n 1 --first-parent --before="$$D" $$B`; \
-	fi
+	@scripts/checkout $(if $(ref),ref $(ref),$(if $(date),date "$(date)"))
 
 # change version to the given branch
 branch:

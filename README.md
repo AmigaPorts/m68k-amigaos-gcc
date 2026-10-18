@@ -226,6 +226,17 @@ make -j$(nproc) check board=amigaos
 The **Makefile** provides some targets to switch to an older state
 for all modules.
 
+### Rebuilding a release
+A release tags every module as `m68k-amigaos-gcc-<tag>`. Check out the
+release here, then every module at its tag:
+```
+git checkout v16.2-rc17
+make v ref=m68k-amigaos-gcc-v16.2-rc17
+```
+This also pins `.repos` to the tag, so `make update` clones any module
+not checked out yet at the same tag. A module without the tag is an
+error. Any tag, branch or commit that exists in every module works.
+
 ### Switching amiga-gcc to a given date
 Use make to switch all modules to a given date. You may also add the time
 ```
@@ -236,6 +247,9 @@ Run make to switch all modules back to the branch
 ```
 make v
 ```
+After `make v ref=...`, restore the branches in `.repos` first:
+`cp default-repos .repos`, then `make branch` for any module that was not
+on its default branch.
 ### Show the current commit for all submodules
 This lists all modules with the last commit. Useful if you switched to a given date to show what's where.
 ```

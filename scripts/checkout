@@ -1,0 +1,86 @@
+#!/bin/sh
+# Check out every module listed in .repos at the same point, for a build
+# that reproduces another one:
+#
+#   scripts/checkout ref REF     the tag, branch or commit REF in every module
+#   scripts/checkout date DATE   each module's branch as it was at DATE
+#   scripts/checkout             each module's branch, as .repos lists it
+#
+# `ref` writes REF into the ref column of .repos, so `make update` clones a
+# module that is not checked out yet at REF, and fetches REF into a module
+# that is, checking it out detached.  A module without REF is an error, and
+# the first one stops the run: a release is built from a tag that exists in
+# all of them or not at all.
+#
+# `date` finds the last commit on the module's .repos branch before DATE
+# (any git date, "2026-09-01" or "3 weeks ago"), deepening a shallow clone
+# until the history reaches back that far, and checks it out detached.
+#
+# This repository is left alone: check it out at the matching tag or commit
+# yourself.
+#
+# Run from the top of the build tree, as make v does.
+
+set -eu
+
+mode=${1-} arg=${2-}
+case $mode in
+'') [ $# -eq 0 ] || { echo "usage: checkout [ref REF | date DATE]" >&2; exit 1; } ;;
+ref|date) [ -n "$arg" ] || { echo "checkout: $mode needs an argument" >&2; exit 1; } ;;
+*) echo "usage: checkout [ref REF | date DATE]" >&2; exit 1 ;;
+esac
+[ -f .repos ] || cp default-repos .repos
+
+die() { echo "checkout: $*" >&2; exit 1; }
+
+# module name and branch, one per line, skipping blanks and comments
+modules() {
+	sed -e '/^[[:blank:]]*#/d' -e '/^[[:blank:]]*$/d' -e 's/[[:blank:]]\+/ /g' .repos |
+		cut -d' ' -f1,3
+}
+
+# the commit on $2 before $1 in the module at $3, deepening the clone as
+# needed (git pull --depth N refetches, so the depth grows in steps)
+commit_before() {
+	depth=16
+	while [ -z "$(git -C "$3" rev-list -n 1 --first-parent --before="$1" "origin/$2")" ]; do
+		[ -f "$3/.git/shallow" ] || die "$3: no commit on $2 before $1"
+		[ $depth -le 4096 ] || { git -C "$3" fetch -q --unshallow origin "$2"; continue; }
+		echo "$3: deepening to $depth" >&2
+		git -C "$3" fetch -q --depth $depth origin "$2"
+		depth=$((depth * 2))
+	done
+	git -C "$3" rev-list -n 1 --first-parent --before="$1" "origin/$2"
+}
+
+modules | while read -r mod branch; do
+	dir=projects/$mod
+	case $mode in
+	ref)
+		[ -d "$dir" ] || continue
+		echo "$mod: $arg"
+		# a tag is fetched as one, so git describe sees it; a branch or
+		# a commit is fetched by name
+		git -C "$dir" fetch -q --depth 16 origin "tag" "$arg" 2>/dev/null ||
+			git -C "$dir" fetch -q --depth 16 origin "$arg" ||
+			die "$mod has no $arg"
+		git -C "$dir" checkout -q --detach FETCH_HEAD
+		;;
+	date)
+		[ -d "$dir" ] || continue
+		commit=$(commit_before "$arg" "$branch" "$dir")
+		echo "$mod: $branch at $(git -C "$dir" log -1 --format='%h %cs' "$commit")"
+		git -C "$dir" checkout -q --detach "$commit"
+		;;
+	'')
+		[ -d "$dir" ] || continue
+		echo "$mod: $branch"
+		git -C "$dir" checkout -q "$branch"
+		;;
+	esac
+done
+
+# Only once every checked-out module has REF: the ref column, for the
+# modules make update still has to clone.  The columns stay aligned.
+[ "$mode" != ref ] ||
+	sed -i -e "/^[[:blank:]]*#/! s|^\([^[:blank:]]\+[[:blank:]]\+[^[:blank:]]\+[[:blank:]]\+\)[^[:blank:]]\+|\1$arg|" .repos
