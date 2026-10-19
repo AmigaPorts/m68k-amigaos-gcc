@@ -101,10 +101,47 @@ on:
     types: [labeled]
 
 jobs:
+  # What to build is decided once, here, and shared as the .repos of the
+  # build jobs below: each runs on its own runner with its own checkout, and
+  # a module branch could move between them.  A release pins every module to
+  # the tag that release-tag made in it, named after this repository's; a
+  # module without the tag fails the clone.
+  refs:
+    name: Select module refs
+    if: >-
+      github.event_name != 'pull_request' ||
+      contains(fromJSON('["ci-linux", "ci-linux-arm", "ci-macos", "ci-testsuite-c", "ci-testsuite-cxx", "ci-testsuite-newlib", "ci-amigaos", "ci-mingw"]'),
+               github.event.label.name)
+    runs-on: ubuntu-24.04
+    env:
+      GCC_VER: ${{ inputs.gcc_version || '16.2' }}
+      TAG: ${{ inputs.tag }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          repository: ${{ inputs.checkout_repo }}
+          ref: ${{ inputs.checkout_ref }}
+
+      - name: Pin the module refs
+        run: |
+          if [ -z "$TAG" ]; then
+            make branch branch=amiga$GCC_VER mod=gcc
+          else
+            make v ref=m68k-amigaos-gcc-$TAG
+          fi
+          cat .repos
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: module-refs
+          path: .repos
+          include-hidden-files: true
+
   build:
     # each ci-* label starts its own run of this job: name it after the
     # label, or a PR's checks list keeps only the latest of them
     name: build (${{ github.event.label.name || github.event_name }})
+    needs: refs
     if: >-
       github.event_name != 'pull_request' ||
       contains(fromJSON('["ci-linux", "ci-linux-arm", "ci-macos", "ci-amigaos", "ci-check-c", "ci-check-c++", "ci-check-c-newlib", "ci-check-c++-newlib", "ci-check-newlib"]'),
@@ -187,15 +224,10 @@ jobs:
           cpu=${cpu:-$(sysctl -n machdep.cpu.brand_string 2>/dev/null)}
           echo "CPU: $cpu, $nproc vCPUs" | tee -a $GITHUB_STEP_SUMMARY
 
-      - name: Select gcc branch
-        if: inputs.tag == ''
-        run: make branch branch=amiga$GCC_VER mod=gcc
-
-      # a release: every module at the tag that release-tag made in it,
-      # named after this repository's; a module without it fails the clone
-      - name: Pin the modules to the release tag
-        if: inputs.tag != ''
-        run: make v ref=m68k-amigaos-gcc-${{ inputs.tag }}
+      - name: Download the module refs
+        uses: actions/download-artifact@v7
+        with:
+          name: module-refs
 
       # build with a pull request from another module's repo: each word in
       # repos is module=branch, or module=URL#branch for a fork
@@ -444,16 +476,15 @@ jobs:
           echo "LHA_FOR_BUILD=$boot/bin/lha" >> "$GITHUB_ENV"
           echo "PACKAGE_LHA=$boot/bin/lha" >> "$GITHUB_ENV"
 
+      - name: Download the module refs
+        uses: actions/download-artifact@v7
+        with:
+          name: module-refs
+
       - name: Build AmigaOS hosted toolchain
         env:
           REPOS: ${{ inputs.repos }}
-          TAG: ${{ inputs.tag }}
         run: |
-          if [ -z "$TAG" ]; then
-            make branch mod=gcc branch="amiga$GCC_VER"
-          else
-            make v ref="m68k-amigaos-gcc-$TAG"
-          fi
           [ -z "$REPOS" ] || sh .github/scripts/override-repos.sh
           make update
           make gcc-prerequisites
@@ -491,6 +522,7 @@ jobs:
     # best effort until the Canadian-cross path issues are fixed: a failure
     # here must not block the release of the other platforms
     continue-on-error: true
+    needs: refs
     if: >-
       (github.event_name == 'pull_request' && github.event.label.name == 'ci-mingw') ||
       (github.event_name != 'pull_request' && inputs.build_hosted)
@@ -543,17 +575,16 @@ jobs:
           command -v wine
           command -v lha
 
+      - name: Download the module refs
+        uses: actions/download-artifact@v7
+        with:
+          name: module-refs
+
       - name: Build MinGW hosted toolchain
         id: version
         env:
           REPOS: ${{ inputs.repos }}
-          TAG: ${{ inputs.tag }}
         run: |
-          if [ -z "$TAG" ]; then
-            make branch mod=gcc branch="amiga$GCC_VER"
-          else
-            make v ref="m68k-amigaos-gcc-$TAG"
-          fi
           [ -z "$REPOS" ] || sh .github/scripts/override-repos.sh
           make update
           make -j "$(nproc)" all
