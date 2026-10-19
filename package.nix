@@ -3,7 +3,8 @@
 # The Makefile clones a module or downloads an archive only when it is
 # missing, so the sources are put in place up front and the build itself
 # needs no network.  `sources` maps each module name of default-repos to its
-# source tree; `manifest` is the .manifest recording their revisions.
+# source tree, `archives` each archive name of default-archives to its file,
+# sha256 and URLs; `manifest` is the .manifest recording their revisions.
 {
   lib,
   stdenv,
@@ -18,35 +19,14 @@
   zlib,
   src,
   sources,
+  archives,
   manifest,
   version,
   pkgVersion ? "AmigaDev ${version}",
 }:
 
 let
-  # The archives of default-archives, as the Makefile reads them: a name,
-  # the file in download/, its sha256 and the URLs to try.
-  archives = lib.listToAttrs (
-    map
-      (
-        line:
-        let
-          words = lib.filter (w: lib.isString w && w != "") (builtins.split "[[:space:]]+" line);
-        in
-        lib.nameValuePair (lib.elemAt words 0) {
-          file = lib.elemAt words 1;
-          sha256 = lib.elemAt words 2;
-          urls = lib.drop 3 words;
-        }
-      )
-      (
-        lib.filter (line: builtins.match "[[:space:]]*(#.*)?" line == null) (
-          lib.splitString "\n" (builtins.readFile "${src}/default-archives")
-        )
-      )
-  );
-
-  # the ones make all needs
+  # the archives make all needs
   downloads = map (name: archives.${name}) [
     "gmp"
     "mpc"
@@ -111,27 +91,34 @@ stdenv.mkDerivation {
   # the modules' own config.sub and config.guess know amigaos
   dontUpdateAutotoolsGnuConfigScripts = true;
 
-  # The binutils of stdenv are for the build machine; keep them out of the
-  # target library builds that pick tools from the environment.
-  buildPhase = ''
-    runHook preBuild
-    (
-      unset AR AS LD NM OBJCOPY OBJDUMP RANLIB READELF SIZE STRINGS STRIP
-      make -j$NIX_BUILD_CORES all \
-        PREFIX=$out \
-        PKGVERSION=${lib.escapeShellArg pkgVersion} \
-        MANIFEST=${manifest}
-    )
-    runHook postBuild
+  # The binutils of stdenv are for the build machine, but configure scripts
+  # for the target, like newlib's, take AR and the like from the
+  # environment.  Hide them while make runs, and bring them back for the
+  # strip in fixup.
+  preBuild = ''
+    hostTools=$(for tool in AR AS LD NM OBJCOPY OBJDUMP RANLIB READELF SIZE STRINGS STRIP; do
+      [ -z "''${!tool+set}" ] || printf 'export %s=%q\n' $tool "''${!tool}"
+    done)
+    unset AR AS LD NM OBJCOPY OBJDUMP RANLIB READELF SIZE STRINGS STRIP
   '';
+  postBuild = ''
+    eval "$hostTools"
+  '';
+
+  enableParallelBuilding = true;
+  buildFlags = [ "all" ];
+  makeFlags = [
+    "PREFIX=${placeholder "out"}"
+    "MANIFEST=${manifest}"
+  ];
+  # with a space, so not in makeFlags; the Makefile takes it from the
+  # environment
+  env.PKGVERSION = pkgVersion;
 
   # make all already installs into PREFIX
   dontInstall = true;
 
   # Strip the host programs fully, make all leaves some of them unstripped.
-  # Only these directories: lib holds the target libraries, which the host
-  # strip has no business with.
-  stripDebugList = [ ];
   stripAllList = [
     "bin"
     "libexec"
