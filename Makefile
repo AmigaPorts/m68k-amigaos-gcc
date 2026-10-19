@@ -1827,7 +1827,7 @@ TESTSUITE = $(BUILD)/gcc/gcc/testsuite/gcc
 # The C++ testsuite writes into a separate g++ directory.
 CXXTESTSUITE = $(BUILD)/gcc/gcc/testsuite/g++
 
-.PHONY: check check-gcc-execute check-gcc-amigaos check-gcc-c++ check-libnix check-libpthread check-newlib check-binutils check-binutils-gas check-binutils-ld
+.PHONY: check check-c check-c++ check-gcc-amigaos check-libnix check-libpthread check-newlib check-binutils check-binutils-gas check-binutils-ld
 # Run the two sequentially (recipe lines run in order even under make -j): both
 # drive check-gcc-c in the same build tree, sharing gcc.sum and
 # testsuite/gcc-parallel, so they must not run at the same time.
@@ -1837,7 +1837,7 @@ check:
 	@$(MAKE) --no-print-directory check-gcc-amigaos
 	@$(MAKE) --no-print-directory check-libnix
 	@$(MAKE) --no-print-directory check-libpthread
-	@$(MAKE) --no-print-directory check-gcc-execute
+	@$(MAKE) --no-print-directory check-c
 
 # The gas and ld dump tests for the hunk target run on the build machine
 # under DejaGnu.  The gas m68k tests written for ELF expect % register
@@ -1868,7 +1868,7 @@ check-binutils-ld:
 # "amiga" object format supports weak symbols, so dg-require-weak tests
 # (20030125-1.c) come out unresolved.  The g++ suite below only reports:
 # it still has hundreds of standing failures.
-check-gcc-execute: $(BOARD_SIM_PREREQ)
+check-c: $(BOARD_SIM_PREREQ)
 	@ln -sfn $(PREFIX)/$(TARGET)/libnix $(BUILD)/gcc/$(TARGET)/libnix
 	$(L0)"check execute.exp"$(L1)$(MAKE) -C $(BUILD)/gcc check-gcc-c "RUNTESTFLAGS=--target_board=$(board) execute.exp=*$(RUNTEST_SIM)"$(L2)
 	@cp -f $(TESTSUITE)/gcc.sum $(TESTSUITE)/gcc-execute.sum; cp -f $(TESTSUITE)/gcc.log $(TESTSUITE)/gcc-execute.log
@@ -1927,10 +1927,10 @@ check-newlib: $(PREFIX)/bin/volamos
 	@! grep -qE '^(FAIL|ERROR|XPASS)' $(foreach b,$(NEWLIB_BOARDS),$(NEWLIBTESTSUITE)/$(b)/newlib.sum)
 
 # The full C++ testsuite is large and slow, so it is not part of
-# `check`; run it on demand with `make check-gcc-c++`.  SANITIZE=0 keeps the
+# `check`; run it on demand with `make check-c++`.  SANITIZE=0 keeps the
 # volamos boards' --sanitize off here: the -fstrub tests read the scrubbed
 # stack below the stack pointer on purpose.
-check-gcc-c++: $(BOARD_SIM_PREREQ)
+check-c++: $(BOARD_SIM_PREREQ)
 	@ln -sfn $(PREFIX)/$(TARGET)/libnix $(BUILD)/gcc/$(TARGET)/libnix
 	$(L0)"check c++"$(L1)$(MAKE) -C $(BUILD)/gcc check-gcc-c++ "RUNTESTFLAGS=--target_board=$(board)$(RUNTEST_SIM) SANITIZE=0"$(L2)
 	@{ echo '----- c++ -----'; grep '^# of' $(CXXTESTSUITE)/g++.sum || echo '(no tests run)'; grep -E '^(FAIL|ERROR|XPASS)' $(CXXTESTSUITE)/g++.sum || true; } | tee $@.summary.txt
