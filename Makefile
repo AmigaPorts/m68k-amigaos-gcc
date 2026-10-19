@@ -1365,11 +1365,11 @@ $(BUILD)/vbcc_target_m68k-amigaos/_done: $(BUILD)/vbcc_target_m68k-amigaos.info 
 	@echo "done" >$@
 
 
-$(BUILD)/vbcc_target_m68k-kick13.info: $(DOWNLOAD)/vbcc_target_m68k-kick13.lha $(LHA_PREREQ)
+$(BUILD)/vbcc_target_m68k-kick13.info: $(DOWNLOAD)/vbcc_target_m68k-kick13.lha | $(LHA_PREREQ)
 	$(L0)"unpack vbcc_target_m68k-kick13"$(L1) cd $(BUILD) && $(LHA_FOR_BUILD) xf $(DOWNLOAD)/vbcc_target_m68k-kick13.lha $(L2)
 	@touch $(BUILD)/vbcc_target_m68k-kick13.info
 
-$(BUILD)/vbcc_target_m68k-amigaos.info: $(DOWNLOAD)/vbcc_target_m68k-amigaos.lha $(LHA_PREREQ)
+$(BUILD)/vbcc_target_m68k-amigaos.info: $(DOWNLOAD)/vbcc_target_m68k-amigaos.lha | $(LHA_PREREQ)
 	$(L0)"unpack vbcc_target_m68k-amigaos"$(L1) cd $(BUILD) && $(LHA_FOR_BUILD) xf $(DOWNLOAD)/vbcc_target_m68k-amigaos.lha $(L2)
 	@touch $(BUILD)/vbcc_target_m68k-amigaos.info
 
@@ -1457,7 +1457,7 @@ $(BUILD)/ndk-include_proto: $(PROJECTS)/$(NDK_FOLDER_NAME).info
 	@mkdir -p $(BUILD)/ndk-include/
 	@echo "done" >$@
 
-$(PROJECTS)/$(NDK_FOLDER_NAME).info: $(LHA_PREREQ) $(DOWNLOAD)/$(NDK_ARC_NAME).lha $(shell find 2>/dev/null patches/$(NDK_FOLDER_NAME)/ -type f)
+$(PROJECTS)/$(NDK_FOLDER_NAME).info: $(DOWNLOAD)/$(NDK_ARC_NAME).lha $(shell find 2>/dev/null patches/$(NDK_FOLDER_NAME)/ -type f) | $(LHA_PREREQ)
 	$(L0)"unpack ndk"$(L1) mkdir -p $(PROJECTS)/NDK3.2 && cd $(PROJECTS)/NDK3.2 && \
 	   $(LHA_FOR_BUILD) xf $(DOWNLOAD)/$(NDK_ARC_NAME).lha $(L2)
 	@touch -t 0001010000 $(DOWNLOAD)/$(NDK_ARC_NAME).lha
@@ -1705,22 +1705,19 @@ $(PROJECTS)/ixemul/configure:
 	@cd $(PROJECTS) && git clone -b $(ixemul_BRANCH) $(ixemul_URL)
 
 .PHONY: ixemul
-ixemul:	$(PREFIX)/$(TARGET)/ixemul/lib/libc.a
+ixemul:	$(BUILD)/ixemul/_done
 
-$(PREFIX)/$(TARGET)/ixemul/lib/libc.a: $(BUILD)/ixemul/lib/libc.a
-	@mkdir -p $(PREFIX)/$(TARGET)/ixemul
-	$(L0)"installing ixemul-sdk"$(L1) rsync -a --no-group $(BUILD)/ixemul/* $(PREFIX)/$(TARGET)/ixemul/ $(L2)
-
-
-$(BUILD)/ixemul/lib/libc.a: $(DOWNLOAD)/ixemul-sdk.lha $(LHA_PREREQ)
-	@mkdir -p $(BUILD)/ixemul
+$(BUILD)/ixemul/_done: $(DOWNLOAD)/ixemul-sdk.lha | $(LHA_PREREQ)
+	@mkdir -p $(BUILD)/ixemul $(PREFIX)/$(TARGET)/ixemul
 	$(L0)"unpacking ixemul-sdk.lha"$(L1) cd $(BUILD)/ixemul && $(LHA_FOR_BUILD) xf $(DOWNLOAD)/ixemul-sdk.lha $(L2)
+	$(L0)"installing ixemul-sdk"$(L1) rsync -a --no-group --exclude=_done $(BUILD)/ixemul/* $(PREFIX)/$(TARGET)/ixemul/ $(L2)
+	@echo "done" >$@
 
 # =================================================
 # sdk installation
 # =================================================
 .PHONY: sdk all-sdk
-sdk: libnix $(LHA_PREREQ)
+sdk: libnix | $(LHA_PREREQ)
 	$(L0)"sdk $(sdk)"$(L1) TOOL_RUNNER="$(HOST_RUNNER)" HOST_EXEEXT="$(EXEEXT)" CC_FOR_SDK="$(SDK_CC_FOR_BUILD)" AR_FOR_SDK="$(SDK_AR_FOR_BUILD)" FD2SFD_FOR_BUILD="$(FD2SFD_FOR_BUILD)" SFDC_FOR_BUILD="$(SFDC_FOR_BUILD)" LHA_FOR_BUILD="$(LHA_FOR_BUILD)" $(PWD)/sdk/install install $(sdk) $(PREFIX) $(L2)
 
 SDKS0=$(shell find sdk/*.sdk)
@@ -1728,7 +1725,7 @@ SDKS=$(patsubst sdk/%.sdk,%,$(SDKS0))
 .PHONY: $(SDKS)
 all-sdk: $(SDKS)
 
-$(SDKS): libnix $(LHA_PREREQ)
+$(SDKS): libnix | $(LHA_PREREQ)
 	@$(MAKE) --no-print-directory sdk sdk=$@
 
 # =================================================
