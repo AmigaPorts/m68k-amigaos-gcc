@@ -1,10 +1,79 @@
 {
   description = "m68k-amigaos-gcc: GCC, binutils and tools for cross compiling to AmigaOS";
 
-  inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+  # The modules of default-repos, pinned in flake.lock; `nix flake update`
+  # moves them to the heads of their branches.
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+
+    amiga-netinclude = {
+      url = "github:AmigaPorts/amiga-netinclude/main";
+      flake = false;
+    };
+    binutils = {
+      url = "github:AmigaPorts/binutils-gdb/amiga-2.46";
+      flake = false;
+    };
+    clib2 = {
+      url = "github:AmigaPorts/clib2/master";
+      flake = false;
+    };
+    fd2pragma = {
+      url = "github:AmigaPorts/fd2pragma/master";
+      flake = false;
+    };
+    fd2sfd = {
+      url = "github:AmigaPorts/fd2sfd/master";
+      flake = false;
+    };
+    gcc = {
+      url = "github:AmigaPorts/gcc/amiga16.2";
+      flake = false;
+    };
+    ira = {
+      url = "github:AmigaPorts/ira/master";
+      flake = false;
+    };
+    lha = {
+      url = "github:AmigaPorts/lha/master";
+      flake = false;
+    };
+    libdebug = {
+      url = "github:AmigaPorts/libdebug/master";
+      flake = false;
+    };
+    libnix = {
+      url = "github:AmigaPorts/libnix/master";
+      flake = false;
+    };
+    newlib-cygwin = {
+      url = "github:AmigaPorts/newlib-cygwin/amiga";
+      flake = false;
+    };
+    sfdc = {
+      url = "github:AmigaPorts/sfdc/master";
+      flake = false;
+    };
+    vasm = {
+      url = "github:AmigaPorts/vasm/master";
+      flake = false;
+    };
+    vbcc = {
+      url = "github:AmigaPorts/vbcc/master";
+      flake = false;
+    };
+    vlink = {
+      url = "github:AmigaPorts/vlink/master";
+      flake = false;
+    };
+    aros-stuff = {
+      url = "github:AmigaPorts/aros-stuff/master";
+      flake = false;
+    };
+  };
 
   outputs =
-    { self, nixpkgs }:
+    { self, nixpkgs, ... }@inputs:
     let
       inherit (nixpkgs) lib;
       systems = [
@@ -34,16 +103,10 @@
             )
         );
 
-      # the repository URL and branch of each module, and the commit it is
-      # pinned to
+      # the repository URL and branch of each module
       repos = readTable ./default-repos (words: {
         url = lib.elemAt words 1;
         branch = lib.elemAt words 2;
-        rev =
-          if lib.length words > 3 then
-            lib.elemAt words 3
-          else
-            throw "default-repos: ${lib.head words} is not pinned to a commit";
       });
 
       # the file in download/ of each archive, its sha256 and the URLs to try
@@ -53,20 +116,10 @@
         urls = lib.drop 3 words;
       });
 
-      # the source trees of the pinned commits; make all takes ixemul from
-      # ixemul-sdk.lha, not from its module
-      modules = lib.mapAttrs (
-        name: repo:
-        let
-          github = builtins.match "https://github.com/([^/]+)/([^/]+)" repo.url;
-        in
-        builtins.fetchTree {
-          type = "github";
-          owner = lib.elemAt github 0;
-          repo = lib.elemAt github 1;
-          inherit (repo) rev;
-        }
-      ) (lib.removeAttrs repos [ "ixemul" ]);
+      modules = lib.removeAttrs inputs [
+        "self"
+        "nixpkgs"
+      ];
 
       rev = self.shortRev or self.dirtyShortRev or "unknown";
 
@@ -96,7 +149,7 @@
                 self.rev or self.dirtyRev or "unknown"
               }"
             ]
-            ++ lib.mapAttrsToList (name: _: "${name} ${repos.${name}.url} ${repos.${name}.rev}") modules
+            ++ lib.mapAttrsToList (name: input: "${name} ${repos.${name}.url} ${input.rev}") modules
           )
           + "\n"
         );

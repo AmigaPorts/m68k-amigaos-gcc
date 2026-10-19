@@ -134,7 +134,7 @@ will run rather than the build machine.
 ### Nix package
 
 The flake builds the toolchain of `make all` as a package, from the modules
-of `default-repos` at the commits pinned there and the archives of
+of `default-repos` pinned in `flake.lock` and the archives of
 `default-archives`:
 
 ```
@@ -158,9 +158,10 @@ in a project's development shell:
 }
 ```
 
-`scripts/pin-repos` pins every module to the head of its branch, and
-`scripts/pin-repos gcc` just one. To build another branch, change it in
-`default-repos` and pin the module again.
+`nix flake update` moves every module to the head of its branch, and
+`nix flake update gcc` just one. The inputs in `flake.nix` mirror
+`default-repos`; to build another branch, change the input's URL, for
+example `github:AmigaPorts/gcc/amiga13.4`.
 
 ## Continuous integration
 
@@ -251,7 +252,7 @@ You can switch modules to different branches. E.g.
 ```
 make branch mod=binutils branch=devel1
 ```
-The default branches and repositories are in the file **default-repos**, with the commits the Nix package is pinned to, the local state is managed in the file **.repos**.
+The default branches and repositories are in the file **default-repos**, the local state is managed in the file **.repos**.
 The archives the build downloads, with their checksums, are in the file **default-archives**.
 
 ## Copyrights

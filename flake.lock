@@ -1,5 +1,209 @@
 {
   "nodes": {
+    "amiga-netinclude": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1748789251,
+        "narHash": "sha256-9gmUln7ENXVJ9Wgy5DvFtDK8eUS4PZmRY2mj0YJwnFg=",
+        "owner": "AmigaPorts",
+        "repo": "amiga-netinclude",
+        "rev": "7d155ca3a3090afe3466f819dd178f2af6f5c176",
+        "type": "github"
+      },
+      "original": {
+        "owner": "AmigaPorts",
+        "ref": "main",
+        "repo": "amiga-netinclude",
+        "type": "github"
+      }
+    },
+    "aros-stuff": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1792345147,
+        "narHash": "sha256-jiju61aKCtu4csT6Op9Q7fgipOyu6sR81vY9qCsL0cc=",
+        "owner": "AmigaPorts",
+        "repo": "aros-stuff",
+        "rev": "c8d4ddc8e6a4af68c1651c191ac89a9bd9003ca2",
+        "type": "github"
+      },
+      "original": {
+        "owner": "AmigaPorts",
+        "ref": "master",
+        "repo": "aros-stuff",
+        "type": "github"
+      }
+    },
+    "binutils": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1792171230,
+        "narHash": "sha256-lPrummCBLGUKZ9A+CDmWd31w9tk/SV3EkJUK7+l8BgM=",
+        "owner": "AmigaPorts",
+        "repo": "binutils-gdb",
+        "rev": "15f4b0aa860f74022c6aff7ace15bc0a307d5510",
+        "type": "github"
+      },
+      "original": {
+        "owner": "AmigaPorts",
+        "ref": "amiga-2.46",
+        "repo": "binutils-gdb",
+        "type": "github"
+      }
+    },
+    "clib2": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1791918333,
+        "narHash": "sha256-s/X6lXS3BEGiRJ9NyuQPe396wzC6uERNfVttf8CG7uE=",
+        "owner": "AmigaPorts",
+        "repo": "clib2",
+        "rev": "78e05e255495382bbf880d0d37d20763d129f01e",
+        "type": "github"
+      },
+      "original": {
+        "owner": "AmigaPorts",
+        "ref": "master",
+        "repo": "clib2",
+        "type": "github"
+      }
+    },
+    "fd2pragma": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1787771677,
+        "narHash": "sha256-jsLs8z2DVwwnSLUWEYte2X6+HDx0dnP6GtQj0ZZanUc=",
+        "owner": "AmigaPorts",
+        "repo": "fd2pragma",
+        "rev": "bcffac5c89295baf1db033addc984312b4b4a722",
+        "type": "github"
+      },
+      "original": {
+        "owner": "AmigaPorts",
+        "ref": "master",
+        "repo": "fd2pragma",
+        "type": "github"
+      }
+    },
+    "fd2sfd": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1792263866,
+        "narHash": "sha256-tXhbYKWAAgLRMmGcJ2X1UN8BOHMBzDZYjIn0i0Y0P7s=",
+        "owner": "AmigaPorts",
+        "repo": "fd2sfd",
+        "rev": "a0ae60d140fdfd30f889810faea07cc6968d1fd0",
+        "type": "github"
+      },
+      "original": {
+        "owner": "AmigaPorts",
+        "ref": "master",
+        "repo": "fd2sfd",
+        "type": "github"
+      }
+    },
+    "gcc": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1792343381,
+        "narHash": "sha256-zaPiayT8cMuOMyYhIEaDlEJjd5fzcxsR0QWxKn3s1jA=",
+        "owner": "AmigaPorts",
+        "repo": "gcc",
+        "rev": "e7d0ad09afd2be90caf62939198d6bb6b5cafe72",
+        "type": "github"
+      },
+      "original": {
+        "owner": "AmigaPorts",
+        "ref": "amiga16.2",
+        "repo": "gcc",
+        "type": "github"
+      }
+    },
+    "ira": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1748788882,
+        "narHash": "sha256-zCzwpGeBauIS0wYtXkVVeZpWzrhib24qO5fHFWom4VU=",
+        "owner": "AmigaPorts",
+        "repo": "ira",
+        "rev": "bb7c11384a32c409341fdb0d16d715b7959a0290",
+        "type": "github"
+      },
+      "original": {
+        "owner": "AmigaPorts",
+        "ref": "master",
+        "repo": "ira",
+        "type": "github"
+      }
+    },
+    "lha": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1792256962,
+        "narHash": "sha256-LCHFM7D6wz1xaXzft5Lvfd0aeko1UO6EY00RMj9Ksck=",
+        "owner": "AmigaPorts",
+        "repo": "lha",
+        "rev": "979815dc8699a9c5018de067946737c83ec6f697",
+        "type": "github"
+      },
+      "original": {
+        "owner": "AmigaPorts",
+        "ref": "master",
+        "repo": "lha",
+        "type": "github"
+      }
+    },
+    "libdebug": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1792263921,
+        "narHash": "sha256-lQXZgMDIukWgAYi+MTO/gr8g4iMt7pBs0POHZGOxQKQ=",
+        "owner": "AmigaPorts",
+        "repo": "libdebug",
+        "rev": "76c7dbfeaac79516117dc810e3ba9b34d5f54a69",
+        "type": "github"
+      },
+      "original": {
+        "owner": "AmigaPorts",
+        "ref": "master",
+        "repo": "libdebug",
+        "type": "github"
+      }
+    },
+    "libnix": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1792214744,
+        "narHash": "sha256-oar31+dsfKLiVQGApFRGNK2OZiLAWeokJRH4kO9JDzM=",
+        "owner": "AmigaPorts",
+        "repo": "libnix",
+        "rev": "a1d73457a10ec2aaa307dfb0c9f0bdd410c5feec",
+        "type": "github"
+      },
+      "original": {
+        "owner": "AmigaPorts",
+        "ref": "master",
+        "repo": "libnix",
+        "type": "github"
+      }
+    },
+    "newlib-cygwin": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1792348910,
+        "narHash": "sha256-moC6ERsiDzdsgNlsw94nq9VZMNklfe94IzJUAE82bQk=",
+        "owner": "AmigaPorts",
+        "repo": "newlib-cygwin",
+        "rev": "e07bea74897b6ee7b645602d66fcff6c6792d1a9",
+        "type": "github"
+      },
+      "original": {
+        "owner": "AmigaPorts",
+        "ref": "amiga",
+        "repo": "newlib-cygwin",
+        "type": "github"
+      }
+    },
     "nixpkgs": {
       "locked": {
         "lastModified": 1792094642,
@@ -18,7 +222,91 @@
     },
     "root": {
       "inputs": {
-        "nixpkgs": "nixpkgs"
+        "amiga-netinclude": "amiga-netinclude",
+        "aros-stuff": "aros-stuff",
+        "binutils": "binutils",
+        "clib2": "clib2",
+        "fd2pragma": "fd2pragma",
+        "fd2sfd": "fd2sfd",
+        "gcc": "gcc",
+        "ira": "ira",
+        "lha": "lha",
+        "libdebug": "libdebug",
+        "libnix": "libnix",
+        "newlib-cygwin": "newlib-cygwin",
+        "nixpkgs": "nixpkgs",
+        "sfdc": "sfdc",
+        "vasm": "vasm",
+        "vbcc": "vbcc",
+        "vlink": "vlink"
+      }
+    },
+    "sfdc": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1789164234,
+        "narHash": "sha256-lw71R0/N3RrwL0EkT5qocgMFMzeCVUEAc/PooylQ+/A=",
+        "owner": "AmigaPorts",
+        "repo": "sfdc",
+        "rev": "4e7afc044c1ff129574fcf3b839c3351edcfe2fb",
+        "type": "github"
+      },
+      "original": {
+        "owner": "AmigaPorts",
+        "ref": "master",
+        "repo": "sfdc",
+        "type": "github"
+      }
+    },
+    "vasm": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1789401775,
+        "narHash": "sha256-lZ9lO0zTsNuqu44BpjHWvfprt5I2dplm82GFENOCNgk=",
+        "owner": "AmigaPorts",
+        "repo": "vasm",
+        "rev": "de93f7dd067001532cff663730133601edb274cb",
+        "type": "github"
+      },
+      "original": {
+        "owner": "AmigaPorts",
+        "ref": "master",
+        "repo": "vasm",
+        "type": "github"
+      }
+    },
+    "vbcc": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1791048144,
+        "narHash": "sha256-OeChAU7qNb+kzMIxvH/fuLVt+relMiY8S9Lgks2U1/s=",
+        "owner": "AmigaPorts",
+        "repo": "vbcc",
+        "rev": "55a487d500dccccad806cf3916e90bcd95189ec9",
+        "type": "github"
+      },
+      "original": {
+        "owner": "AmigaPorts",
+        "ref": "master",
+        "repo": "vbcc",
+        "type": "github"
+      }
+    },
+    "vlink": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1747188979,
+        "narHash": "sha256-OENOsjkVT5utaW1AZpTInjVb3heCAWYPXdzbVcAjwT0=",
+        "owner": "AmigaPorts",
+        "repo": "vlink",
+        "rev": "ce46ccfda0e30eda5b12b9a5d0259d8eaefdefe9",
+        "type": "github"
+      },
+      "original": {
+        "owner": "AmigaPorts",
+        "ref": "master",
+        "repo": "vlink",
+        "type": "github"
       }
     }
   },
