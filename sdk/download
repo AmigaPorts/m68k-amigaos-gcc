@@ -3,8 +3,10 @@
 #
 #   sdk/download --sha256 HEX OUTPUT URL [URL...]
 #
-# An existing OUTPUT that verifies is left alone. A download that does
-# not match is discarded and the next URL is tried.
+# An existing OUTPUT that verifies is left alone, and OUTPUT.sha256 notes
+# the hash it verified against, so the next call for that hash does not
+# hash the file again. A download that does not match is discarded and the
+# next URL is tried.
 
 set -o pipefail
 
@@ -72,12 +74,19 @@ fetch_archive()
 		"$url" --output "$archive_tmp"
 }
 
+# OUTPUT.sha256 notes the hash OUTPUT was last verified against: a caller
+# asking for the same hash again gets its answer without hashing the file.
+note=$output.sha256
 if [ -e "$output" ]; then
+	if [ "$(cat "$note" 2>/dev/null)" = "$expected_sha256" ]; then
+		exit 0
+	fi
 	if verify_archive "$output" >/dev/null 2>&1; then
+		echo "$expected_sha256" >"$note"
 		exit 0
 	fi
 	echo "discarding unverified cached archive $output" >&2
-	rm -f "$output"
+	rm -f "$output" "$note"
 fi
 
 # Aminet mirrors come and go; AMINET_MIRROR lists base URLs (space
@@ -99,6 +108,7 @@ output_tmp=$output.tmp
 for url in "${urls[@]}"; do
 	if fetch_archive "$url" "$output_tmp" && verify_archive "$output_tmp"; then
 		mv -f "$output_tmp" "$output" || exit 1
+		echo "$expected_sha256" >"$note"
 		exit 0
 	fi
 	rm -f "$output_tmp"
