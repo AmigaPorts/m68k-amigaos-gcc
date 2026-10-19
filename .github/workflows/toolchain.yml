@@ -554,6 +554,11 @@ jobs:
           # the Makefile stamps the tools with git describe --tags
           fetch-depth: 0
 
+      # the runner checked the tree out as its own user and the container
+      # runs as root: git refuses the repository without this
+      - name: Let git read the checkout
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
       - name: Install host runner
         run: |
           export DEBIAN_FRONTEND=noninteractive
