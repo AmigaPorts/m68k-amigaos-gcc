@@ -9,11 +9,13 @@
 #   ci-amigaos       - the AmigaOS-hosted toolchain (builds the Linux
 #                      cross toolchain first, to bootstrap from)
 #   ci-mingw         - the MinGW-hosted toolchain
-#   ci-testsuite-c   - the gcc C testsuite on an arm64 Linux runner
-#   ci-testsuite-cxx - the g++ testsuite (slow)
-#   ci-testsuite-newlib - newlib's testsuite
-# The ci-testsuite-* labels build only what the tests need (make min): no
-# gdb, SDKs, vbcc, zlib/libpng or release tarball.
+#   ci-check-c       - make check-c, the gcc C testsuite, on an arm64 runner
+#   ci-check-c++     - make check-c++, the g++ testsuite (slow)
+#   ci-check-c-newlib, ci-check-c++-newlib - the same two, with the tests
+#                      linked against newlib instead of libnix
+#   ci-check-newlib  - make check-newlib, newlib's own testsuite
+# The ci-check-* labels build only what the tests need (make min): no gdb,
+# SDKs, vbcc, zlib/libpng or release tarball.
 # Re-add the label to rebuild after pushing new commits.
 
 name: Bootstrap toolchain
@@ -99,27 +101,29 @@ jobs:
     name: build (${{ github.event.label.name || github.event_name }})
     if: >-
       github.event_name != 'pull_request' ||
-      contains(fromJSON('["ci-linux", "ci-linux-arm", "ci-macos", "ci-testsuite-c", "ci-testsuite-cxx", "ci-testsuite-newlib", "ci-amigaos"]'),
+      contains(fromJSON('["ci-linux", "ci-linux-arm", "ci-macos", "ci-amigaos", "ci-check-c", "ci-check-c++", "ci-check-c-newlib", "ci-check-c++-newlib", "ci-check-newlib"]'),
                github.event.label.name)
     # the testsuites run on arm64, whose 4 vCPUs build and test faster
     runs-on: >-
       ${{ inputs.runner
           || (github.event.label.name == 'ci-macos' && 'macos-15')
           || (github.event.label.name == 'ci-linux-arm' && 'ubuntu-24.04-arm')
-          || (startsWith(github.event.label.name, 'ci-testsuite') && 'ubuntu-24.04-arm')
+          || (startsWith(github.event.label.name, 'ci-check') && 'ubuntu-24.04-arm')
           || 'ubuntu-24.04' }}
     timeout-minutes: 300
     env:
-      RUN_TESTSUITE: ${{ inputs.run_testsuite || github.event.label.name == 'ci-testsuite-c' }}
-      RUN_TESTSUITE_CXX: ${{ inputs.run_cxx_testsuite || github.event.label.name == 'ci-testsuite-cxx' }}
-      RUN_TESTSUITE_NEWLIB: ${{ github.event.label.name == 'ci-testsuite-newlib' }}
-      # the testsuite labels build only the compiler and its runtimes; the
+      RUN_TESTSUITE: ${{ inputs.run_testsuite || github.event.label.name == 'ci-check-c' || github.event.label.name == 'ci-check-c-newlib' }}
+      RUN_TESTSUITE_CXX: ${{ inputs.run_cxx_testsuite || github.event.label.name == 'ci-check-c++' || github.event.label.name == 'ci-check-c++-newlib' }}
+      RUN_TESTSUITE_NEWLIB: ${{ github.event.label.name == 'ci-check-newlib' }}
+      # the check labels build only the compiler and its runtimes; the
       # steps that need the rest of the distribution check for 'all'
-      BUILD_TARGET: ${{ startsWith(github.event.label.name, 'ci-testsuite') && 'min' || 'all' }}
+      BUILD_TARGET: ${{ startsWith(github.event.label.name, 'ci-check') && 'min' || 'all' }}
       # the two simulators are kept side by side so their results can be
-      # compared; SIMULATOR picks one and BOARD is the baseboards/ file for it
+      # compared; SIMULATOR picks one and BOARD is the baseboards/ file for
+      # it. The -c-newlib and -c++-newlib labels take the volamos board that
+      # links newlib.
       SIMULATOR: ${{ inputs.simulator || 'volamos' }}
-      BOARD: ${{ (inputs.simulator || 'volamos') == 'vamos' && 'amigaos' || 'volamos' }}
+      BOARD: ${{ (inputs.simulator || 'volamos') == 'vamos' && 'amigaos' || endsWith(github.event.label.name, '-c-newlib') && 'volamos-newlib' || endsWith(github.event.label.name, '-c++-newlib') && 'volamos-newlib' || 'volamos' }}
       AMITOOLS_GIT: ${{ inputs.amitools_git || 'git+https://github.com/AmigaPorts/amitools.git' }}
       # not GCC_VERSION: the Makefile reads that from gcc's BASE-VER
       # (16.2.1b) and derives the lib/gcc/<target>/<version> directory (16)
@@ -325,9 +329,9 @@ jobs:
         if: env.RUN_TESTSUITE == 'true' && runner.os == 'Linux'
         run: |
           set +e
-          make -j $NPROC check-gcc-execute board=$BOARD
+          make -j $NPROC check-c board=$BOARD
           rc=$?
-          { echo '```'; cat check-gcc-execute.summary.txt 2>/dev/null; echo '```'; } >> $GITHUB_STEP_SUMMARY
+          { echo '```'; cat check-c.summary.txt 2>/dev/null; echo '```'; } >> $GITHUB_STEP_SUMMARY
           exit $rc
 
       # much slower than the C testsuite, so it is opted into separately
@@ -335,9 +339,9 @@ jobs:
         if: env.RUN_TESTSUITE_CXX == 'true' && runner.os == 'Linux'
         run: |
           set +e
-          make -j $NPROC check-gcc-c++ board=$BOARD
+          make -j $NPROC check-c++ board=$BOARD
           rc=$?
-          { echo '```'; cat check-gcc-c++.summary.txt 2>/dev/null; echo '```'; } >> $GITHUB_STEP_SUMMARY
+          { echo '```'; cat check-c++.summary.txt 2>/dev/null; echo '```'; } >> $GITHUB_STEP_SUMMARY
           exit $rc
 
       # a FAIL on either board, or a board without results, fails the step
