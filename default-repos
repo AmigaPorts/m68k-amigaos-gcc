@@ -1,17 +1,17 @@
-amiga-netinclude   https://github.com/AmigaPorts/amiga-netinclude main         7d155ca3a3090afe3466f819dd178f2af6f5c176
-binutils           https://github.com/AmigaPorts/binutils-gdb     amiga-2.46   15f4b0aa860f74022c6aff7ace15bc0a307d5510
-clib2              https://github.com/AmigaPorts/clib2            master       78e05e255495382bbf880d0d37d20763d129f01e
-fd2pragma          https://github.com/AmigaPorts/fd2pragma        master       bcffac5c89295baf1db033addc984312b4b4a722
-fd2sfd             https://github.com/AmigaPorts/fd2sfd           master       a0ae60d140fdfd30f889810faea07cc6968d1fd0
-gcc                https://github.com/AmigaPorts/gcc              amiga16.2    e7d0ad09afd2be90caf62939198d6bb6b5cafe72
-ira                https://github.com/AmigaPorts/ira              master       bb7c11384a32c409341fdb0d16d715b7959a0290
-ixemul             https://github.com/AmigaPorts/ixemul           master       f0dd997994263c6ac783b563222a9f53a00c013c
-lha                https://github.com/AmigaPorts/lha              master       979815dc8699a9c5018de067946737c83ec6f697
-libdebug           https://github.com/AmigaPorts/libdebug         master       76c7dbfeaac79516117dc810e3ba9b34d5f54a69
-libnix             https://github.com/AmigaPorts/libnix           master       a1d73457a10ec2aaa307dfb0c9f0bdd410c5feec
-newlib-cygwin      https://github.com/AmigaPorts/newlib-cygwin    amiga        e07bea74897b6ee7b645602d66fcff6c6792d1a9
-sfdc               https://github.com/AmigaPorts/sfdc             master       4e7afc044c1ff129574fcf3b839c3351edcfe2fb
-vasm               https://github.com/AmigaPorts/vasm             master       de93f7dd067001532cff663730133601edb274cb
-vbcc               https://github.com/AmigaPorts/vbcc             master       55a487d500dccccad806cf3916e90bcd95189ec9
-vlink              https://github.com/AmigaPorts/vlink            master       ce46ccfda0e30eda5b12b9a5d0259d8eaefdefe9
-aros-stuff         https://github.com/AmigaPorts/aros-stuff       master       c8d4ddc8e6a4af68c1651c191ac89a9bd9003ca2
+amiga-netinclude   https://github.com/AmigaPorts/amiga-netinclude   main
+binutils           https://github.com/AmigaPorts/binutils-gdb       amiga-2.46
+clib2              https://github.com/AmigaPorts/clib2              master
+fd2pragma          https://github.com/AmigaPorts/fd2pragma          master
+fd2sfd             https://github.com/AmigaPorts/fd2sfd             master
+gcc                https://github.com/AmigaPorts/gcc                amiga16.2
+ira                https://github.com/AmigaPorts/ira                master
+ixemul             https://github.com/AmigaPorts/ixemul             master
+lha                https://github.com/AmigaPorts/lha                master
+libdebug           https://github.com/AmigaPorts/libdebug           master
+libnix             https://github.com/AmigaPorts/libnix             master
+newlib-cygwin      https://github.com/AmigaPorts/newlib-cygwin      amiga
+sfdc               https://github.com/AmigaPorts/sfdc               master
+vasm               https://github.com/AmigaPorts/vasm               master
+vbcc               https://github.com/AmigaPorts/vbcc               master
+vlink              https://github.com/AmigaPorts/vlink              master
+aros-stuff         https://github.com/AmigaPorts/aros-stuff         master
