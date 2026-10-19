@@ -355,7 +355,15 @@ $(foreach arch,$(archives),$(eval $(arch)_ARCHIVE=$(call get_archive,$(arch))))
 $(foreach arch,$(archives),$(eval $(arch)_SHA256=$(call get_sha256,$(arch))))
 $(foreach arch,$(archives),$(eval $(arch)_URLS=$(call get_urls,$(arch))))
 $(foreach arch,$(archives),$(eval $(arch)_DIR=$(patsubst %.tar,%,$(basename $($(arch)_ARCHIVE)))))
-$(foreach arch,$(archives),$(eval $(DOWNLOAD)/$($(arch)_ARCHIVE): ; @$(PWD)/sdk/download --sha256 $($(arch)_SHA256) $$@ $($(arch)_URLS)))
+
+# The archives depend on the table, so a changed sha256 fetches the new
+# file; for an unchanged one sdk/download finds its hash in the archive's
+# .sha256 note and returns at once, and nothing downstream is remade.
+define archive_rules
+$(DOWNLOAD)/$($(1)_ARCHIVE): default-archives
+	@$(PWD)/sdk/download --sha256 $($(1)_SHA256) $$@ $($(1)_URLS)
+endef
+$(foreach arch,$(archives),$(eval $(call archive_rules,$(arch))))
 
 NDK_ARC_NAME         := $(ndk_DIR)
 NDK_FOLDER_NAME      := NDK3.2
@@ -650,13 +658,6 @@ package:
 
 .PHONY: update update-gcc update-binutils update-fd2sfd update-lha update-fd2pragma update-ira update-sfdc update-vasm update-vbcc update-vlink update-libnix update-ixemul update-clib2 update-libdebug update-libpthread update-ndk update-newlib update-netinclude
 update: update-gcc update-binutils update-fd2sfd update-lha update-fd2pragma update-ira update-sfdc update-vasm update-vbcc update-vlink update-libnix update-ixemul update-clib2 update-libdebug update-libpthread update-ndk update-newlib update-netinclude
-	+$(MAKE) -B $(DOWNLOAD)/vbcc_target_m68k-amigaos.lha
-	+$(MAKE) -B $(DOWNLOAD)/vbcc_target_m68k-kick13.lha
-	+$(MAKE) -B $(DOWNLOAD)/$(NDK_ARC_NAME).lha
-	+$(MAKE) -B $(DOWNLOAD)/ixemul-sdk.lha
-	+$(MAKE) -B $(DOWNLOAD)/$(zlib_DIR).tar.gz
-	+$(MAKE) -B $(DOWNLOAD)/$(libpng_DIR).tar.xz
-	+$(MAKE) -B $(DOWNLOAD)/$(freetype_DIR).tar.xz
 
 # Pull a module checkout forward. A checkout pinned to an exact commit (CI
 # building a module's pull request) has no branch to pull, so it is left as
@@ -712,7 +713,7 @@ update-libpthread: $(PROJECTS)/aros-stuff/pthreads/Makefile
 	$(call update-module,aros-stuff)
 
 update-ndk: $(DOWNLOAD)/$(NDK_ARC_NAME).lha
-	$(MAKE) $(PROJECTS)/$(NDK_FOLDER_NAME).info
+	$(MAKE) $(PROJECTS)/$(NDK_FOLDER_NAME)/_unpacked
 
 update-newlib: $(PROJECTS)/newlib-cygwin/newlib/configure
 	$(call update-module,newlib-cygwin)
@@ -1340,7 +1341,7 @@ $(PROJECTS)/lha/configure:
 .PHONY: vbcc-target
 vbcc-target: $(BUILD)/vbcc_target_$(TARGET)/_done $(BUILD)/vbcc_target_m68k-kick13/_done
 
-$(BUILD)/vbcc_target_m68k-kick13/_done: $(BUILD)/vbcc_target_m68k-kick13.info patches/vbcc/kick13.config $(BUILD)/vasm/_done
+$(BUILD)/vbcc_target_m68k-kick13/_done: $(BUILD)/vbcc_target_m68k-kick13/_unpacked patches/vbcc/kick13.config $(BUILD)/vasm/_done
 	@mkdir -p $(PREFIX)/m68k-kick13/vbcc/include
 	$(L0)"copying vbcc headers"$(L1) rsync --no-group $(BUILD)/vbcc_target_m68k-kick13/targets/m68k-kick13/include/* $(PREFIX)/m68k-kick13/vbcc/include $(L2)
 	@mkdir -p $(PREFIX)/m68k-kick13/vbcc/lib
@@ -1350,7 +1351,7 @@ $(BUILD)/vbcc_target_m68k-kick13/_done: $(BUILD)/vbcc_target_m68k-kick13.info pa
 	install $(BUILD)/vasm/kick13.config $(PREFIX)/bin/ $(L2)
 	@echo "done" >$@
 
-$(BUILD)/vbcc_target_m68k-amigaos/_done: $(BUILD)/vbcc_target_m68k-amigaos.info $(wildcard patches/vbcc/*.config) $(BUILD)/vasm/_done
+$(BUILD)/vbcc_target_m68k-amigaos/_done: $(BUILD)/vbcc_target_m68k-amigaos/_unpacked $(wildcard patches/vbcc/*.config) $(BUILD)/vasm/_done
 	@mkdir -p $(PREFIX)/m68k-amigaos/vbcc/include
 	$(L0)"copying vbcc headers"$(L1) rsync --no-group $(BUILD)/vbcc_target_m68k-amigaos/targets/m68k-amigaos/include/* $(PREFIX)/m68k-amigaos/vbcc/include $(L2)
 	@mkdir -p $(PREFIX)/m68k-amigaos/vbcc/lib
@@ -1365,13 +1366,13 @@ $(BUILD)/vbcc_target_m68k-amigaos/_done: $(BUILD)/vbcc_target_m68k-amigaos.info 
 	@echo "done" >$@
 
 
-$(BUILD)/vbcc_target_m68k-kick13.info: $(DOWNLOAD)/vbcc_target_m68k-kick13.lha | $(LHA_PREREQ)
+$(BUILD)/vbcc_target_m68k-kick13/_unpacked: $(DOWNLOAD)/vbcc_target_m68k-kick13.lha | $(LHA_PREREQ)
 	$(L0)"unpack vbcc_target_m68k-kick13"$(L1) cd $(BUILD) && $(LHA_FOR_BUILD) xf $(DOWNLOAD)/vbcc_target_m68k-kick13.lha $(L2)
-	@touch $(BUILD)/vbcc_target_m68k-kick13.info
+	@echo "done" >$@
 
-$(BUILD)/vbcc_target_m68k-amigaos.info: $(DOWNLOAD)/vbcc_target_m68k-amigaos.lha | $(LHA_PREREQ)
+$(BUILD)/vbcc_target_m68k-amigaos/_unpacked: $(DOWNLOAD)/vbcc_target_m68k-amigaos.lha | $(LHA_PREREQ)
 	$(L0)"unpack vbcc_target_m68k-amigaos"$(L1) cd $(BUILD) && $(LHA_FOR_BUILD) xf $(DOWNLOAD)/vbcc_target_m68k-amigaos.lha $(L2)
-	@touch $(BUILD)/vbcc_target_m68k-amigaos.info
+	@echo "done" >$@
 
 # =================================================
 # NDK - no git
@@ -1400,7 +1401,7 @@ $(BUILD)/ndk-include_ndk: $(BUILD)/ndk-include_ndk0 $(NDK_INCLUDE_INLINE) $(NDK_
 	@mkdir -p $(BUILD)/ndk-include/
 	@echo "done" >$@
 
-$(BUILD)/ndk-include_ndk0: $(PROJECTS)/$(NDK_FOLDER_NAME).info $(NDK_INCLUDE) $(NDK_FD2SFD_PREREQ) $(NDK_FD2PRAGMA_PREREQ)
+$(BUILD)/ndk-include_ndk0: $(PROJECTS)/$(NDK_FOLDER_NAME)/_unpacked $(NDK_INCLUDE) $(NDK_FD2SFD_PREREQ) $(NDK_FD2PRAGMA_PREREQ)
 	@mkdir -p $(PREFIX)/$(TARGET)/ndk-include
 	@rsync -a --no-group $(PROJECTS)/$(NDK_FOLDER_NAME_H)/* $(PREFIX)/$(TARGET)/ndk-include --exclude proto --exclude inline
 	$(L0)"STDARGing ndk"$(L1) for i in $$(find $(PREFIX)/$(TARGET)/ndk-include/clib/*protos.h -type f); do \
@@ -1440,32 +1441,31 @@ ndk-proto: $(NDK_INCLUDE_PROTO) sfdc
 $(NDK_INCLUDE_PROTO): $(PREFIX)/bin/sfdc $(NDK_INCLUDE_SFD)	$(BUILD)/ndk-include_proto $(BUILD)/ndk-include_ndk0
 	$(L0)"sfdc proto $(@F)"$(L1) $(SFDC_FOR_BUILD) --target=m68k-amigaos --mode=proto --output=$@ $(patsubst $(PREFIX)/$(TARGET)/ndk-include/proto/%.h,$(PROJECTS)/$(NDK_FOLDER_NAME_SFD)/%_lib.sfd,$@) $(L2)
 
-$(BUILD)/ndk-include_inline: $(PROJECTS)/$(NDK_FOLDER_NAME).info
+$(BUILD)/ndk-include_inline: $(PROJECTS)/$(NDK_FOLDER_NAME)/_unpacked
 	@mkdir -p $(PREFIX)/$(TARGET)/ndk-include/inline
 	@mkdir -p $(BUILD)/ndk-include/
 	@echo "done" >$@
 
-$(BUILD)/ndk-include_lvo: $(PROJECTS)/$(NDK_FOLDER_NAME).info
+$(BUILD)/ndk-include_lvo: $(PROJECTS)/$(NDK_FOLDER_NAME)/_unpacked
 	@mkdir -p $(PREFIX)/$(TARGET)/ndk-include/lvo
 	@mkdir -p $(PREFIX)/$(TARGET)/ndk13-include/lvo
 	@mkdir -p $(BUILD)/ndk-include/
 	@echo "done" >$@
 
-$(BUILD)/ndk-include_proto: $(PROJECTS)/$(NDK_FOLDER_NAME).info
+$(BUILD)/ndk-include_proto: $(PROJECTS)/$(NDK_FOLDER_NAME)/_unpacked
 	@mkdir -p $(PREFIX)/$(TARGET)/ndk-include/proto
 	@mkdir -p $(PREFIX)/$(TARGET)/ndk13-include/proto
 	@mkdir -p $(BUILD)/ndk-include/
 	@echo "done" >$@
 
-$(PROJECTS)/$(NDK_FOLDER_NAME).info: $(DOWNLOAD)/$(NDK_ARC_NAME).lha $(shell find 2>/dev/null patches/$(NDK_FOLDER_NAME)/ -type f) | $(LHA_PREREQ)
+$(PROJECTS)/$(NDK_FOLDER_NAME)/_unpacked: $(DOWNLOAD)/$(NDK_ARC_NAME).lha $(shell find 2>/dev/null patches/$(NDK_FOLDER_NAME)/ -type f) | $(LHA_PREREQ)
 	$(L0)"unpack ndk"$(L1) mkdir -p $(PROJECTS)/NDK3.2 && cd $(PROJECTS)/NDK3.2 && \
 	   $(LHA_FOR_BUILD) xf $(DOWNLOAD)/$(NDK_ARC_NAME).lha $(L2)
-	@touch -t 0001010000 $(DOWNLOAD)/$(NDK_ARC_NAME).lha
 	$(L0)"patch ndk"$(L1) for i in $$(find patches/$(NDK_FOLDER_NAME)/ -type f); do \
 	   if [[ "$$i" == *.diff ]] ; \
 		then j=$${i:8}; patch -N "$(PROJECTS)/$${j%.diff}" "$$i"; \
 		else cp -pv "$$i" "$(PROJECTS)/$${i:8}"; fi ; done $(L2)
-	@touch $(PROJECTS)/$(NDK_FOLDER_NAME).info
+	@echo "done" >$@
 
 
 # =================================================
