@@ -1711,7 +1711,7 @@ SDKS=$(patsubst sdk/%.sdk,%,$(SDKS0))
 all-sdk: $(SDKS)
 
 $(SDKS): libnix $(LHA_PREREQ)
-	$(MAKE) sdk sdk=$@
+	@$(MAKE) --no-print-directory sdk sdk=$@
 
 # =================================================
 # tag a release

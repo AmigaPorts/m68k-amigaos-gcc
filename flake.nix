@@ -149,7 +149,7 @@
           hardeningDisable = [ "all" ];
 
           shellHook = ''
-            echo "m68k-amigaos-gcc dev shell: make update && make all PREFIX=''${PREFIX:-/opt/amiga}"
+            echo "m68k-amigaos-gcc dev shell: make update && make all all-sdk PREFIX=''${PREFIX:-/opt/amiga}"
           '';
         };
       });
