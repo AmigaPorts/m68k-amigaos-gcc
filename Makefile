@@ -523,7 +523,7 @@ endif
 	@install -m 644 .manifest $(PREFIX)/.manifest
 
 # the compiler and the runtimes it links by default: what the testsuites need
-min: binutils gcc libnix libgcc
+min: binutils gcc libnix libgcc ixemul
 
 build-target-tools: $(TARGET_BUILD_TOOLS_PREREQ)
 
@@ -1712,6 +1712,11 @@ $(BUILD)/ixemul/_done: $(DOWNLOAD)/ixemul-sdk.lha | $(LHA_PREREQ)
 	@mkdir -p $(BUILD)/ixemul $(PREFIX)/$(TARGET)/ixemul
 	$(L0)"unpacking ixemul-sdk.lha"$(L1) cd $(BUILD)/ixemul && $(LHA_FOR_BUILD) xf $(DOWNLOAD)/ixemul-sdk.lha $(L2)
 	$(L0)"installing ixemul-sdk"$(L1) rsync -a --no-group --exclude=_done $(BUILD)/ixemul/* $(PREFIX)/$(TARGET)/ixemul/ $(L2)
+	@# ixemul's libc.a has the math functions, and the SDK ships no libm.a, so
+	@# -lm fell through to newlib's libm.a and failed on _impure_ptr.  An
+	@# empty archive in ixemul/lib, which -mcrt=ixemul searches first,
+	@# satisfies -lm.
+	@printf '!<arch>\n' >$(PREFIX)/$(TARGET)/ixemul/lib/libm.a
 	@echo "done" >$@
 
 # =================================================
