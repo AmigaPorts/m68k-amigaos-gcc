@@ -450,14 +450,18 @@ L1 = ;(
 L2 = )
 endif
 
+# Recipes do not echo their commands, as if every line started with @. The
+# modules' own makefiles are not affected: their commands still reach log/.
+.SILENT:
+
 # =================================================
 
 .PHONY: x init
 x:
 	@if [ "$(sdk)" == "" ]; then \
-		$(MAKE) help; \
+		$(MAKE) --no-print-directory help; \
 	else \
-		$(MAKE) sdk; \
+		$(MAKE) --no-print-directory sdk; \
 	fi
 
 # =================================================
@@ -708,7 +712,7 @@ update-libpthread: $(PROJECTS)/aros-stuff/pthreads/Makefile
 	@scripts/update-module $(PROJECTS)/aros-stuff
 
 update-ndk: $(DOWNLOAD)/$(NDK_ARC_NAME).lha
-	$(MAKE) $(PROJECTS)/$(NDK_FOLDER_NAME)/_unpacked
+	$(MAKE) --no-print-directory $(PROJECTS)/$(NDK_FOLDER_NAME)/_unpacked
 
 update-newlib: $(PROJECTS)/newlib-cygwin/newlib/configure
 	@scripts/update-module $(PROJECTS)/newlib-cygwin
@@ -757,15 +761,15 @@ $(PROJECTS)/gcc/mpc/configure: $(PROJECTS)/$(MPC)/configure
 
 update-gmp:
 	@rm -rf $(PROJECTS)/$(GMP) $(PROJECTS)/gcc/gmp $(PROJECTS)/binutils/gmp
-	@$(MAKE) $(PROJECTS)/$(GMP)/configure
+	@$(MAKE) --no-print-directory $(PROJECTS)/$(GMP)/configure
 
 update-mpfr:
 	@rm -rf $(PROJECTS)/$(MPFR) $(PROJECTS)/gcc/mpfr $(PROJECTS)/binutils/mpfr
-	@$(MAKE) $(PROJECTS)/$(MPFR)/configure
+	@$(MAKE) --no-print-directory $(PROJECTS)/$(MPFR)/configure
 
 update-mpc:
 	@rm -rf $(PROJECTS)/$(MPC) $(PROJECTS)/gcc/mpc
-	@$(MAKE) $(PROJECTS)/$(MPC)/configure
+	@$(MAKE) --no-print-directory $(PROJECTS)/$(MPC)/configure
 
 # =================================================
 # binutils
@@ -1392,7 +1396,7 @@ SYS_INCLUDE2 = $(filter-out $(NDK_INCLUDE_PROTO),$(patsubst $(PROJECTS)/$(NDK_FO
 ndk: $(BUILD)/ndk-include_ndk
 
 $(BUILD)/ndk-include_ndk: $(BUILD)/ndk-include_ndk0 $(NDK_INCLUDE_INLINE) $(NDK_INCLUDE_INLINE_VBCC) $(NDK_INCLUDE_LVO) $(NDK_INCLUDE_PROTO) $(PROJECTS)/fd2sfd/configure $(PROJECTS)/fd2pragma/makefile
-	$(MAKE) ndk_inc=1 ndk-proto ndk-lvo ndk-inline ndk-inline-vbcc
+	$(MAKE) --no-print-directory ndk_inc=1 ndk-proto ndk-lvo ndk-inline ndk-inline-vbcc
 	@mkdir -p $(BUILD)/ndk-include/
 	@echo "done" >$@
 
@@ -1889,7 +1893,7 @@ check-gcc-amigaos: $(BOARD_SIM_PREREQ)
 # with its memory sanitizer.  The objects are left in projects/libnix/test
 # and rebuilt on every run (-B), since they do not depend on the compiler.
 check-libnix: $(PREFIX)/bin/volamos
-	@set -o pipefail; $(MAKE) -B -C $(PROJECTS)/libnix/test check-target \
+	@set -o pipefail; $(MAKE) --no-print-directory -B -C $(PROJECTS)/libnix/test check-target \
 	  CROSS_CC=$(PREFIX)/bin/$(TARGET)-gcc SIM=$(PREFIX)/bin/volamos \
 	  SIMFLAGS="--stack 4K --sanitize" 2>&1 | tee $@.summary.txt
 
@@ -1897,7 +1901,7 @@ check-libnix: $(PREFIX)/bin/volamos
 # under the single-tasking simulator because it lacks CreateNewProc().
 check-libpthread: $(BUILD)/libpthread/_done
 	@set -o pipefail; if grep -q '^check:' $(BUILD)/libpthread/Makefile.gcc6; then \
-	  $(MAKE) -C $(BUILD)/libpthread -f Makefile.gcc6 check \
+	  $(MAKE) --no-print-directory -C $(BUILD)/libpthread -f Makefile.gcc6 check \
 	    CC=$(PREFIX)/bin/$(TARGET)-gcc CXX=$(PREFIX)/bin/$(TARGET)-g++ \
 	    AR=$(PREFIX)/bin/$(TARGET)-ar; \
 	  else echo 'SKIP: aros-stuff does not yet have the pthread check target'; fi \
