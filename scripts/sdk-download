@@ -1,7 +1,7 @@
 #!/bin/bash
 # Download an archive from the first URL that yields a verified copy.
 #
-#   sdk/download --sha256 HEX OUTPUT URL [URL...]
+#   scripts/sdk-download --sha256 HEX OUTPUT URL [URL...]
 #
 # An existing OUTPUT that verifies is left alone, and OUTPUT.sha256 notes
 # the hash it verified against, so the next call for that hash does not
@@ -16,19 +16,19 @@ while [ $# -gt 0 ]; do
 		--sha256) expected_sha256=$2; shift 2 ;;
 		--sha256=*) expected_sha256=${1#--sha256=}; shift ;;
 		--) shift; break ;;
-		-*) echo "sdk/download: unknown option $1" >&2; exit 2 ;;
+		-*) echo "sdk-download: unknown option $1" >&2; exit 2 ;;
 		*) break ;;
 	esac
 done
 if [ $# -lt 2 ]; then
-	echo "usage: sdk/download --sha256 HEX OUTPUT URL [URL...]" >&2
+	echo "usage: scripts/sdk-download --sha256 HEX OUTPUT URL [URL...]" >&2
 	exit 2
 fi
 output=$1
 shift
 expected_sha256=$(printf '%s' "$expected_sha256" | tr '[:upper:]' '[:lower:]')
 if ! [[ $expected_sha256 =~ ^[[:xdigit:]]{64}$ ]]; then
-	echo "sdk/download: $(basename "$output") needs a 64-digit --sha256, got '$expected_sha256'" >&2
+	echo "sdk-download: $(basename "$output") needs a 64-digit --sha256, got '$expected_sha256'" >&2
 	exit 2
 fi
 

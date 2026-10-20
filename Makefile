@@ -357,11 +357,11 @@ $(foreach arch,$(archives),$(eval $(arch)_URLS=$(call get_urls,$(arch))))
 $(foreach arch,$(archives),$(eval $(arch)_DIR=$(patsubst %.tar,%,$(basename $($(arch)_ARCHIVE)))))
 
 # The archives depend on the table, so a changed sha256 fetches the new
-# file; for an unchanged one sdk/download finds its hash in the archive's
-# .sha256 note and returns at once, and nothing downstream is remade.
+# file; for an unchanged one scripts/sdk-download finds its hash in the
+# archive's .sha256 note and returns at once, and nothing downstream is remade.
 define archive_rules
 $(DOWNLOAD)/$($(1)_ARCHIVE): default-archives
-	@$(PWD)/sdk/download --sha256 $($(1)_SHA256) $$@ $($(1)_URLS)
+	@$(PWD)/scripts/sdk-download --sha256 $($(1)_SHA256) $$@ $($(1)_URLS)
 endef
 $(foreach arch,$(archives),$(eval $(call archive_rules,$(arch))))
 
@@ -1785,7 +1785,7 @@ $(BUILD)/ixemul/_done: $(DOWNLOAD)/ixemul-sdk.lha | $(LHA_PREREQ)
 # =================================================
 .PHONY: sdk all-sdk
 sdk: libnix | $(LHA_PREREQ)
-	$(L0)"sdk $(sdk)"$(L1) TOOL_RUNNER="$(HOST_RUNNER)" HOST_EXEEXT="$(EXEEXT)" CC_FOR_SDK="$(SDK_CC_FOR_BUILD)" AR_FOR_SDK="$(SDK_AR_FOR_BUILD)" FD2SFD_FOR_BUILD="$(FD2SFD_FOR_BUILD)" SFDC_FOR_BUILD="$(SFDC_FOR_BUILD)" LHA_FOR_BUILD="$(LHA_FOR_BUILD)" $(PWD)/sdk/install install $(sdk) $(PREFIX) $(L2)
+	$(L0)"sdk $(sdk)"$(L1) TOOL_RUNNER="$(HOST_RUNNER)" HOST_EXEEXT="$(EXEEXT)" CC_FOR_SDK="$(SDK_CC_FOR_BUILD)" AR_FOR_SDK="$(SDK_AR_FOR_BUILD)" FD2SFD_FOR_BUILD="$(FD2SFD_FOR_BUILD)" SFDC_FOR_BUILD="$(SFDC_FOR_BUILD)" LHA_FOR_BUILD="$(LHA_FOR_BUILD)" $(PWD)/scripts/sdk-install install $(sdk) $(PREFIX) $(L2)
 
 SDKS0=$(shell find sdk/*.sdk)
 SDKS=$(patsubst sdk/%.sdk,%,$(SDKS0))

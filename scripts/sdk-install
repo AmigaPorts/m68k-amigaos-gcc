@@ -96,7 +96,7 @@ case $1 in
 				else
 					archive="download/$file"
 					url=${a[1]}:${a[2]}
-					sdk/download --sha256 "$sdk_sha256" \
+					scripts/sdk-download --sha256 "$sdk_sha256" \
 						"$archive" "$url" ${sdk_fallback_url:+"$sdk_fallback_url"} || exit 1
 					# a re-downloaded archive (e.g. after a Sha256 bump)
 					# is newer than the tree extracted from the old one
