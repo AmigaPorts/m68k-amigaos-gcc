@@ -69,170 +69,172 @@ done < "$sdk_descriptor"
 case $1 in
   install)
 	while IFS='' read -r line || [[ -n "$line" ]]; do
+		# a descriptor line is words separated by colons and blanks
+		# shellcheck disable=SC2206
 		a=(${line//:/ })
 		case ${a[0]} in
 			Short | Version | Author | Uploader | Type | Replaces | Architecture | FallbackUrl | Sha256)
 				echo "$line"
 				;;
 			Url)
-				file=$(basename ${a[2]})
+				file=$(basename "${a[2]}")
 				if [ "${a[1]}" == "git" ]; then
 					if [ ! -e "projects/$file" ]; then
-						pushd projects
-						BRANCH=""
+						pushd projects || exit 1
+						branch=()
 						if [ "${a[3]}" != "" ]; then
-							BRANCH="--branch ${a[3]} --single-branch"
+							branch=(--branch "${a[3]}" --single-branch)
 						fi
-						git clone ${BRANCH} https:${a[2]} || (rm -rf $file; exit 1)
-						popd;
+						git clone "${branch[@]}" "https:${a[2]}" || { rm -rf "$file"; exit 1; }
+						popd || exit 1
 					fi
-					pushd projects/$file
+					pushd "projects/$file" || exit 1
 					git pull
-					popd
-					mkdir -p build/$2/
-					rsync -r projects/$file/* build/$2/
+					popd || exit 1
+					mkdir -p "build/$2/"
+					rsync -r "projects/$file"/* "build/$2/"
 				else
 					archive="download/$file"
 					url=${a[1]}:${a[2]}
 					sdk/download --sha256 "$sdk_sha256" \
-						"$archive" "$url" $sdk_fallback_url || exit 1
+						"$archive" "$url" ${sdk_fallback_url:+"$sdk_fallback_url"} || exit 1
 					# a re-downloaded archive (e.g. after a Sha256 bump)
 					# is newer than the tree extracted from the old one
-					if [ ! -e "build/$2" ] || [ -z "$(ls -A build/$2)" ] || \
+					if [ ! -e "build/$2" ] || [ -z "$(ls -A "build/$2")" ] || \
 						[ "$archive" -nt "build/$2" ]; then
-						rm -rf build/$2
-						mkdir -p build/$2
-						pushd build/$2
+						rm -rf "build/$2"
+						mkdir -p "build/$2"
+						pushd "build/$2" || exit 1
 							"$LHA_FOR_BUILD" x "../../download/$file"
 							find . -type d -exec chmod +x {} \;
-						popd
+						popd || exit 1
 					fi
 				fi
 			;;
 			fd2sfd)
 				fd=${a[1]}
 				proto=${a[2]}
-				file=$(basename $fd)
+				file=$(basename "$fd")
 				name=${file%???}
-				mkdir -p $3/m68k-amigaos/lib/sfd/
-				run_fd2sfd -o $3/m68k-amigaos/lib/sfd/$name.sfd $3/m68k-amigaos/lib/fd/$fd $3/m68k-amigaos/include/$proto || exit 1
+				mkdir -p "$3/m68k-amigaos/lib/sfd/"
+				run_fd2sfd -o "$3/m68k-amigaos/lib/sfd/$name.sfd" "$3/m68k-amigaos/lib/fd/$fd" "$3/m68k-amigaos/include/$proto" || exit 1
 			;;
 			clib)
 				sfd=${a[1]}
-				file=$(basename $sfd)
+				file=$(basename "$sfd")
 				name=${file%????}
-				mkdir -p $3/m68k-amigaos/include/clib/
-				run_sfdc --mode=clib --target=m68k-amigaos --output=$3/m68k-amigaos/include/clib/${name}_protos.h $3/m68k-amigaos/lib/sfd/$sfd || exit 1
+				mkdir -p "$3/m68k-amigaos/include/clib/"
+				run_sfdc --mode=clib --target=m68k-amigaos --output="$3/m68k-amigaos/include/clib/${name}_protos.h" "$3/m68k-amigaos/lib/sfd/$sfd" || exit 1
 			;;
 			sfdc)
 				sfd=${a[1]}
-				file=$(basename $sfd)
+				file=$(basename "$sfd")
 				name=${file%????}
-				mkdir -p $3/m68k-amigaos/include/proto/
-				rm $3/m68k-amigaos/include/proto/$name.h
-				run_sfdc --mode=proto --target=m68k-gcc-amigaos --output=$3/m68k-amigaos/include/proto/$name.h $3/m68k-amigaos/lib/sfd/$sfd || exit 1
-				sed -i.bak -e 's/\(<clib\/.*>\)/\L\1/' -e 's/\(<defines\/.*>\)/\L\1/' -e 's/\(<inline\/.*>\)/\L\1/' -e 's/\(<pragmas\/.*>\)/\L\1/' $3/m68k-amigaos/include/proto/$name.h
-				rm $3/m68k-amigaos/include/proto/$name.h.bak
-				mkdir -p $3/m68k-amigaos/include/inline/
-				run_sfdc --mode=macros --target=m68k-gcc-amigaos --output=$3/m68k-amigaos/include/inline/$name.h $3/m68k-amigaos/lib/sfd/$sfd || exit 1
+				mkdir -p "$3/m68k-amigaos/include/proto/"
+				rm "$3/m68k-amigaos/include/proto/$name.h"
+				run_sfdc --mode=proto --target=m68k-gcc-amigaos --output="$3/m68k-amigaos/include/proto/$name.h" "$3/m68k-amigaos/lib/sfd/$sfd" || exit 1
+				sed -i.bak -e 's/\(<clib\/.*>\)/\L\1/' -e 's/\(<defines\/.*>\)/\L\1/' -e 's/\(<inline\/.*>\)/\L\1/' -e 's/\(<pragmas\/.*>\)/\L\1/' "$3/m68k-amigaos/include/proto/$name.h"
+				rm "$3/m68k-amigaos/include/proto/$name.h.bak"
+				mkdir -p "$3/m68k-amigaos/include/inline/"
+				run_sfdc --mode=macros --target=m68k-gcc-amigaos --output="$3/m68k-amigaos/include/inline/$name.h" "$3/m68k-amigaos/lib/sfd/$sfd" || exit 1
 				# sfdc derives the proto include from the SFD basename, which
 				# need not match the proto/<name>.h generated above - fix it up
-				sed -i -e "s|#include <proto/.*\.h>|#include <proto/$name.h>|" $3/m68k-amigaos/include/inline/$name.h
-				run_sfdc --mode=macros --target=m68kvbcc-amigaos --output=$3/m68k-amigaos/include/inline/${name}_protos.h $3/m68k-amigaos/lib/sfd/$sfd || exit 1
-				mkdir -p $3/m68k-amigaos/include/lvo/
-				run_sfdc --mode=lvo --target=m68k-amigaos --output=$3/m68k-amigaos/include/lvo/$name.i $3/m68k-amigaos/lib/sfd/$sfd || exit 1
+				sed -i -e "s|#include <proto/.*\.h>|#include <proto/$name.h>|" "$3/m68k-amigaos/include/inline/$name.h"
+				run_sfdc --mode=macros --target=m68kvbcc-amigaos --output="$3/m68k-amigaos/include/inline/${name}_protos.h" "$3/m68k-amigaos/lib/sfd/$sfd" || exit 1
+				mkdir -p "$3/m68k-amigaos/include/lvo/"
+				run_sfdc --mode=lvo --target=m68k-amigaos --output="$3/m68k-amigaos/include/lvo/$name.i" "$3/m68k-amigaos/lib/sfd/$sfd" || exit 1
 				if [ "${a[2]}" != "" ] && [ "${a[3]}" != "" ]; then
-					echo fixup names from ${a[2]} to ${a[3]}
-					echo sed -i.bak -e "s/${a[2]}/${a[3]}/" $3/m68k-amigaos/include/proto/$name.h
-					sed -i.bak -e "s/${a[2]}/${a[3]}/" $3/m68k-amigaos/include/proto/$name.h
-					sed -i.bak -e "s/${a[2]}/${a[3]}/" $3/m68k-amigaos/include/lvo/$name.i
-					sed -i.bak -e "s/${a[2]}/${a[3]}/" $3/m68k-amigaos/include/inline/$name.h
-					sed -i.bak -e "s/${a[2]}/${a[3]}/" $3/m68k-amigaos/include/inline/${name}_protos.h
-					rm $3/m68k-amigaos/include/proto/$name.h.bak $3/m68k-amigaos/include/lvo/$name.i.bak $3/m68k-amigaos/include/inline/$name.h.bak $3/m68k-amigaos/include/inline/${name}_protos.h.bak
+					echo "fixup names from ${a[2]} to ${a[3]}"
+					echo sed -i.bak -e "s/${a[2]}/${a[3]}/" "$3/m68k-amigaos/include/proto/$name.h"
+					sed -i.bak -e "s/${a[2]}/${a[3]}/" "$3/m68k-amigaos/include/proto/$name.h"
+					sed -i.bak -e "s/${a[2]}/${a[3]}/" "$3/m68k-amigaos/include/lvo/$name.i"
+					sed -i.bak -e "s/${a[2]}/${a[3]}/" "$3/m68k-amigaos/include/inline/$name.h"
+					sed -i.bak -e "s/${a[2]}/${a[3]}/" "$3/m68k-amigaos/include/inline/${name}_protos.h"
+					rm "$3/m68k-amigaos/include/proto/$name.h.bak" "$3/m68k-amigaos/include/lvo/$name.i.bak" "$3/m68k-amigaos/include/inline/$name.h.bak" "$3/m68k-amigaos/include/inline/${name}_protos.h.bak"
 				fi
 			;;
 			stubs)
 				sfd=${a[1]}
-				file=$(basename $sfd)
+				file=$(basename "$sfd")
 				name=${file%????}
-				run_sfdc --mode=autoopen --target=m68k-amigaos --output=build/$2/$name.c $3/m68k-amigaos/lib/sfd/$name.sfd || exit 1
-				sed -i.bak -e 's/__inline//g' -e 's/: \"d0\",/:/g' build/$2/$name.c || exit 1
-				rm build/$2/$name.c.bak
-				echo $3/bin/m68k-amigaos-gcc -Os -mcrt=nix20 -fomit-frame-pointer build/$2/$name.c -c
-				run_target_cc -Os -mcrt=nix20 -fomit-frame-pointer build/$2/$name.c -c -o build/$2/$name.o || exit 1
-				echo $3/bin/m68k-amigaos-ar r $3/m68k-amigaos/lib/libstubs.a build/$2/$name.o
+				run_sfdc --mode=autoopen --target=m68k-amigaos --output="build/$2/$name.c" "$3/m68k-amigaos/lib/sfd/$name.sfd" || exit 1
+				sed -i.bak -e 's/__inline//g' -e 's/: \"d0\",/:/g' "build/$2/$name.c" || exit 1
+				rm "build/$2/$name.c.bak"
+				echo "$3/bin/m68k-amigaos-gcc" -Os -mcrt=nix20 -fomit-frame-pointer "build/$2/$name.c" -c
+				run_target_cc -Os -mcrt=nix20 -fomit-frame-pointer "build/$2/$name.c" -c -o "build/$2/$name.o" || exit 1
+				echo "$3/bin/m68k-amigaos-ar" r "$3/m68k-amigaos/lib/libstubs.a" "build/$2/$name.o"
 				(
 					flock -x 200
-					run_target_ar r $3/m68k-amigaos/lib/libstubs.a build/$2/$name.o || exit 1
+					run_target_ar r "$3/m68k-amigaos/lib/libstubs.a" "build/$2/$name.o" || exit 1
 				) 200>/tmp/amiga-gcc-libstubs-lock
 				rm -f /tmp/amiga-gcc-libstubs-lock
 			;;
 			lib)
 				sfd=${a[1]}
-				file=$(basename $sfd)
+				file=$(basename "$sfd")
 				name=${file%????}
-				run_sfdc --mode=stubs --target=m68k-amigaos --output=build/$2/lib$2.c $3/m68k-amigaos/lib/sfd/$name.sfd || exit 1
-				sed -i.bak -e 's/__inline//g' -e 's/: \"d0\",/:/g' build/$2/lib$2.c || exit 1
-				rm build/$2/lib$2.c.bak
-				echo $3/bin/m68k-amigaos-gcc -Os -mcrt=nix20 -fomit-frame-pointer build/$2/lib$2.c -c
-				run_target_cc -Os -mcrt=nix20 -fomit-frame-pointer build/$2/lib$2.c -c -o build/$2/lib$2.o || exit 1
-				echo $3/bin/m68k-amigaos-ar r $3/m68k-amigaos/lib/lib$2.a build/$2/lib$2.o
-				run_target_ar r $3/m68k-amigaos/lib/lib$2.a build/$2/lib$2.o || exit 1
+				run_sfdc --mode=stubs --target=m68k-amigaos --output="build/$2/lib$2.c" "$3/m68k-amigaos/lib/sfd/$name.sfd" || exit 1
+				sed -i.bak -e 's/__inline//g' -e 's/: \"d0\",/:/g' "build/$2/lib$2.c" || exit 1
+				rm "build/$2/lib$2.c.bak"
+				echo "$3/bin/m68k-amigaos-gcc" -Os -mcrt=nix20 -fomit-frame-pointer "build/$2/lib$2.c" -c
+				run_target_cc -Os -mcrt=nix20 -fomit-frame-pointer "build/$2/lib$2.c" -c -o "build/$2/lib$2.o" || exit 1
+				echo "$3/bin/m68k-amigaos-ar" r "$3/m68k-amigaos/lib/lib$2.a" "build/$2/lib$2.o"
+				run_target_ar r "$3/m68k-amigaos/lib/lib$2.a" "build/$2/lib$2.o" || exit 1
 			;;
 			liba)
 				sfd=${a[1]}
-				file=$(basename $sfd)
+				file=$(basename "$sfd")
 				name=${file%????}
-				run_sfdc --mode=stubs --target=m68k-amigaos --output=build/$2/lib$2.c $3/m68k-amigaos/lib/sfd/$name.sfd || exit 1
-				sed -i.bak -e 's/__inline//g' -e 's/: \"d0\",/:/g' build/$2/lib$2.c || exit 1
-				rm build/$2/lib$2.c.bak
+				run_sfdc --mode=stubs --target=m68k-amigaos --output="build/$2/lib$2.c" "$3/m68k-amigaos/lib/sfd/$name.sfd" || exit 1
+				sed -i.bak -e 's/__inline//g' -e 's/: \"d0\",/:/g' "build/$2/lib$2.c" || exit 1
+				rm "build/$2/lib$2.c.bak"
 			;;
 			libc)
-				echo $3/bin/m68k-amigaos-gcc -Os -mcrt=nix20 -fomit-frame-pointer build/$2/lib$2.c -c
-				run_target_cc -Os -mcrt=nix20 -fomit-frame-pointer build/$2/lib$2.c -c -o build/$2/lib$2.o || exit 1
-				echo $3/bin/m68k-amigaos-ar r $3/m68k-amigaos/lib/lib$2.a build/$2/lib$2.o
-				run_target_ar r $3/m68k-amigaos/lib/lib$2.a build/$2/lib$2.o || exit 1
+				echo "$3/bin/m68k-amigaos-gcc" -Os -mcrt=nix20 -fomit-frame-pointer "build/$2/lib$2.c" -c
+				run_target_cc -Os -mcrt=nix20 -fomit-frame-pointer "build/$2/lib$2.c" -c -o "build/$2/lib$2.o" || exit 1
+				echo "$3/bin/m68k-amigaos-ar" r "$3/m68k-amigaos/lib/lib$2.a" "build/$2/lib$2.o"
+				run_target_ar r "$3/m68k-amigaos/lib/lib$2.a" "build/$2/lib$2.o" || exit 1
 			;;
-			
+
 			redirinc)
-				echo creating redirecting header $3/m68k-amigaos/include/${a[1]}
-				echo "#include \"${a[2]}\"" >$3/m68k-amigaos/include/${a[1]}
+				echo "creating redirecting header $3/m68k-amigaos/include/${a[1]}"
+				echo "#include \"${a[2]}\"" >"$3/m68k-amigaos/include/${a[1]}"
 			;;
 			sed)
-				x=${a[@]:2}
+				x=${a[*]:2}
 				x=${x##\"}
 				x=${x%%\"}
-				echo applying: sed -i.bak -E \""$x"\" $3/${a[1]}
-				LC_CTYPE=C sed -i.bak -E "$x" $3/${a[1]}
-				rm $3/${a[1]}.bak
+				echo applying: sed -i.bak -E \""$x"\" "$3/${a[1]}"
+				LC_CTYPE=C sed -i.bak -E "$x" "$3/${a[1]}"
+				rm "$3/${a[1]}.bak"
 			;;
 			symlink)
-				echo creating symlink from $3/m68k-amigaos/${a[2]} to ${a[1]}
-				rm -rf $3/m68k-amigaos/${a[2]}
-				ln -s ${a[1]} $3/m68k-amigaos/${a[2]}
+				echo "creating symlink from $3/m68k-amigaos/${a[2]} to ${a[1]}"
+				rm -rf "$3/m68k-amigaos/${a[2]}"
+				ln -s "${a[1]}" "$3/m68k-amigaos/${a[2]}"
 			;;
 			stdargs)
-				echo adding __stdargs to build/$2/${a[1]}
-				LC_CTYPE=C sed -i.bak -E 's/(.*)__stdargs (.*)/\1\2/g' build/$2/${a[1]}
-				LC_CTYPE=C sed -i.bak -E 's/([a-zA-Z0-9_]*[[:blank:]]*.*[[:blank:]]+\*?[[:blank:]]*)([a-zA-Z0-9_]+)[[:blank:]]*\(/__stdargs \1\2(/g' build/$2/${a[1]}
-				rm build/$2/${a[1]}.bak
+				echo "adding __stdargs to build/$2/${a[1]}"
+				LC_CTYPE=C sed -i.bak -E 's/(.*)__stdargs (.*)/\1\2/g' "build/$2/${a[1]}"
+				LC_CTYPE=C sed -i.bak -E 's/([a-zA-Z0-9_]*[[:blank:]]*.*[[:blank:]]+\*?[[:blank:]]*)([a-zA-Z0-9_]+)[[:blank:]]*\(/__stdargs \1\2(/g' "build/$2/${a[1]}"
+				rm "build/$2/${a[1]}.bak"
 			;;
 			patch)
 				patch=patches/$2/${a[1]}
-				echo applying patch $patch to build/$2
-				patch -N -p0 -r - -d build/$2 < $patch
+				echo "applying patch $patch to build/$2"
+				patch -N -p0 -r - -d "build/$2" < "$patch"
 			;;
 			patch1)
 				# absolute path: patch chdirs to the -d directory before opening -i
 				patch=$PWD/${a[1]}
-				if patch --forward --dry-run --batch -d build/$2 -p1 -i $patch >/dev/null 2>&1; then
-					echo applying patch $patch to build/$2
-					patch --forward --batch -d build/$2 -p1 -i $patch || exit 1
-				elif patch --reverse --dry-run --batch -d build/$2 -p1 -i $patch >/dev/null 2>&1; then
-					echo patch $patch already applied to build/$2
+				if patch --forward --dry-run --batch -d "build/$2" -p1 -i "$patch" >/dev/null 2>&1; then
+					echo "applying patch $patch to build/$2"
+					patch --forward --batch -d "build/$2" -p1 -i "$patch" || exit 1
+				elif patch --reverse --dry-run --batch -d "build/$2" -p1 -i "$patch" >/dev/null 2>&1; then
+					echo "patch $patch already applied to build/$2"
 				else
-					echo failed to apply patch $patch to build/$2
-					patch --forward --dry-run --batch -d build/$2 -p1 -i $patch
+					echo "failed to apply patch $patch to build/$2"
+					patch --forward --dry-run --batch -d "build/$2" -p1 -i "$patch"
 					exit 1
 				fi
 			;;
@@ -252,11 +254,11 @@ case $1 in
 					if [ "${a[1]}" == "=" ]; then
 						file=${a[2]}
 						line=${a[0]}
-						cp build/$2/$line build/$2/$(dirname $line)/$file
+						cp "build/$2/$line" "build/$2/$(dirname "$line")/$file"
 					else
-						file=$(basename $line)
+						file=$(basename "$line")
 					fi
-					dir=$(basename $(dirname $line))
+					dir=$(basename "$(dirname "$line")")
 					#lower-case the directory part
 					outdir=$(echo "$dir" | tr '[:upper:]' '[:lower:]')
 					if [[ $file == *.h ]] || [[ $file == *.i ]]; then
@@ -289,6 +291,6 @@ case $1 in
 	done < "$sdk_descriptor"
   ;;
   clean)
-	rm -rf build/$2
+	rm -rf "build/$2"
   ;;
 esac

@@ -9,7 +9,7 @@ set -e
 for spec in $REPOS; do
 	mod=${spec%%=*}
 	ref=${spec#*=}
-	grep -q "^$mod[[:blank:]]" .repos || { echo "unknown module: $mod"; exit 1; }
+	grep -q "^${mod}[[:blank:]]" .repos || { echo "unknown module: $mod"; exit 1; }
 	case "$ref" in
 	*"#"*)
 		# Fetch the exact ref into projects/<mod> and check it out, so
