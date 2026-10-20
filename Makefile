@@ -660,76 +660,61 @@ package:
 .PHONY: update update-gcc update-binutils update-fd2sfd update-lha update-fd2pragma update-ira update-sfdc update-vasm update-vbcc update-vlink update-libnix update-ixemul update-clib2 update-libdebug update-libpthread update-ndk update-newlib update-netinclude
 update: update-gcc update-binutils update-fd2sfd update-lha update-fd2pragma update-ira update-sfdc update-vasm update-vbcc update-vlink update-libnix update-ixemul update-clib2 update-libdebug update-libpthread update-ndk update-newlib update-netinclude
 
-# Pull a module checkout forward. A checkout pinned to an exact commit (CI
-# building a module's pull request) has no branch to pull, so it is left as
-# is. A shallow clone may lack the merge base of a fast-forward, for example
-# when the branch merged history older than the clone; deepen it and pull
-# again. A checkout that still cannot fast-forward (local commits) is left
-# alone with a warning rather than merged or rebased.  Every output line is
-# prefixed with the module name, since modules may update in parallel.
-define update-module
-@set -o pipefail; cd $(PROJECTS)/$1 && { if git symbolic-ref -q HEAD >/dev/null; then \
-	git -c advice.diverging=false pull --ff-only || \
-	{ test "$$(git rev-parse --is-shallow-repository)" = true && \
-	  git fetch --deepen 1000 && git -c advice.diverging=false pull --ff-only; } || \
-	if test -n "$$(git rev-list -n 1 @{u}..HEAD 2>/dev/null)"; then \
-	  echo "warning: not updated: $$(git symbolic-ref --short HEAD) has commits its upstream lacks"; \
-	else exit 1; fi; fi; } 2>&1 | sed -u 's|^|$1: |'
-endef
 
+# Each pulls a module checkout forward; see scripts/update-module.
 update-gcc: $(PROJECTS)/gcc/configure
-	$(call update-module,gcc)
+	@scripts/update-module $(PROJECTS)/gcc
 
 update-binutils: $(PROJECTS)/binutils/configure
-	$(call update-module,binutils)
+	@scripts/update-module $(PROJECTS)/binutils
 
 update-fd2sfd: $(PROJECTS)/fd2sfd/configure
-	$(call update-module,fd2sfd)
+	@scripts/update-module $(PROJECTS)/fd2sfd
 
 update-lha: $(PROJECTS)/lha/configure
-	$(call update-module,lha)
+	@scripts/update-module $(PROJECTS)/lha
 
 update-fd2pragma: $(PROJECTS)/fd2pragma/makefile
-	$(call update-module,fd2pragma)
+	@scripts/update-module $(PROJECTS)/fd2pragma
 
 update-ira: $(PROJECTS)/ira/Makefile
-	$(call update-module,ira)
+	@scripts/update-module $(PROJECTS)/ira
 
 update-sfdc: $(PROJECTS)/sfdc/configure
-	$(call update-module,sfdc)
+	@scripts/update-module $(PROJECTS)/sfdc
 
 update-vasm: $(PROJECTS)/vasm/Makefile
-	$(call update-module,vasm)
+	@scripts/update-module $(PROJECTS)/vasm
 
 update-vbcc: $(PROJECTS)/vbcc/Makefile
-	$(call update-module,vbcc)
+	@scripts/update-module $(PROJECTS)/vbcc
 
 update-vlink: $(PROJECTS)/vlink/Makefile
-	$(call update-module,vlink)
+	@scripts/update-module $(PROJECTS)/vlink
 
 update-libnix: $(PROJECTS)/libnix/Makefile.gcc6
-	$(call update-module,libnix)
+	@scripts/update-module $(PROJECTS)/libnix
 
 update-ixemul: $(PROJECTS)/ixemul/configure
-	$(call update-module,ixemul)
+	@scripts/update-module $(PROJECTS)/ixemul
 
 update-clib2: $(PROJECTS)/clib2/LICENSE
-	$(call update-module,clib2)
+	@scripts/update-module $(PROJECTS)/clib2
 
 update-libdebug: $(PROJECTS)/libdebug/configure
-	$(call update-module,libdebug)
+	@scripts/update-module $(PROJECTS)/libdebug
 
 update-libpthread: $(PROJECTS)/aros-stuff/pthreads/Makefile
-	$(call update-module,aros-stuff)
+	@scripts/update-module $(PROJECTS)/aros-stuff
 
 update-ndk: $(DOWNLOAD)/$(NDK_ARC_NAME).lha
 	$(MAKE) $(PROJECTS)/$(NDK_FOLDER_NAME)/_unpacked
 
 update-newlib: $(PROJECTS)/newlib-cygwin/newlib/configure
-	$(call update-module,newlib-cygwin)
+	@scripts/update-module $(PROJECTS)/newlib-cygwin
 
 update-netinclude: $(PROJECTS)/amiga-netinclude/README.md
-	$(call update-module,amiga-netinclude)
+	@scripts/update-module $(PROJECTS)/amiga-netinclude
 
 .PHONY: gcc-prerequisites update-gmp update-mpc update-mpfr
 gcc-prerequisites: $(PROJECTS)/$(GMP)/configure $(PROJECTS)/$(MPFR)/configure $(PROJECTS)/$(MPC)/configure
