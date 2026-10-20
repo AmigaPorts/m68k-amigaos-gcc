@@ -498,8 +498,6 @@ help:
 # =================================================
 # all
 # =================================================
-.PHONY: all gcc gdb gprof binutils build-target-tools fd2sfd fd2pragma ira sfdc vasm libnix ixemul libgcc clib2 libdebug libpthread ndk ndk13 min libnix4.library
-
 # gdb is built for the native and the MinGW hosts, not for AmigaOS.
 ifneq (,$(findstring amigaos,$(HOST)))
   ALL_GDB :=
@@ -507,6 +505,7 @@ else
   ALL_GDB := gdb
 endif
 
+.PHONY: all
 all: gcc binutils $(ALL_GDB) gprof fd2sfd fd2pragma ira sfdc vasm libnix ixemul libgcc clib2 libdebug libpthread ndk ndk13 libnix4.library
 	@echo "Creating .manifest..."
 	@$(MAKE) --no-print-directory manifest
@@ -527,88 +526,113 @@ endif
 	@install -m 644 .manifest $(PREFIX)/.manifest
 
 # the compiler and the runtimes it links by default: what the testsuites need
+.PHONY: min
 min: binutils gcc libnix libgcc ixemul
 
+.PHONY: build-target-tools
 build-target-tools: $(TARGET_BUILD_TOOLS_PREREQ)
 
 # =================================================
 # clean
 # =================================================
-.PHONY: drop-prefix clean clean-gcc clean-binutils clean-fd2sfd clean-lha clean-fd2pragma clean-ira clean-sfdc clean-vasm clean-vbcc clean-vlink clean-libnix clean-ixemul clean-libgcc clean-clib2 clean-libdebug clean-libpthread clean-newlib clean-ndk clean-gmp clean-mpc clean-mpfr
+.PHONY: clean
 clean: clean-gcc clean-binutils clean-fd2sfd clean-lha clean-fd2pragma clean-ira clean-sfdc clean-vasm clean-vbcc clean-vlink clean-libnix clean-ixemul clean-clib2 clean-libdebug clean-libpthread clean-newlib clean-ndk clean-gmp clean-mpc clean-mpfr
 	rm -rf $(BUILD)
 	rm -rf *.log
 	mkdir -p $(BUILD)
 
+.PHONY: clean-gcc
 clean-gcc:
 	rm -rf $(BUILD)/gcc
 
+.PHONY: clean-gmp
 clean-gmp:
 	rm -rf $(PROJECTS)/gcc/gmp $(PROJECTS)/binutils/gmp
 
+.PHONY: clean-mpc
 clean-mpc:
 	rm -rf $(PROJECTS)/gcc/mpc
 
+.PHONY: clean-mpfr
 clean-mpfr:
 	rm -rf $(PROJECTS)/gcc/mpfr $(PROJECTS)/binutils/mpfr
 
+.PHONY: clean-libgcc
 clean-libgcc:
 	rm -rf $(BUILD)/gcc/$(TARGET)
 	rm -rf $(BUILD)/gcc/_libgcc_done
 
+.PHONY: clean-binutils
 clean-binutils:
 	rm -rf $(BUILD)/binutils
 
+.PHONY: clean-gprof
 clean-gprof:
 	rm -rf $(BUILD)/binutils/gprof
 
+.PHONY: clean-fd2sfd
 clean-fd2sfd:
 	rm -rf $(BUILD)/fd2sfd
 
+.PHONY: clean-fd2pragma
 clean-fd2pragma:
 	rm -rf $(BUILD)/fd2pragma
 
+.PHONY: clean-ira
 clean-ira:
 	rm -rf $(BUILD)/ira
 
+.PHONY: clean-sfdc
 clean-sfdc:
 	rm -rf $(BUILD)/sfdc
 
+.PHONY: clean-lha
 clean-lha:
 	rm -rf $(BUILD)/lha
 
+.PHONY: clean-vasm
 clean-vasm:
 	rm -rf $(BUILD)/vasm
 
+.PHONY: clean-vbcc
 clean-vbcc:
 	rm -rf $(BUILD)/vbcc
 
+.PHONY: clean-vlink
 clean-vlink:
 	rm -rf $(BUILD)/vlink
 
+.PHONY: clean-ndk
 clean-ndk:
 	rm -rf $(BUILD)/ndk*
 
+.PHONY: clean-libnix
 clean-libnix:
 	rm -rf $(BUILD)/libnix
 
+.PHONY: clean-ixemul
 clean-ixemul:
 	rm -rf $(BUILD)/ixemul
 
+.PHONY: clean-clib2
 clean-clib2:
 	rm -rf $(BUILD)/clib2
 
+.PHONY: clean-libdebug
 clean-libdebug:
 	rm -rf $(BUILD)/libdebug
 
+.PHONY: clean-libpthread
 clean-libpthread:
 	rm -rf $(BUILD)/libpthread
 
+.PHONY: clean-newlib
 clean-newlib:
 	rm -rf $(BUILD)/newlib
 
 # drop-prefix drops the files from prefix folder.  It also removes
 # build-machine helpers left by versions predating the build-local prefix.
+.PHONY: drop-prefix
 drop-prefix:
 	rm -rf $(PREFIX)/bin
 	rm -rf $(PREFIX)/build-tools
@@ -661,66 +685,83 @@ package:
 # update all projects
 # =================================================
 
-.PHONY: update update-gcc update-binutils update-fd2sfd update-lha update-fd2pragma update-ira update-sfdc update-vasm update-vbcc update-vlink update-libnix update-ixemul update-clib2 update-libdebug update-libpthread update-ndk update-newlib update-netinclude
+.PHONY: update
 update: update-gcc update-binutils update-fd2sfd update-lha update-fd2pragma update-ira update-sfdc update-vasm update-vbcc update-vlink update-libnix update-ixemul update-clib2 update-libdebug update-libpthread update-ndk update-newlib update-netinclude
 
-
 # Each pulls a module checkout forward; see scripts/update-module.
+.PHONY: update-gcc
 update-gcc: $(PROJECTS)/gcc/configure
 	@scripts/update-module $(PROJECTS)/gcc
 
+.PHONY: update-binutils
 update-binutils: $(PROJECTS)/binutils/configure
 	@scripts/update-module $(PROJECTS)/binutils
 
+.PHONY: update-fd2sfd
 update-fd2sfd: $(PROJECTS)/fd2sfd/configure
 	@scripts/update-module $(PROJECTS)/fd2sfd
 
+.PHONY: update-lha
 update-lha: $(PROJECTS)/lha/configure
 	@scripts/update-module $(PROJECTS)/lha
 
+.PHONY: update-fd2pragma
 update-fd2pragma: $(PROJECTS)/fd2pragma/makefile
 	@scripts/update-module $(PROJECTS)/fd2pragma
 
+.PHONY: update-ira
 update-ira: $(PROJECTS)/ira/Makefile
 	@scripts/update-module $(PROJECTS)/ira
 
+.PHONY: update-sfdc
 update-sfdc: $(PROJECTS)/sfdc/configure
 	@scripts/update-module $(PROJECTS)/sfdc
 
+.PHONY: update-vasm
 update-vasm: $(PROJECTS)/vasm/Makefile
 	@scripts/update-module $(PROJECTS)/vasm
 
+.PHONY: update-vbcc
 update-vbcc: $(PROJECTS)/vbcc/Makefile
 	@scripts/update-module $(PROJECTS)/vbcc
 
+.PHONY: update-vlink
 update-vlink: $(PROJECTS)/vlink/Makefile
 	@scripts/update-module $(PROJECTS)/vlink
 
+.PHONY: update-libnix
 update-libnix: $(PROJECTS)/libnix/Makefile.gcc6
 	@scripts/update-module $(PROJECTS)/libnix
 
+.PHONY: update-ixemul
 update-ixemul: $(PROJECTS)/ixemul/configure
 	@scripts/update-module $(PROJECTS)/ixemul
 
+.PHONY: update-clib2
 update-clib2: $(PROJECTS)/clib2/LICENSE
 	@scripts/update-module $(PROJECTS)/clib2
 
+.PHONY: update-libdebug
 update-libdebug: $(PROJECTS)/libdebug/configure
 	@scripts/update-module $(PROJECTS)/libdebug
 
+.PHONY: update-libpthread
 update-libpthread: $(PROJECTS)/aros-stuff/pthreads/Makefile
 	@scripts/update-module $(PROJECTS)/aros-stuff
 
+.PHONY: update-ndk
 update-ndk: $(DOWNLOAD)/$(NDK_ARC_NAME).lha
 	$(MAKE) --no-print-directory $(PROJECTS)/$(NDK_FOLDER_NAME)/_unpacked
 
+.PHONY: update-newlib
 update-newlib: $(PROJECTS)/newlib-cygwin/newlib/configure
 	@scripts/update-module $(PROJECTS)/newlib-cygwin
 
+.PHONY: update-netinclude
 update-netinclude: $(PROJECTS)/amiga-netinclude/README.md
 	@scripts/update-module $(PROJECTS)/amiga-netinclude
 
-.PHONY: gcc-prerequisites update-gmp update-mpc update-mpfr
+.PHONY: gcc-prerequisites
 gcc-prerequisites: $(PROJECTS)/$(GMP)/configure $(PROJECTS)/$(MPFR)/configure $(PROJECTS)/$(MPC)/configure
 
 define extract-gcc-prerequisite
@@ -759,14 +800,17 @@ $(PROJECTS)/gcc/mpfr/configure $(PROJECTS)/binutils/mpfr/configure: $(PROJECTS)/
 $(PROJECTS)/gcc/mpc/configure: $(PROJECTS)/$(MPC)/configure
 	@mkdir -p $(@D) && rsync -a --no-group $(<D)/ $(@D)
 
+.PHONY: update-gmp
 update-gmp:
 	@rm -rf $(PROJECTS)/$(GMP) $(PROJECTS)/gcc/gmp $(PROJECTS)/binutils/gmp
 	@$(MAKE) --no-print-directory $(PROJECTS)/$(GMP)/configure
 
+.PHONY: update-mpfr
 update-mpfr:
 	@rm -rf $(PROJECTS)/$(MPFR) $(PROJECTS)/gcc/mpfr $(PROJECTS)/binutils/mpfr
 	@$(MAKE) --no-print-directory $(PROJECTS)/$(MPFR)/configure
 
+.PHONY: update-mpc
 update-mpc:
 	@rm -rf $(PROJECTS)/$(MPC) $(PROJECTS)/gcc/mpc
 	@$(MAKE) --no-print-directory $(PROJECTS)/$(MPC)/configure
@@ -810,6 +854,7 @@ BINUTILS_HOST_ALIAS_CMD := addr2line ar as c++filt elfedit ld ld.bfd nm objcopy 
 endif
 endif
 
+.PHONY: binutils
 binutils: $(BUILD)/binutils/_done
 
 $(BUILD)/binutils/_done: $(BUILD)/binutils/Makefile $(shell find 2>/dev/null $(PROJECTS)/binutils -not \( -path $(PROJECTS)/binutils/.git -prune \) -not \( -path $(PROJECTS)/binutils/gprof -prune \) -not \( -path $(PROJECTS)/binutils/gmp -prune \) -not \( -path $(PROJECTS)/binutils/mpfr -prune \) -type f)
@@ -839,6 +884,7 @@ $(PROJECTS)/binutils/configure:
 # gdb
 # =================================================
 
+.PHONY: gdb
 gdb: $(BUILD)/binutils/_gdb
 
 $(BUILD)/binutils/_gdb: $(BUILD)/binutils/_done
@@ -854,6 +900,7 @@ $(BUILD)/binutils/_gdb: $(BUILD)/binutils/_done
 # =================================================
 CONFIG_GPROF := --prefix=$(PREFIX) --target=$(TARGET) $(HOST_CONFIGURE) $(CONFIG_VERSION) --disable-werror
 
+.PHONY: gprof
 gprof: $(BUILD)/binutils/_gprof
 
 $(BUILD)/binutils/_gprof: $(BUILD)/binutils/gprof/Makefile $(shell find 2>/dev/null $(PROJECTS)/binutils/gprof -type f)
@@ -1016,6 +1063,7 @@ endif
 GCC_DIR := . gcc gcc/c gcc/c-family gcc/cp gcc/objc gcc/config/m68k libiberty libcpp libdecnumber
 GCCD := $(patsubst %,$(PROJECTS)/gcc/%, $(GCC_DIR))
 
+.PHONY: gcc
 gcc: $(BUILD)/gcc/_done
 
 $(BUILD)/gcc/_done: $(BUILD)/gcc/Makefile $(shell find 2>/dev/null $(GCCD) -maxdepth 1 -type f ) $(HOST_RUNNER_SETUP_PREREQ) $(TARGET_RUNNER_WRAPPERS)
@@ -1102,6 +1150,7 @@ FD2SFD_INSTALL_ARGS := INSTALL_PROGRAM="install --strip-program=$(HOST)-strip"
 FD2SFD_BUILD_PREREQ := $(BUILD_TOOLS)/fd2sfd/_done
 endif
 
+.PHONY: fd2sfd
 fd2sfd: $(BUILD)/fd2sfd/_done $(FD2SFD_BUILD_PREREQ)
 
 $(BUILD)/fd2sfd/_done: $(PREFIX)/bin/fd2sfd$(EXEEXT)
@@ -1142,6 +1191,7 @@ ifneq (,$(strip $(HOST)))
 FD2PRAGMA_BUILD_PREREQ := $(BUILD_TOOLS)/fd2pragma/_done
 endif
 
+.PHONY: fd2pragma
 fd2pragma: $(BUILD)/fd2pragma/_done $(FD2PRAGMA_BUILD_PREREQ)
 
 $(BUILD)/fd2pragma/_done: $(PREFIX)/bin/fd2pragma$(EXEEXT)
@@ -1170,6 +1220,7 @@ $(PROJECTS)/fd2pragma/makefile:
 # =================================================
 # ira
 # =================================================
+.PHONY: ira
 ira: $(BUILD)/ira/_done
 
 $(BUILD)/ira/_done: $(PREFIX)/bin/ira$(EXEEXT)
@@ -1191,6 +1242,7 @@ $(PROJECTS)/ira/Makefile:
 # =================================================
 CONFIG_SFDC := --prefix=$(PREFIX) --target=$(TARGET)
 
+.PHONY: sfdc
 sfdc: $(BUILD)/sfdc/_done
 
 $(BUILD)/sfdc/_done: $(PREFIX)/bin/sfdc
@@ -1230,6 +1282,7 @@ ifneq (,$(strip $(HOST)))
 VASM_BUILD_PREREQ := $(BUILD_TOOLS)/vasm/_done
 endif
 
+.PHONY: vasm
 vasm: $(BUILD)/vasm/_done $(VASM_BUILD_PREREQ)
 
 $(BUILD)/vasm/_done: $(BUILD)/vasm/Makefile
@@ -1391,8 +1444,8 @@ NDK_INCLUDE_LVO    = $(patsubst $(PROJECTS)/$(NDK_FOLDER_NAME_SFD)/%_lib.sfd,$(P
 NDK_INCLUDE_PROTO  = $(patsubst $(PROJECTS)/$(NDK_FOLDER_NAME_SFD)/%_lib.sfd,$(PREFIX)/$(TARGET)/ndk-include/proto/%.h,$(NDK_INCLUDE_SFD))
 SYS_INCLUDE2 = $(filter-out $(NDK_INCLUDE_PROTO),$(patsubst $(PROJECTS)/$(NDK_FOLDER_NAME_H)/%,$(PREFIX)/$(TARGET)/ndk-include/%, $(NDK_INCLUDE)))
 
-.PHONY: ndk-inline ndk-inline-vbcc ndk-lvo ndk-proto
 
+.PHONY: ndk
 ndk: $(BUILD)/ndk-include_ndk
 
 $(BUILD)/ndk-include_ndk: $(BUILD)/ndk-include_ndk0 $(NDK_INCLUDE_INLINE) $(NDK_INCLUDE_INLINE_VBCC) $(NDK_INCLUDE_LVO) $(NDK_INCLUDE_PROTO) $(PROJECTS)/fd2sfd/configure $(PROJECTS)/fd2pragma/makefile
@@ -1424,18 +1477,22 @@ $(BUILD)/ndk-include_ndk0: $(PROJECTS)/$(NDK_FOLDER_NAME)/_unpacked $(NDK_INCLUD
 	@mkdir -p $(BUILD)/ndk-include/
 	@echo "done" >$@
 
+.PHONY: ndk-inline
 ndk-inline: $(NDK_INCLUDE_INLINE) sfdc $(BUILD)/ndk-include_inline
 $(NDK_INCLUDE_INLINE): $(PREFIX)/bin/sfdc $(NDK_INCLUDE_SFD) $(BUILD)/ndk-include_inline $(BUILD)/ndk-include_lvo $(BUILD)/ndk-include_proto $(BUILD)/ndk-include_ndk0
 	$(L0)"sfdc inline $(@F)"$(L1) $(SFDC_FOR_BUILD) --target=m68k-gcc-amigaos --mode=macros --output=$@ $(patsubst $(PREFIX)/$(TARGET)/ndk-include/inline/%.h,$(PROJECTS)/$(NDK_FOLDER_NAME_SFD)/%_lib.sfd,$@) $(L2)
 
+.PHONY: ndk-inline-vbcc
 ndk-inline-vbcc: $(NDK_INCLUDE_INLINE_VBCC) sfdc $(BUILD)/ndk-include_inline
 $(NDK_INCLUDE_INLINE_VBCC): $(PREFIX)/bin/sfdc $(NDK_INCLUDE_SFD) $(BUILD)/ndk-include_inline $(BUILD)/ndk-include_lvo $(BUILD)/ndk-include_proto $(BUILD)/ndk-include_ndk0
 	$(L0)"sfdc inline vbcc $(@F)"$(L1) $(SFDC_FOR_BUILD) --target=m68kvbcc-amigaos --mode=macros --output=$@ $(patsubst $(PREFIX)/$(TARGET)/ndk-include/inline/%_protos.h,$(PROJECTS)/$(NDK_FOLDER_NAME_SFD)/%_lib.sfd,$@) $(L2)
 
+.PHONY: ndk-lvo
 ndk-lvo: $(NDK_INCLUDE_LVO) sfdc
 $(NDK_INCLUDE_LVO): $(PREFIX)/bin/sfdc $(NDK_INCLUDE_SFD) $(BUILD)/ndk-include_lvo $(BUILD)/ndk-include_ndk0
 	$(L0)"sfdc lvo $(@F)"$(L1) $(SFDC_FOR_BUILD) --target=m68k-amigaos --mode=lvo --output=$@ $(patsubst $(PREFIX)/$(TARGET)/ndk-include/lvo/%_lib.i,$(PROJECTS)/$(NDK_FOLDER_NAME_SFD)/%_lib.sfd,$@) $(L2)
 
+.PHONY: ndk-proto
 ndk-proto: $(NDK_INCLUDE_PROTO) sfdc
 $(NDK_INCLUDE_PROTO): $(PREFIX)/bin/sfdc $(NDK_INCLUDE_SFD)	$(BUILD)/ndk-include_proto $(BUILD)/ndk-include_ndk0
 	$(L0)"sfdc proto $(@F)"$(L1) $(SFDC_FOR_BUILD) --target=m68k-amigaos --mode=proto --output=$@ $(patsubst $(PREFIX)/$(TARGET)/ndk-include/proto/%.h,$(PROJECTS)/$(NDK_FOLDER_NAME_SFD)/%_lib.sfd,$@) $(L2)
@@ -1470,7 +1527,7 @@ $(PROJECTS)/$(NDK_FOLDER_NAME)/_unpacked: $(DOWNLOAD)/$(NDK_ARC_NAME).lha $(shel
 # =================================================
 # NDK1.3 - emulated from NDK
 # =================================================
-.PHONY: ndk_13
+.PHONY: ndk13
 ndk13: $(BUILD)/ndk-include_ndk13
 
 $(BUILD)/ndk-include_ndk13: $(BUILD)/ndk-include_ndk $(NDK_FD2SFD_PREREQ) $(BUILD)/sfdc/_done
@@ -1537,6 +1594,7 @@ $(LIBBAMIGA):
 
 LIBNIX_SRC = $(shell find 2>/dev/null $(PROJECTS)/libnix -not \( -path $(PROJECTS)/libnix/.git -prune \) -not \( -path $(PROJECTS)/libnix/sources/stubs/libbases -prune \) -not \( -path $(PROJECTS)/libnix/sources/stubs/libnames -prune \) -type f)
 
+.PHONY: libnix
 libnix: $(BUILD)/libnix/_done
 
 $(BUILD)/libnix/_done: $(BUILD)/newlib/_done $(BUILD)/ndk-include_ndk $(BUILD)/ndk-include_ndk13 $(BUILD)/_netinclude $(BUILD)/binutils/_done $(BUILD)/gcc/_done $(PROJECTS)/libnix/Makefile.gcc6 $(LIBAMIGA) $(LIBNIX_SRC)
@@ -1558,6 +1616,7 @@ $(PROJECTS)/libnix/Makefile.gcc6:
 LIBGCCS_NAMES := libgcov.a libstdc++.a libsupc++.a
 LIBGCCS := $(patsubst %,$(PREFIX)/lib/gcc/$(TARGET)/$(GCC_DIR_VERSION)/%,$(LIBGCCS_NAMES))
 
+.PHONY: libgcc
 libgcc: $(BUILD)/gcc/_libgcc_done
 
 $(BUILD)/gcc/_libgcc_done: $(BUILD)/libnix/_done $(BUILD)/libpthread/_done $(LIBAMIGA) $(GCC_TARGET_PREREQ) $(shell find 2>/dev/null $(PROJECTS)/gcc/libgcc -type f)
@@ -1575,6 +1634,7 @@ endif
 # =================================================
 # libnix4.library
 # =================================================
+.PHONY: libnix4.library
 libnix4.library: $(BUILD)/libnix/libb/libnix4.library
 $(BUILD)/libnix/libb/libnix4.library: $(BUILD)/gcc/_libgcc_done $(BUILD)/libnix/_done
 	$(L0)"make libnix4.library"$(L1) CFLAGS="$(CFLAGS_FOR_TARGET)" \
@@ -1584,6 +1644,7 @@ $(BUILD)/libnix/libb/libnix4.library: $(BUILD)/gcc/_libgcc_done $(BUILD)/libnix/
 # clib2
 # =================================================
 
+.PHONY: clib2
 clib2: $(BUILD)/clib2/_done
 
 $(BUILD)/clib2/_done: $(PROJECTS)/clib2/LICENSE $(shell find 2>/dev/null $(PROJECTS)/clib2 -not \( -path $(PROJECTS)/clib2/.git -prune \) -type f) $(BUILD)/libnix/_done $(LIBAMIGA)
@@ -1604,6 +1665,7 @@ $(PROJECTS)/clib2/LICENSE:
 # =================================================
 CONFIG_LIBDEBUG := --prefix=$(PREFIX) --target=$(TARGET) --host=$(TARGET)
 
+.PHONY: libdebug
 libdebug: $(BUILD)/libdebug/_done
 
 $(BUILD)/libdebug/_done: $(BUILD)/libdebug/Makefile
@@ -1623,6 +1685,7 @@ $(PROJECTS)/libdebug/configure:
 # libpthread
 # =================================================
 
+.PHONY: libpthread
 libpthread: $(BUILD)/libpthread/_done
 
 $(BUILD)/libpthread/_done: $(BUILD)/libpthread/Makefile
@@ -1830,10 +1893,10 @@ TESTSUITE = $(BUILD)/gcc/gcc/testsuite/gcc
 # The C++ testsuite writes into a separate g++ directory.
 CXXTESTSUITE = $(BUILD)/gcc/gcc/testsuite/g++
 
-.PHONY: check check-c check-c++ check-gcc-amigaos check-libnix check-libpthread check-newlib check-binutils check-binutils-gas check-binutils-ld
 # Run the two sequentially (recipe lines run in order even under make -j): both
 # drive check-gcc-c in the same build tree, sharing gcc.sum and
 # testsuite/gcc-parallel, so they must not run at the same time.
+.PHONY: check
 check:
 	@$(MAKE) --no-print-directory check-multilib
 	@$(MAKE) --no-print-directory check-binutils
@@ -1848,8 +1911,10 @@ check:
 # only the Amiga tests decide.  The previous .sum is removed first and at
 # least one Amiga PASS is required, so a testsuite that did not run cannot
 # pass on a stale or empty summary.
+.PHONY: check-binutils
 check-binutils: check-binutils-gas check-binutils-ld
 
+.PHONY: check-binutils-gas
 check-binutils-gas:
 	@rm -f $(BUILD)/binutils/gas/testsuite/gas.sum
 	$(L0)"check gas"$(L1)$(MAKE) -C $(BUILD)/binutils/gas check "RUNTESTFLAGS=all.exp" || true$(L2)
@@ -1858,6 +1923,7 @@ check-binutils-gas:
 	@grep -qE '^PASS.*[Aa]miga' $(BUILD)/binutils/gas/testsuite/gas.sum
 	@! grep -qE '^(FAIL|ERROR|XPASS|UNRESOLVED).*[Aa]miga' $(BUILD)/binutils/gas/testsuite/gas.sum
 
+.PHONY: check-binutils-ld
 check-binutils-ld:
 	@rm -f $(BUILD)/binutils/ld/ld.sum
 	$(L0)"check ld"$(L1)$(MAKE) -C $(BUILD)/binutils/ld check "RUNTESTFLAGS=amiga.exp"$(L2)
@@ -1871,6 +1937,7 @@ check-binutils-ld:
 # "amiga" object format supports weak symbols, so dg-require-weak tests
 # (20030125-1.c) come out unresolved.  The g++ suite below only reports:
 # it still has hundreds of standing failures.
+.PHONY: check-c
 check-c: $(BOARD_SIM_PREREQ)
 	@ln -sfn $(PREFIX)/$(TARGET)/libnix $(BUILD)/gcc/$(TARGET)/libnix
 	$(L0)"check execute.exp"$(L1)$(MAKE) -C $(BUILD)/gcc check-gcc-c "RUNTESTFLAGS=--target_board=$(board) execute.exp=*$(RUNTEST_SIM)"$(L2)
@@ -1880,6 +1947,7 @@ check-c: $(BOARD_SIM_PREREQ)
 	@! grep -qE '^(FAIL|ERROR|XPASS)' $(TESTSUITE)/gcc-execute.sum
 
 # amiga-specific target tests; a no-op on gcc branches that predate them (a .exp filter matching no file runs nothing).
+.PHONY: check-gcc-amigaos
 check-gcc-amigaos: $(BOARD_SIM_PREREQ)
 	@ln -sfn $(PREFIX)/$(TARGET)/libnix $(BUILD)/gcc/$(TARGET)/libnix
 	$(L0)"check amigaos.exp"$(L1)$(MAKE) -C $(BUILD)/gcc check-gcc-c "RUNTESTFLAGS=--target_board=$(board) gcc.target/m68k/amigaos/amigaos.exp$(RUNTEST_SIM)"$(L2)
@@ -1892,6 +1960,7 @@ check-gcc-amigaos: $(BOARD_SIM_PREREQ)
 # libnix sources with the installed cross compiler and run under volamos
 # with its memory sanitizer.  The objects are left in projects/libnix/test
 # and rebuilt on every run (-B), since they do not depend on the compiler.
+.PHONY: check-libnix
 check-libnix: $(PREFIX)/bin/volamos
 	@set -o pipefail; $(MAKE) --no-print-directory -B -C $(PROJECTS)/libnix/test check-target \
 	  CROSS_CC=$(PREFIX)/bin/$(TARGET)-gcc SIM=$(PREFIX)/bin/volamos \
@@ -1899,6 +1968,7 @@ check-libnix: $(PREFIX)/bin/volamos
 
 # Build libpthread's regression programs for each multilib.  They cannot run
 # under the single-tasking simulator because it lacks CreateNewProc().
+.PHONY: check-libpthread
 check-libpthread: $(BUILD)/libpthread/_done
 	@set -o pipefail; if grep -q '^check:' $(BUILD)/libpthread/Makefile.gcc6; then \
 	  $(MAKE) --no-print-directory -C $(BUILD)/libpthread -f Makefile.gcc6 check \
@@ -1941,6 +2011,7 @@ $(call newlib-check-dir,$(1),$(2))/newlib.sum: newlib-site-exp
 endef
 $(foreach b,$(NEWLIB_BOARDS),$(foreach e,$(NEWLIB_EXPS),$(eval $(call newlib-check-rule,$(b),$(e)))))
 
+.PHONY: check-newlib
 check-newlib: $(NEWLIB_CHECKS)
 	@for b in $(NEWLIB_BOARDS); do \
 	  sums=; for e in $(NEWLIB_EXPS); do sums="$$sums $(NEWLIBTESTSUITE)/$$b/`echo $${e%.exp} | tr / _`/newlib.sum"; done; \
@@ -1956,6 +2027,7 @@ check-newlib: $(NEWLIB_CHECKS)
 # `check`; run it on demand with `make check-c++`.  SANITIZE=0 keeps the
 # volamos boards' --sanitize off here: the -fstrub tests read the scrubbed
 # stack below the stack pointer on purpose.
+.PHONY: check-c++
 check-c++: $(BOARD_SIM_PREREQ)
 	@ln -sfn $(PREFIX)/$(TARGET)/libnix $(BUILD)/gcc/$(TARGET)/libnix
 	$(L0)"check c++"$(L1)$(MAKE) -C $(BUILD)/gcc check-gcc-c++ "RUNTESTFLAGS=--target_board=$(board)$(RUNTEST_SIM) SANITIZE=0"$(L2)
@@ -1966,7 +2038,7 @@ check-c++: $(BOARD_SIM_PREREQ)
 # =================================================
 # info
 # =================================================
-.PHONY: info v r b l branch
+.PHONY: info
 info:
 	@echo $@ $(UNAME_S)
 	@echo PREFIX=$(PREFIX)
@@ -1980,16 +2052,19 @@ info:
 	@echo MODULES = $(modules)
 
 # print the latest git log entry for all projects
+.PHONY: l
 l:
 	@for i in $(PROJECTS)/* ; do pushd . >/dev/null; cd $$i 2>/dev/null && ([[ -d ".git" ]] && echo $$i && git log -n1 --pretty=format:'%C(yellow)%h %Cred%ad %Cblue%an%Cgreen%d %Creset%s' --date=short); popd >/dev/null; done
 	@echo "." && git log -n1 --pretty=format:'%C(yellow)%h %Cred%ad %Cblue%an%Cgreen%d %Creset%s' --date=short
 
 # print the git remotes for all projects
+.PHONY: r
 r:
 	@for i in $(PROJECTS)/* ; do pushd . >/dev/null; cd $$i 2>/dev/null && ([[ -d ".git" ]] && echo $$i && git remote -v); popd >/dev/null; done
 	@echo "." && git remote -v
 
 # print the git branches for all projects
+.PHONY: b
 b:
 	@for i in $(PROJECTS)/* ; do pushd . >/dev/null; cd $$i 2>/dev/null && ([[ -d ".git" ]] && echo $$i && (git branch | grep '*')); popd >/dev/null; done
 	@echo "." && git remote -v
@@ -2000,10 +2075,12 @@ b:
 # date.  With neither, each module's .repos branch.
 #   make v ref=m68k-amigaos-gcc-v16.2-rc18
 #   make v date=2026-09-01
+.PHONY: v
 v:
 	@scripts/checkout $(if $(ref),ref $(ref),$(if $(date),date "$(date)"))
 
 # change version to the given branch
+.PHONY: branch
 branch:
 	@set -e; if [ "" != "$(branch)" ] && [ "1" == "$$(grep -c '^$(mod)[[:blank:]]' .repos)" ]; then \
 		echo $(mod) $(branch) ; \
