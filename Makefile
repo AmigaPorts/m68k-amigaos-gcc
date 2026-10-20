@@ -2040,6 +2040,11 @@ check-c++: $(BOARD_SIM_PREREQ)
 	@grep -q '^# of expected passes' $(CXXTESTSUITE)/g++.sum
 	@! grep -q '^ERROR' $(CXXTESTSUITE)/g++.sum
 
+# shellcheck the build's own shell scripts
+.PHONY: check-shell
+check-shell:
+	shellcheck scripts/* .github/scripts/*.sh
+
 
 # =================================================
 # info
