@@ -1,0 +1,44 @@
+#!/bin/bash
+# Pull a module checkout forward, for make update.
+#
+#   scripts/update-module <checkout>
+#
+# A checkout is only ever fast-forwarded, never merged or rebased, whatever
+# the user's pull.* settings. Network, authentication and local changes in
+# the way are errors.
+
+set -euo pipefail
+
+dir=$1
+name=$(basename "$dir")
+
+pull() {
+	# git's own hint for a diverged branch suggests merging or rebasing
+	git -c advice.diverging=false pull --ff-only
+}
+
+update() {
+	cd "$dir"
+
+	# A checkout pinned to an exact commit (CI building a module's pull
+	# request) has no branch to pull.
+	git symbolic-ref -q HEAD >/dev/null || return 0
+
+	pull && return 0
+
+	# A shallow clone may lack the merge base of a fast-forward, for example
+	# when the branch merged history older than the clone.
+	if [ "$(git rev-parse --is-shallow-repository)" = true ]; then
+		git fetch --deepen 1000 && pull && return 0
+	fi
+
+	# Local commits keep the checkout from fast-forwarding: leave it alone.
+	if [ -n "$(git rev-list -n 1 '@{u}..HEAD' 2>/dev/null)" ]; then
+		echo "warning: not updated: $(git symbolic-ref --short HEAD) has commits its upstream lacks"
+		return 0
+	fi
+	return 1
+}
+
+# Modules may update in parallel, so every line says which one it is about.
+update 2>&1 | sed -u "s|^|$name: |"
