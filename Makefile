@@ -1936,7 +1936,9 @@ check-binutils-ld:
 # the target.  UNRESOLVED is tolerated: DejaGnu cannot tell whether the
 # "amiga" object format supports weak symbols, so dg-require-weak tests
 # (20030125-1.c) come out unresolved.  The g++ suite below still has
-# standing failures, so only an ERROR fails it.
+# standing failures, so only an ERROR fails it.  A run without a single
+# PASS fails all three: runtest reports a misspelled board only in its log
+# and leaves an empty .sum.
 .PHONY: check-c
 check-c: $(BOARD_SIM_PREREQ)
 	@ln -sfn $(PREFIX)/$(TARGET)/libnix $(BUILD)/gcc/$(TARGET)/libnix
@@ -1944,6 +1946,7 @@ check-c: $(BOARD_SIM_PREREQ)
 	@cp -f $(TESTSUITE)/gcc.sum $(TESTSUITE)/gcc-execute.sum; cp -f $(TESTSUITE)/gcc.log $(TESTSUITE)/gcc-execute.log
 	@{ echo '----- execute.exp -----'; grep '^# of' $(TESTSUITE)/gcc-execute.sum || echo '(no tests run)'; grep -E '^(FAIL|ERROR|XPASS)' $(TESTSUITE)/gcc-execute.sum || true; } | tee $@.summary.txt
 	@echo "results: $(TESTSUITE)/gcc-execute.{sum,log}"
+	@grep -q '^# of expected passes' $(TESTSUITE)/gcc-execute.sum
 	@! grep -qE '^(FAIL|ERROR|XPASS)' $(TESTSUITE)/gcc-execute.sum
 
 # amiga-specific target tests; a no-op on gcc branches that predate them (a .exp filter matching no file runs nothing).
@@ -1954,6 +1957,7 @@ check-gcc-amigaos: $(BOARD_SIM_PREREQ)
 	@cp -f $(TESTSUITE)/gcc.sum $(TESTSUITE)/gcc-amigaos.sum; cp -f $(TESTSUITE)/gcc.log $(TESTSUITE)/gcc-amigaos.log
 	@{ echo '----- amigaos.exp -----'; grep '^# of' $(TESTSUITE)/gcc-amigaos.sum || echo '(no tests run)'; grep -E '^(FAIL|ERROR|XPASS)' $(TESTSUITE)/gcc-amigaos.sum || true; } | tee $@.summary.txt
 	@echo "results: $(TESTSUITE)/gcc-amigaos.{sum,log}"
+	@grep -q '^# of expected passes' $(TESTSUITE)/gcc-amigaos.sum
 	@! grep -qE '^(FAIL|ERROR|XPASS)' $(TESTSUITE)/gcc-amigaos.sum
 
 # libnix's own target tests (test/Makefile check-target): built from the
@@ -2033,6 +2037,7 @@ check-c++: $(BOARD_SIM_PREREQ)
 	$(L0)"check c++"$(L1)$(MAKE) -C $(BUILD)/gcc check-gcc-c++ "RUNTESTFLAGS=--target_board=$(board)$(RUNTEST_SIM) SANITIZE=0"$(L2)
 	@{ echo '----- c++ -----'; grep '^# of' $(CXXTESTSUITE)/g++.sum || echo '(no tests run)'; grep -E '^(FAIL|ERROR|XPASS)' $(CXXTESTSUITE)/g++.sum || true; } | tee $@.summary.txt
 	@echo "results: $(CXXTESTSUITE)/g++.{sum,log}"
+	@grep -q '^# of expected passes' $(CXXTESTSUITE)/g++.sum
 	@! grep -q '^ERROR' $(CXXTESTSUITE)/g++.sum
 
 
