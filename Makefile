@@ -633,7 +633,7 @@ clean-libnix:
 
 .PHONY: clean-ixemul
 clean-ixemul:
-	rm -rf $(BUILD)/ixemul $(BUILD)/ixemul-libs
+	rm -rf $(BUILD)/ixemul
 
 .PHONY: clean-clib2
 clean-clib2:
@@ -1782,19 +1782,24 @@ $(PROJECTS)/ixemul/configure:
 .PHONY: ixemul
 ixemul:	$(BUILD)/ixemul/_done
 
-$(BUILD)/ixemul/_done: $(DOWNLOAD)/ixemul-sdk.lha $(DOWNLOAD)/ixemul-000s.lha $(PROJECTS)/ixemul/configure | $(LHA_PREREQ)
-	@mkdir -p $(BUILD)/ixemul $(BUILD)/ixemul-libs $(PREFIX)/$(TARGET)/ixemul/libs
-	$(L0)"unpacking ixemul-sdk.lha"$(L1) cd $(BUILD)/ixemul && $(LHA_FOR_BUILD) xf $(DOWNLOAD)/ixemul-sdk.lha $(L2)
-	$(L0)"installing ixemul-sdk"$(L1) rsync -a --no-group --exclude=_done $(BUILD)/ixemul/* $(PREFIX)/$(TARGET)/ixemul/ $(L2)
-	@# The SDK has no <stdint.h> or <inttypes.h>, so they came from newlib's
+# The SDK is the gg/ tree of the ixemul release archive: headers, startup
+# files and the libc.a stubs.  The archive also carries ixemul.library and
+# ixnet.library for each CPU, the ixpipe handler and the sources; only the
+# 68000 libraries are installed, in ixemul/libs, for the volamos-ixemul
+# testsuite board.  ranlib: the libc.a files of 80.1 ship with a stale symbol
+# index that misses poll.o, so poll() did not link.
+$(BUILD)/ixemul/_done: $(DOWNLOAD)/$(ixemul-sdk_ARCHIVE) $(PROJECTS)/ixemul/configure $(BUILD)/binutils/_done | $(LHA_PREREQ)
+	@mkdir -p $(BUILD)/ixemul $(PREFIX)/$(TARGET)/ixemul
+	$(L0)"unpacking $(ixemul-sdk_ARCHIVE)"$(L1) cd $(BUILD)/ixemul && $(LHA_FOR_BUILD) xf $(DOWNLOAD)/$(ixemul-sdk_ARCHIVE) 'gg/include/*' 'gg/lib/*' Sys/libs/ixemul000.library Sys/libs/ixnet000.library $(L2)
+	$(L0)"installing ixemul-sdk"$(L1) rsync -a --no-group --delete $(BUILD)/ixemul/gg/ $(PREFIX)/$(TARGET)/ixemul/ $(L2)
+	@$(TARGET_RANLIB_FOR_BUILD) $(PREFIX)/$(TARGET)/ixemul/lib/libc.a $(PREFIX)/$(TARGET)/ixemul/lib/libc_p.a $(PREFIX)/$(TARGET)/ixemul/lib/libb/libc.a $(PREFIX)/$(TARGET)/ixemul/lib/libb32/libm020/libc.a
+	@# The SDK has a <stdint.h> but no <inttypes.h>, which came from newlib's
 	@# sys-include, whose int32_t (long) clashes with ixemul's (int).  The
 	@# ixemul sources' own pair agrees with ixemul's <machine/types.h>.
 	@cp $(PROJECTS)/ixemul/include/stdint.h $(PROJECTS)/ixemul/include/inttypes.h $(PREFIX)/$(TARGET)/ixemul/include/
-	@# the matching ixemul.library and ixnet.library (68000), for the
-	@# volamos-ixemul testsuite board: run with --libs-dir ixemul/libs
-	$(L0)"unpacking ixemul-000s.lha"$(L1) cd $(BUILD)/ixemul-libs && $(LHA_FOR_BUILD) xf $(DOWNLOAD)/ixemul-000s.lha $(L2)
-	@cp $(BUILD)/ixemul-libs/Sys/libs/ixemul000.library $(PREFIX)/$(TARGET)/ixemul/libs/ixemul.library
-	@cp $(BUILD)/ixemul-libs/Sys/libs/ixnet000.library $(PREFIX)/$(TARGET)/ixemul/libs/ixnet.library
+	@mkdir -p $(PREFIX)/$(TARGET)/ixemul/libs
+	@cp $(BUILD)/ixemul/Sys/libs/ixemul000.library $(PREFIX)/$(TARGET)/ixemul/libs/ixemul.library
+	@cp $(BUILD)/ixemul/Sys/libs/ixnet000.library $(PREFIX)/$(TARGET)/ixemul/libs/ixnet.library
 	@# ixemul's libc.a has the math functions, and the SDK ships no libm.a, so
 	@# -lm fell through to newlib's libm.a and failed on _impure_ptr.  An
 	@# empty archive in ixemul/lib, which -mcrt=ixemul searches first,
