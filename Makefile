@@ -1935,8 +1935,8 @@ check-binutils-ld:
 # The C suites are expected to be clean, so any FAIL, ERROR or XPASS fails
 # the target.  UNRESOLVED is tolerated: DejaGnu cannot tell whether the
 # "amiga" object format supports weak symbols, so dg-require-weak tests
-# (20030125-1.c) come out unresolved.  The g++ suite below only reports:
-# it still has hundreds of standing failures.
+# (20030125-1.c) come out unresolved.  The g++ suite below still has
+# standing failures, so only an ERROR fails it.
 .PHONY: check-c
 check-c: $(BOARD_SIM_PREREQ)
 	@ln -sfn $(PREFIX)/$(TARGET)/libnix $(BUILD)/gcc/$(TARGET)/libnix
@@ -2033,6 +2033,7 @@ check-c++: $(BOARD_SIM_PREREQ)
 	$(L0)"check c++"$(L1)$(MAKE) -C $(BUILD)/gcc check-gcc-c++ "RUNTESTFLAGS=--target_board=$(board)$(RUNTEST_SIM) SANITIZE=0"$(L2)
 	@{ echo '----- c++ -----'; grep '^# of' $(CXXTESTSUITE)/g++.sum || echo '(no tests run)'; grep -E '^(FAIL|ERROR|XPASS)' $(CXXTESTSUITE)/g++.sum || true; } | tee $@.summary.txt
 	@echo "results: $(CXXTESTSUITE)/g++.{sum,log}"
+	@! grep -q '^ERROR' $(CXXTESTSUITE)/g++.sum
 
 
 # =================================================
