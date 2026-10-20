@@ -1958,6 +1958,11 @@ check-c++: $(BOARD_SIM_PREREQ)
 	@{ echo '----- c++ -----'; grep '^# of' $(CXXTESTSUITE)/g++.sum || echo '(no tests run)'; grep -E '^(FAIL|ERROR|XPASS)' $(CXXTESTSUITE)/g++.sum || true; } | tee $@.summary.txt
 	@echo "results: $(CXXTESTSUITE)/g++.{sum,log}"
 
+# shellcheck the build's own shell scripts
+.PHONY: check-shell
+check-shell:
+	shellcheck scripts/* .github/scripts/*.sh
+
 
 # =================================================
 # info
