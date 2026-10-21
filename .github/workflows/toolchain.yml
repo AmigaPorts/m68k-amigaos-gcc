@@ -110,7 +110,7 @@ jobs:
     name: Select module refs
     if: >-
       github.event_name != 'pull_request' ||
-      contains(fromJSON('["ci-linux", "ci-linux-arm", "ci-macos", "ci-testsuite-c", "ci-testsuite-cxx", "ci-testsuite-newlib", "ci-amigaos", "ci-mingw"]'),
+      contains(fromJSON('["ci-linux", "ci-linux-arm", "ci-macos", "ci-amigaos", "ci-mingw", "ci-check-c", "ci-check-c++", "ci-check-c-newlib", "ci-check-c++-newlib", "ci-check-newlib"]'),
                github.event.label.name)
     runs-on: ubuntu-24.04
     env:
