@@ -1949,7 +1949,8 @@ check-binutils-ld:
 # (20030125-1.c) come out unresolved.  The g++ suite below still has
 # standing failures, so only an ERROR fails it.  A run without a single
 # PASS fails all three: runtest reports a misspelled board only in its log
-# and leaves an empty .sum.
+# and leaves an empty .sum.  check-gcc-amigaos is spared this on a gcc
+# branch without amigaos.exp, such as amiga6.
 .PHONY: check-c
 check-c: $(BOARD_SIM_PREREQ)
 	@ln -sfn $(PREFIX)/$(TARGET)/libnix $(BUILD)/gcc/$(TARGET)/libnix
@@ -1968,7 +1969,7 @@ check-gcc-amigaos: $(BOARD_SIM_PREREQ)
 	@cp -f $(TESTSUITE)/gcc.sum $(TESTSUITE)/gcc-amigaos.sum; cp -f $(TESTSUITE)/gcc.log $(TESTSUITE)/gcc-amigaos.log
 	@{ echo '----- amigaos.exp -----'; grep '^# of' $(TESTSUITE)/gcc-amigaos.sum || echo '(no tests run)'; grep -E '^(FAIL|ERROR|XPASS)' $(TESTSUITE)/gcc-amigaos.sum || true; } | tee $@.summary.txt
 	@echo "results: $(TESTSUITE)/gcc-amigaos.{sum,log}"
-	@grep -q '^# of expected passes' $(TESTSUITE)/gcc-amigaos.sum
+	@test ! -f $(PROJECTS)/gcc/gcc/testsuite/gcc.target/m68k/amigaos/amigaos.exp || grep -q '^# of expected passes' $(TESTSUITE)/gcc-amigaos.sum
 	@! grep -qE '^(FAIL|ERROR|XPASS)' $(TESTSUITE)/gcc-amigaos.sum
 
 # libnix's own target tests (test/Makefile check-target): built from the
