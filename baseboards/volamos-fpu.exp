@@ -5,7 +5,5 @@ load_board_description "volamos-020"
 
 unset_board_info cflags
 set_board_info cflags "-mcrt=nix20 -m68020 -m68881"
-# Without --sanitize until volamos stops flagging fmovem.x <list>,-(sp) as
-# writes below the stack pointer: https://github.com/sidick/volamos/issues/180
 unset_board_info sim,options
-set_board_info sim,options "--cpu 68020 --stack 4096K --ram 11264K --fpu"
+set_board_info sim,options "$volamos_options --fpu"
