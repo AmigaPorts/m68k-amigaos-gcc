@@ -675,7 +675,11 @@ jobs:
       PACKAGE_BASENAME: m68k-amigaos-gcc-${{ needs.build_mingw.outputs.package_version }}-x86_64-w64-mingw32ucrt
 
     steps:
+      # this repo's setup/ files, also when a module repo calls this workflow
       - uses: actions/checkout@v7
+        with:
+          repository: ${{ inputs.checkout_repo }}
+          ref: ${{ inputs.checkout_ref }}
 
       - name: Download Windows toolchain tree
         uses: actions/download-artifact@v7
