@@ -108,7 +108,11 @@ on:
         type: string
         default: ""
       # a /ci comment on a pull request here: its head commit, merged into
-      # checkout_ref, the base branch commit it is tested against
+      # checkout_ref, the base branch commit it is tested against.  A
+      # labelled pull request here does the same with the labelled head
+      # and the base branch tip, rather than check out refs/pull/N/merge,
+      # which GitHub recomputes a while after a push: a label put on right
+      # after one could build the previous head.
       merge_ref:
         type: string
         default: ""
@@ -144,12 +148,12 @@ jobs:
       - uses: actions/checkout@v7
         with:
           repository: ${{ inputs.checkout_repo }}
-          ref: ${{ inputs.checkout_ref }}
+          ref: ${{ inputs.checkout_ref || github.event.pull_request.base.ref }}
 
       - name: Merge the pull request
-        if: inputs.merge_ref != ''
+        if: inputs.merge_ref != '' || (inputs.checkout_repo == '' && github.event_name == 'pull_request')
         env:
-          MERGE_REF: ${{ inputs.merge_ref }}
+          MERGE_REF: ${{ inputs.merge_ref || (inputs.checkout_repo == '' && github.event.pull_request.head.sha) || '' }}
         run: sh .github/scripts/merge-pr.sh . "$MERGE_REF"
 
       - name: Pin the module refs
@@ -222,14 +226,14 @@ jobs:
       - uses: actions/checkout@v7
         with:
           repository: ${{ inputs.checkout_repo }}
-          ref: ${{ inputs.checkout_ref }}
+          ref: ${{ inputs.checkout_ref || github.event.pull_request.base.ref }}
           # the Makefile stamps the tools with git describe --tags
           fetch-depth: 0
 
       - name: Merge the pull request
-        if: inputs.merge_ref != ''
+        if: inputs.merge_ref != '' || (inputs.checkout_repo == '' && github.event_name == 'pull_request')
         env:
-          MERGE_REF: ${{ inputs.merge_ref }}
+          MERGE_REF: ${{ inputs.merge_ref || (inputs.checkout_repo == '' && github.event.pull_request.head.sha) || '' }}
         run: sh .github/scripts/merge-pr.sh . "$MERGE_REF"
 
       # PREFIX reaches every make invocation through the environment
@@ -486,14 +490,14 @@ jobs:
       - uses: actions/checkout@v7
         with:
           repository: ${{ inputs.checkout_repo }}
-          ref: ${{ inputs.checkout_ref }}
+          ref: ${{ inputs.checkout_ref || github.event.pull_request.base.ref }}
           # the Makefile stamps the tools with git describe --tags
           fetch-depth: 0
 
       - name: Merge the pull request
-        if: inputs.merge_ref != ''
+        if: inputs.merge_ref != '' || (inputs.checkout_repo == '' && github.event_name == 'pull_request')
         env:
-          MERGE_REF: ${{ inputs.merge_ref }}
+          MERGE_REF: ${{ inputs.merge_ref || (inputs.checkout_repo == '' && github.event.pull_request.head.sha) || '' }}
         run: sh .github/scripts/merge-pr.sh . "$MERGE_REF"
 
       - name: Install build dependencies
@@ -604,14 +608,14 @@ jobs:
       - uses: actions/checkout@v7
         with:
           repository: ${{ inputs.checkout_repo }}
-          ref: ${{ inputs.checkout_ref }}
+          ref: ${{ inputs.checkout_ref || github.event.pull_request.base.ref }}
           # the Makefile stamps the tools with git describe --tags
           fetch-depth: 0
 
       - name: Merge the pull request
-        if: inputs.merge_ref != ''
+        if: inputs.merge_ref != '' || (inputs.checkout_repo == '' && github.event_name == 'pull_request')
         env:
-          MERGE_REF: ${{ inputs.merge_ref }}
+          MERGE_REF: ${{ inputs.merge_ref || (inputs.checkout_repo == '' && github.event.pull_request.head.sha) || '' }}
         run: sh .github/scripts/merge-pr.sh . "$MERGE_REF"
 
       # the runner checked the tree out as its own user and the container
