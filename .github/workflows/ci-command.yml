@@ -55,10 +55,14 @@ jobs:
           OWNER|MEMBER|COLLABORATOR) ;;
           *) echo "::error::$ASSOCIATION may not start /ci builds"; exit 1 ;;
           esac
-          # the ci-* labels toolchain.yml builds
-          known="linux linux-arm linux-gcc6 macos amigaos mingw check-c check-c-fpu check-c++ check-c-newlib check-c++-newlib check-newlib"
+          # the ci-* labels the toolchain.yml that build calls accepts
+          known=$(gh api -H 'Accept: application/vnd.github.raw' \
+                    repos/AmigaPorts/m68k-amigaos-gcc/contents/.github/workflows/toolchain.yml?ref=master |
+                  grep -o '"ci-[a-z0-9+-]*"' | tr -d '"' | sed 's/^ci-//' | tr '\n' ' ')
+          known=${known% }
+          [ -n "$known" ] || { echo "::error::no ci-* labels in toolchain.yml"; exit 1; }
           labels=
-          for t in $(printf '%s\n' "$BODY" | head -n 1 | tr -d '\r' | cut -c4-); do
+          for t in $(printf '%s\n' "$BODY" | head -n 1 | tr -d '\r' | cut -c4- | tr A-Z a-z); do
             t=${t#ci-}
             case " $known " in
             *" $t "*) case " $labels " in *" ci-$t "*) ;; *) labels="$labels ci-$t" ;; esac ;;
@@ -111,7 +115,7 @@ jobs:
       # a module: the same, for its projects/<module> checkout
       repos: >-
         ${{ inputs.module != ''
-            && format('{0}={1}/{2}.git#{3}+{4}', inputs.module, github.server_url, github.repository,
+            && format('{0}={1}/{2}.git#{3}:{4}', inputs.module, github.server_url, github.repository,
                       needs.command.outputs.base, needs.command.outputs.head)
             || '' }}
 
