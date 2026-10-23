@@ -130,7 +130,8 @@ jobs:
   # resolved here too, and the jobs below read it as needs.refs.outputs.label:
   # empty for a dispatch or a release, which build everything.  An unknown
   # label (any other label put on a pull request) builds nothing.
-  # The labels here are also the /ci targets in ci-command.yml.
+  # ci-command.yml takes its /ci targets from the double-quoted ci- labels
+  # here, on master: keep every other ci- name in this file unquoted.
   refs:
     name: Select module refs
     if: >-
@@ -138,22 +139,28 @@ jobs:
       contains(fromJSON('["ci-linux", "ci-linux-arm", "ci-linux-gcc6", "ci-macos", "ci-amigaos", "ci-mingw", "ci-check-c", "ci-check-c-fpu", "ci-check-c-ixemul", "ci-check-c++", "ci-check-c-newlib", "ci-check-c++-newlib", "ci-check-newlib"]'),
                inputs.ci_label || github.event.label.name)
     runs-on: ubuntu-24.04
+    # the jobs below check out this commit and merge merge_ref into it,
+    # so they all build the same tree even if the base branch moves
     outputs:
       label: ${{ inputs.ci_label || github.event.label.name }}
+      checkout_ref: ${{ steps.base.outputs.sha }}
+      merge_ref: ${{ env.MERGE_REF }}
     env:
       # the label first: gcc_version defaults to 16.2 for a module repo's call
       GCC_VER: ${{ ((inputs.ci_label || github.event.label.name) == 'ci-linux-gcc6' && '6') || inputs.gcc_version || '16.2' }}
       TAG: ${{ inputs.tag }}
+      MERGE_REF: ${{ inputs.merge_ref || (inputs.checkout_repo == '' && github.event.pull_request.head.sha) || '' }}
     steps:
       - uses: actions/checkout@v7
         with:
           repository: ${{ inputs.checkout_repo }}
           ref: ${{ inputs.checkout_ref || github.event.pull_request.base.ref }}
 
+      - id: base
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
       - name: Merge the pull request
-        if: inputs.merge_ref != '' || (inputs.checkout_repo == '' && github.event_name == 'pull_request')
-        env:
-          MERGE_REF: ${{ inputs.merge_ref || (inputs.checkout_repo == '' && github.event.pull_request.head.sha) || '' }}
+        if: env.MERGE_REF != ''
         run: sh .github/scripts/merge-pr.sh . "$MERGE_REF"
 
       - name: Pin the module refs
@@ -226,14 +233,14 @@ jobs:
       - uses: actions/checkout@v7
         with:
           repository: ${{ inputs.checkout_repo }}
-          ref: ${{ inputs.checkout_ref || github.event.pull_request.base.ref }}
+          ref: ${{ needs.refs.outputs.checkout_ref }}
           # the Makefile stamps the tools with git describe --tags
           fetch-depth: 0
 
       - name: Merge the pull request
-        if: inputs.merge_ref != '' || (inputs.checkout_repo == '' && github.event_name == 'pull_request')
+        if: needs.refs.outputs.merge_ref != ''
         env:
-          MERGE_REF: ${{ inputs.merge_ref || (inputs.checkout_repo == '' && github.event.pull_request.head.sha) || '' }}
+          MERGE_REF: ${{ needs.refs.outputs.merge_ref }}
         run: sh .github/scripts/merge-pr.sh . "$MERGE_REF"
 
       # PREFIX reaches every make invocation through the environment
@@ -490,14 +497,14 @@ jobs:
       - uses: actions/checkout@v7
         with:
           repository: ${{ inputs.checkout_repo }}
-          ref: ${{ inputs.checkout_ref || github.event.pull_request.base.ref }}
+          ref: ${{ needs.refs.outputs.checkout_ref }}
           # the Makefile stamps the tools with git describe --tags
           fetch-depth: 0
 
       - name: Merge the pull request
-        if: inputs.merge_ref != '' || (inputs.checkout_repo == '' && github.event_name == 'pull_request')
+        if: needs.refs.outputs.merge_ref != ''
         env:
-          MERGE_REF: ${{ inputs.merge_ref || (inputs.checkout_repo == '' && github.event.pull_request.head.sha) || '' }}
+          MERGE_REF: ${{ needs.refs.outputs.merge_ref }}
         run: sh .github/scripts/merge-pr.sh . "$MERGE_REF"
 
       - name: Install build dependencies
@@ -608,14 +615,14 @@ jobs:
       - uses: actions/checkout@v7
         with:
           repository: ${{ inputs.checkout_repo }}
-          ref: ${{ inputs.checkout_ref || github.event.pull_request.base.ref }}
+          ref: ${{ needs.refs.outputs.checkout_ref }}
           # the Makefile stamps the tools with git describe --tags
           fetch-depth: 0
 
       - name: Merge the pull request
-        if: inputs.merge_ref != '' || (inputs.checkout_repo == '' && github.event_name == 'pull_request')
+        if: needs.refs.outputs.merge_ref != ''
         env:
-          MERGE_REF: ${{ inputs.merge_ref || (inputs.checkout_repo == '' && github.event.pull_request.head.sha) || '' }}
+          MERGE_REF: ${{ needs.refs.outputs.merge_ref }}
         run: sh .github/scripts/merge-pr.sh . "$MERGE_REF"
 
       # the runner checked the tree out as its own user and the container
@@ -731,7 +738,7 @@ jobs:
   package_windows:
     name: Create Windows installer
     continue-on-error: true
-    needs: build_mingw
+    needs: [refs, build_mingw]
     runs-on: windows-2025
     timeout-minutes: 30
     env:
@@ -743,7 +750,14 @@ jobs:
       - uses: actions/checkout@v7
         with:
           repository: ${{ inputs.checkout_repo }}
-          ref: ${{ inputs.checkout_ref }}
+          ref: ${{ needs.refs.outputs.checkout_ref }}
+
+      - name: Merge the pull request
+        if: needs.refs.outputs.merge_ref != ''
+        shell: bash
+        env:
+          MERGE_REF: ${{ needs.refs.outputs.merge_ref }}
+        run: sh .github/scripts/merge-pr.sh . "$MERGE_REF"
 
       - name: Download Windows toolchain tree
         uses: actions/download-artifact@v7
