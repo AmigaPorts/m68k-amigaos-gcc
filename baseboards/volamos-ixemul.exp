@@ -1,0 +1,19 @@
+# volamos with the tests linked against ixemul.library instead of libnix:
+# the toolchain's ixemul SDK (Geek Gadgets 47.3), run with the matching
+# ixemul.library and ixnet.library from IXEMUL_LIBS, which the Makefile
+# points at $(PREFIX)/m68k-amigaos/ixemul/libs.
+load_board_description "volamos"
+
+if {![info exists ::env(IXEMUL_LIBS)]} {
+    error "volamos-ixemul: IXEMUL_LIBS (the ixemul.library directory) is not set"
+}
+
+unset_board_info cflags
+set_board_info cflags "-mcrt=ixemul"
+unset_board_info ldflags
+set_board_info ldflags ""
+# The code is built for a 68000 as on the other boards, but runs on a
+# 68020: ixemul.library 47.3's 68000 build has 68020 instructions
+# (tst.l An) in its printf code.
+unset_board_info sim,options
+set_board_info sim,options "[string map {{--cpu 68000} {--cpu 68020}} $volamos_options] --libs-dir $::env(IXEMUL_LIBS)"

@@ -612,7 +612,7 @@ clean-libnix:
 
 .PHONY: clean-ixemul
 clean-ixemul:
-	rm -rf $(BUILD)/ixemul
+	rm -rf $(BUILD)/ixemul $(BUILD)/ixemul-libs
 
 .PHONY: clean-clib2
 clean-clib2:
@@ -1780,10 +1780,15 @@ $(PROJECTS)/ixemul/configure:
 .PHONY: ixemul
 ixemul:	$(BUILD)/ixemul/_done
 
-$(BUILD)/ixemul/_done: $(DOWNLOAD)/ixemul-sdk.lha | $(LHA_PREREQ)
-	@mkdir -p $(BUILD)/ixemul $(PREFIX)/$(TARGET)/ixemul
+$(BUILD)/ixemul/_done: $(DOWNLOAD)/ixemul-sdk.lha $(DOWNLOAD)/ixemul-000s.lha | $(LHA_PREREQ)
+	@mkdir -p $(BUILD)/ixemul $(BUILD)/ixemul-libs $(PREFIX)/$(TARGET)/ixemul/libs
 	$(L0)"unpacking ixemul-sdk.lha"$(L1) cd $(BUILD)/ixemul && $(LHA_FOR_BUILD) xf $(DOWNLOAD)/ixemul-sdk.lha $(L2)
 	$(L0)"installing ixemul-sdk"$(L1) rsync -a --no-group --exclude=_done $(BUILD)/ixemul/* $(PREFIX)/$(TARGET)/ixemul/ $(L2)
+	@# the matching ixemul.library and ixnet.library (68000), for the
+	@# volamos-ixemul testsuite board: run with --libs-dir ixemul/libs
+	$(L0)"unpacking ixemul-000s.lha"$(L1) cd $(BUILD)/ixemul-libs && $(LHA_FOR_BUILD) xf $(DOWNLOAD)/ixemul-000s.lha $(L2)
+	@cp $(BUILD)/ixemul-libs/Sys/libs/ixemul000.library $(PREFIX)/$(TARGET)/ixemul/libs/ixemul.library
+	@cp $(BUILD)/ixemul-libs/Sys/libs/ixnet000.library $(PREFIX)/$(TARGET)/ixemul/libs/ixnet.library
 	@# ixemul's libc.a has the math functions, and the SDK ships no libm.a, so
 	@# -lm fell through to newlib's libm.a and failed on _impure_ptr.  An
 	@# empty archive in ixemul/lib, which -mcrt=ixemul searches first,
@@ -1899,6 +1904,8 @@ BOARD_SIM_PREREQ = $(if $(and $(filter volamos%,$(board)),$(if $(SIM),,y)),$(PRE
 # Point dejagnu at the in-repo board descriptions in baseboards/ which wire up
 # vamos/volamos as the simulator.
 export DEJAGNU ?= $(CURDIR)/dejagnu-site.exp
+# The ixemul.library the volamos-ixemul board runs the tests with.
+export IXEMUL_LIBS ?= $(PREFIX)/$(TARGET)/ixemul/libs
 # Directory where dejagnu writes gcc.sum / gcc.log.
 TESTSUITE = $(BUILD)/gcc/gcc/testsuite/gcc
 # The C++ testsuite writes into a separate g++ directory.
