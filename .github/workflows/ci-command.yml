@@ -1,0 +1,133 @@
+# /ci comments: build a pull request with one or more of the ci-* targets
+# of toolchain.yml, merged into the current tip of its base branch.
+#   /ci linux check-c-fpu
+# runs ci-linux and ci-check-c-fpu (the ci- prefix is optional); /ci alone
+# lists the targets.  Posting the comment again rebuilds, against the base
+# branch as it is then.  Only members and collaborators can start a build.
+#
+# This repository runs it on its own pull requests; a module repository
+# calls it from its toolchain-ci.yml with module set to its name in
+# .repos.  Like every issue_comment workflow, it runs from the default
+# branch, and its runs show in the Actions tab rather than in the pull
+# request's checks: the reply links them.
+
+name: CI command
+
+on:
+  issue_comment:
+    types: [created]
+  workflow_call:
+    inputs:
+      # the caller's module name in .repos, empty for this repository
+      module:
+        type: string
+        default: ""
+
+jobs:
+  command:
+    name: Parse /ci
+    if: >-
+      github.event.issue.pull_request &&
+      (github.event.comment.body == '/ci' || startsWith(github.event.comment.body, '/ci '))
+    runs-on: ubuntu-24.04
+    permissions:
+      issues: write
+      pull-requests: write
+    outputs:
+      labels: ${{ steps.parse.outputs.labels }}
+      base: ${{ steps.parse.outputs.base }}
+      head: ${{ steps.parse.outputs.head }}
+      gcc_version: ${{ steps.parse.outputs.gcc_version }}
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      PR: ${{ github.event.issue.number }}
+      BODY: ${{ github.event.comment.body }}
+      COMMENT_ID: ${{ github.event.comment.id }}
+      ASSOCIATION: ${{ github.event.comment.author_association }}
+      MODULE: ${{ inputs.module }}
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+    steps:
+      - id: parse
+        run: |
+          reply() { gh pr comment "$PR" --body "$1"; }
+          case "$ASSOCIATION" in
+          OWNER|MEMBER|COLLABORATOR) ;;
+          *) echo "::error::$ASSOCIATION may not start /ci builds"; exit 1 ;;
+          esac
+          # the ci-* labels toolchain.yml builds
+          known="linux linux-arm linux-gcc6 macos amigaos mingw check-c check-c-fpu check-c++ check-c-newlib check-c++-newlib check-newlib"
+          labels=
+          for t in $(printf '%s\n' "$BODY" | head -n 1 | tr -d '\r' | cut -c4-); do
+            t=${t#ci-}
+            case " $known " in
+            *" $t "*) case " $labels " in *" ci-$t "*) ;; *) labels="$labels ci-$t" ;; esac ;;
+            *) reply "Unknown /ci target \`$t\`. Targets: \`$known\`"; exit 1 ;;
+            esac
+          done
+          if [ -z "$labels" ]; then
+            reply "Usage: \`/ci <target>...\`. Targets: \`$known\`"
+            exit 1
+          fi
+          pr=$(gh api "repos/$GH_REPO/pulls/$PR")
+          if [ "$(echo "$pr" | jq -r .state)" != open ]; then
+            reply "Pull request is not open."
+            exit 1
+          fi
+          base_ref=$(echo "$pr" | jq -r .base.ref)
+          base=$(gh api "repos/$GH_REPO/commits/$base_ref" -q .sha)
+          head=$(echo "$pr" | jq -r .head.sha)
+          # a gcc pull request builds the toolchain for its own branch:
+          # amiga6 for gcc 6, amiga16.2 for 16.2
+          gcc_version=
+          if [ "$MODULE" = gcc ]; then
+            gcc_version=${base_ref#amiga}
+          fi
+          {
+            echo "labels=$(printf '%s\n' $labels | jq -R . | jq -sc .)"
+            echo "base=$base"
+            echo "head=$head"
+            echo "gcc_version=$gcc_version"
+          } >> "$GITHUB_OUTPUT"
+          gh api -X POST "repos/$GH_REPO/issues/comments/$COMMENT_ID/reactions" -f content=rocket >/dev/null
+          reply "Building$labels: ${head:0:9} merged into $base_ref at ${base:0:9}. $RUN_URL"
+
+  build:
+    needs: command
+    strategy:
+      fail-fast: false
+      matrix:
+        label: ${{ fromJSON(needs.command.outputs.labels) }}
+    permissions:
+      contents: read
+    uses: AmigaPorts/m68k-amigaos-gcc/.github/workflows/toolchain.yml@master
+    with:
+      ci_label: ${{ matrix.label }}
+      gcc_version: ${{ needs.command.outputs.gcc_version || '16.2' }}
+      # this repository: build the base commit with the head merged in
+      checkout_repo: ${{ inputs.module == '' && github.repository || 'AmigaPorts/m68k-amigaos-gcc' }}
+      checkout_ref: ${{ inputs.module == '' && needs.command.outputs.base || 'master' }}
+      merge_ref: ${{ inputs.module == '' && needs.command.outputs.head || '' }}
+      # a module: the same, for its projects/<module> checkout
+      repos: >-
+        ${{ inputs.module != ''
+            && format('{0}={1}/{2}.git#{3}+{4}', inputs.module, github.server_url, github.repository,
+                      needs.command.outputs.base, needs.command.outputs.head)
+            || '' }}
+
+  report:
+    needs: [command, build]
+    if: always() && needs.command.result == 'success'
+    runs-on: ubuntu-24.04
+    permissions:
+      issues: write
+      pull-requests: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      PR: ${{ github.event.issue.number }}
+      RESULT: ${{ needs.build.result }}
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+    steps:
+      - run: |
+          gh pr comment "$PR" --body "/ci build $RESULT: $RUN_URL"

@@ -21,6 +21,8 @@
 # The ci-check-* labels build only what the tests need (make min): no gdb,
 # SDKs, vbcc, zlib/libpng or release tarball.
 # Re-add the label to rebuild after pushing new commits.
+# A /ci comment builds the same targets without labels, against the current
+# tip of the base branch: see ci-command.yml.
 
 name: Bootstrap toolchain
 
@@ -100,6 +102,16 @@ on:
       checkout_ref:
         type: string
         default: ""
+      # the ci-* label to build, as if the pull request had been labelled
+      # with it: set by ci-command.yml for a /ci comment
+      ci_label:
+        type: string
+        default: ""
+      # a /ci comment on a pull request here: its head commit, merged into
+      # checkout_ref, the base branch commit it is tested against
+      merge_ref:
+        type: string
+        default: ""
   # the ci-* labels listed at the top of this file
   pull_request:
     types: [labeled]
@@ -110,21 +122,35 @@ jobs:
   # a module branch could move between them.  A release pins every module to
   # the tag that release-tag made in it, named after this repository's; a
   # module without the tag fails the clone.
+  # The ci-* label, from the pull request event or a /ci comment, is
+  # resolved here too, and the jobs below read it as needs.refs.outputs.label:
+  # empty for a dispatch or a release, which build everything.  An unknown
+  # label (any other label put on a pull request) builds nothing.
+  # The labels here are also the /ci targets in ci-command.yml.
   refs:
     name: Select module refs
     if: >-
-      github.event_name != 'pull_request' ||
+      (inputs.ci_label || github.event.label.name) == '' ||
       contains(fromJSON('["ci-linux", "ci-linux-arm", "ci-linux-gcc6", "ci-macos", "ci-amigaos", "ci-mingw", "ci-check-c", "ci-check-c-fpu", "ci-check-c-ixemul", "ci-check-c++", "ci-check-c-newlib", "ci-check-c++-newlib", "ci-check-newlib"]'),
-               github.event.label.name)
+               inputs.ci_label || github.event.label.name)
     runs-on: ubuntu-24.04
+    outputs:
+      label: ${{ inputs.ci_label || github.event.label.name }}
     env:
-      GCC_VER: ${{ inputs.gcc_version || (github.event.label.name == 'ci-linux-gcc6' && '6') || '16.2' }}
+      # the label first: gcc_version defaults to 16.2 for a module repo's call
+      GCC_VER: ${{ ((inputs.ci_label || github.event.label.name) == 'ci-linux-gcc6' && '6') || inputs.gcc_version || '16.2' }}
       TAG: ${{ inputs.tag }}
     steps:
       - uses: actions/checkout@v7
         with:
           repository: ${{ inputs.checkout_repo }}
           ref: ${{ inputs.checkout_ref }}
+
+      - name: Merge the pull request
+        if: inputs.merge_ref != ''
+        env:
+          MERGE_REF: ${{ inputs.merge_ref }}
+        run: sh .github/scripts/merge-pr.sh . "$MERGE_REF"
 
       - name: Pin the module refs
         run: |
@@ -144,27 +170,25 @@ jobs:
   build:
     # each ci-* label starts its own run of this job: name it after the
     # label, or a PR's checks list keeps only the latest of them
-    name: build (${{ github.event.label.name || github.event_name }})
+    name: build (${{ needs.refs.outputs.label || github.event_name }})
     needs: refs
-    if: >-
-      github.event_name != 'pull_request' ||
-      contains(fromJSON('["ci-linux", "ci-linux-arm", "ci-linux-gcc6", "ci-macos", "ci-amigaos", "ci-check-c", "ci-check-c-fpu", "ci-check-c-ixemul", "ci-check-c++", "ci-check-c-newlib", "ci-check-c++-newlib", "ci-check-newlib"]'),
-               github.event.label.name)
+    # every label but ci-mingw, which cross-builds from a container
+    if: needs.refs.outputs.label != 'ci-mingw'
     # the testsuites run on arm64, whose 4 vCPUs build and test faster
     runs-on: >-
       ${{ inputs.runner
-          || (github.event.label.name == 'ci-macos' && 'macos-15')
-          || (github.event.label.name == 'ci-linux-arm' && 'ubuntu-24.04-arm')
-          || (startsWith(github.event.label.name, 'ci-check') && 'ubuntu-24.04-arm')
+          || (needs.refs.outputs.label == 'ci-macos' && 'macos-15')
+          || (needs.refs.outputs.label == 'ci-linux-arm' && 'ubuntu-24.04-arm')
+          || (startsWith(needs.refs.outputs.label, 'ci-check') && 'ubuntu-24.04-arm')
           || 'ubuntu-24.04' }}
     timeout-minutes: 300
     env:
-      RUN_TESTSUITE: ${{ inputs.run_testsuite || github.event.label.name == 'ci-check-c' || github.event.label.name == 'ci-check-c-newlib' || github.event.label.name == 'ci-check-c-fpu' || github.event.label.name == 'ci-check-c-ixemul' }}
-      RUN_TESTSUITE_CXX: ${{ inputs.run_cxx_testsuite || github.event.label.name == 'ci-check-c++' || github.event.label.name == 'ci-check-c++-newlib' }}
-      RUN_TESTSUITE_NEWLIB: ${{ github.event.label.name == 'ci-check-newlib' }}
+      RUN_TESTSUITE: ${{ inputs.run_testsuite || needs.refs.outputs.label == 'ci-check-c' || needs.refs.outputs.label == 'ci-check-c-newlib' || needs.refs.outputs.label == 'ci-check-c-fpu' || needs.refs.outputs.label == 'ci-check-c-ixemul' }}
+      RUN_TESTSUITE_CXX: ${{ inputs.run_cxx_testsuite || needs.refs.outputs.label == 'ci-check-c++' || needs.refs.outputs.label == 'ci-check-c++-newlib' }}
+      RUN_TESTSUITE_NEWLIB: ${{ needs.refs.outputs.label == 'ci-check-newlib' }}
       # the check labels build only the compiler and its runtimes; the
       # steps that need the rest of the distribution check for 'all'
-      BUILD_TARGET: ${{ startsWith(github.event.label.name, 'ci-check') && 'min' || 'all' }}
+      BUILD_TARGET: ${{ startsWith(needs.refs.outputs.label, 'ci-check') && 'min' || 'all' }}
       # The two simulators are kept side by side so their results can be
       # compared. SIMULATOR picks one, and BOARD the baseboards/ file the
       # testsuites run on:
@@ -179,15 +203,15 @@ jobs:
       SIMULATOR: ${{ inputs.simulator || 'volamos' }}
       BOARD: >-
         ${{ (inputs.simulator || 'volamos') == 'vamos' && 'amigaos'
-            || endsWith(github.event.label.name, '-c-newlib') && 'volamos-newlib'
-            || endsWith(github.event.label.name, '-c++-newlib') && 'volamos-newlib'
-            || github.event.label.name == 'ci-check-c-fpu' && 'volamos-fpu'
-            || github.event.label.name == 'ci-check-c-ixemul' && 'volamos-ixemul'
+            || endsWith(needs.refs.outputs.label, '-c-newlib') && 'volamos-newlib'
+            || endsWith(needs.refs.outputs.label, '-c++-newlib') && 'volamos-newlib'
+            || needs.refs.outputs.label == 'ci-check-c-fpu' && 'volamos-fpu'
+            || needs.refs.outputs.label == 'ci-check-c-ixemul' && 'volamos-ixemul'
             || 'volamos' }}
       AMITOOLS_GIT: ${{ inputs.amitools_git || 'git+https://github.com/AmigaPorts/amitools.git' }}
       # not GCC_VERSION: the Makefile reads that from gcc's BASE-VER
       # (16.2.1b) and derives the lib/gcc/<target>/<version> directory (16)
-      GCC_VER: ${{ inputs.gcc_version || (github.event.label.name == 'ci-linux-gcc6' && '6') || '16.2' }}
+      GCC_VER: ${{ (needs.refs.outputs.label == 'ci-linux-gcc6' && '6') || inputs.gcc_version || '16.2' }}
       # mirrors to try, in order, before aminet.net itself; see
       # https://wiki.aminet.net/Mirrors (some serve the tree under /aminet)
       AMINET_MIRROR: http://us4.aminet.net/aminet http://de4.aminet.net
@@ -201,6 +225,12 @@ jobs:
           ref: ${{ inputs.checkout_ref }}
           # the Makefile stamps the tools with git describe --tags
           fetch-depth: 0
+
+      - name: Merge the pull request
+        if: inputs.merge_ref != ''
+        env:
+          MERGE_REF: ${{ inputs.merge_ref }}
+        run: sh .github/scripts/merge-pr.sh . "$MERGE_REF"
 
       # PREFIX reaches every make invocation through the environment
       - name: Set prefix
@@ -436,12 +466,12 @@ jobs:
   build_amigaos:
     name: Build AmigaOS hosted toolchain
     if: >-
-      (github.event_name == 'pull_request' && github.event.label.name == 'ci-amigaos') ||
-      (github.event_name != 'pull_request' && inputs.build_hosted)
+      needs.refs.outputs.label == 'ci-amigaos' ||
+      (needs.refs.outputs.label == '' && inputs.build_hosted)
     # bootstrapped with the cross toolchain the build job just produced, so
     # this exercises the branch's own compiler, assembler and linker rather
     # than a container's copy, and the runner supplies the native compiler
-    needs: build
+    needs: [refs, build]
     runs-on: ubuntu-24.04
     timeout-minutes: 300
     defaults:
@@ -459,6 +489,12 @@ jobs:
           ref: ${{ inputs.checkout_ref }}
           # the Makefile stamps the tools with git describe --tags
           fetch-depth: 0
+
+      - name: Merge the pull request
+        if: inputs.merge_ref != ''
+        env:
+          MERGE_REF: ${{ inputs.merge_ref }}
+        run: sh .github/scripts/merge-pr.sh . "$MERGE_REF"
 
       - name: Install build dependencies
         run: |
@@ -542,8 +578,8 @@ jobs:
     continue-on-error: true
     needs: refs
     if: >-
-      (github.event_name == 'pull_request' && github.event.label.name == 'ci-mingw') ||
-      (github.event_name != 'pull_request' && inputs.build_hosted)
+      needs.refs.outputs.label == 'ci-mingw' ||
+      (needs.refs.outputs.label == '' && inputs.build_hosted)
     runs-on: ubuntu-24.04
     timeout-minutes: 300
     container:
@@ -571,6 +607,12 @@ jobs:
           ref: ${{ inputs.checkout_ref }}
           # the Makefile stamps the tools with git describe --tags
           fetch-depth: 0
+
+      - name: Merge the pull request
+        if: inputs.merge_ref != ''
+        env:
+          MERGE_REF: ${{ inputs.merge_ref }}
+        run: sh .github/scripts/merge-pr.sh . "$MERGE_REF"
 
       # the runner checked the tree out as its own user and the container
       # runs as root: git refuses the repository without this
