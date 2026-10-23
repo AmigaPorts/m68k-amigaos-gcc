@@ -858,10 +858,6 @@ endif
 binutils: $(BUILD)/binutils/_done
 
 $(BUILD)/binutils/_done: $(BUILD)/binutils/Makefile $(shell find 2>/dev/null $(PROJECTS)/binutils -not \( -path $(PROJECTS)/binutils/.git -prune \) -not \( -path $(PROJECTS)/binutils/gprof -prune \) -not \( -path $(PROJECTS)/binutils/gmp -prune \) -not \( -path $(PROJECTS)/binutils/mpfr -prune \) -type f)
-	@touch -t 0001010000 $(PROJECTS)/binutils/binutils/arparse.y
-	@touch -t 0001010000 $(PROJECTS)/binutils/binutils/arlex.l
-	@touch -t 0001010000 $(PROJECTS)/binutils/ld/ldgram.y
-	@touch -t 0001010000 $(PROJECTS)/binutils/intl/plural.y
 	$(L0)"make binutils bfd"$(L1)$(MAKE) -C $(BUILD)/binutils all-bfd $(L2)
 	$(L0)"make binutils gas"$(L1)$(MAKE) -C $(BUILD)/binutils all-gas $(L2)
 	$(L0)"make binutils binutils"$(L1)$(MAKE) -C $(BUILD)/binutils all-binutils $(L2)
