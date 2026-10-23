@@ -1324,7 +1324,7 @@ vbcc: $(BUILD)/vbcc/_done
 $(BUILD)/vbcc/_done: $(BUILD)/vbcc/Makefile
 	$(L0)"make vbcc dtgen"$(L1) TARGET=m68k $(MAKE) -C $(BUILD)/vbcc bin/dtgen $(L2)
 	@cd $(BUILD)/vbcc && echo -e "y\\ny\\nsigned char\\ny\\nunsigned char\\nn\\ny\\nsigned short\\nn\\ny\\nunsigned short\\nn\\ny\\nsigned int\\nn\\ny\\nunsigned int\\nn\\ny\\nsigned long long\\nn\\ny\\nunsigned long long\\nn\\ny\\nfloat\\nn\\ny\\ndouble\\n" >c.txt
-	$(L0)"run vbcc dtgen"$(L1) cd $(BUILD)/vbcc && bin/dtgen machines/m68k/machine.dt machines/m68k/dt.h machines/m68k/dt.c <c.txt $(L2)
+	$(L0)"run vbcc dtgen"$(L1) cd $(BUILD)/vbcc && mkdir -p objects/m68k && bin/dtgen machines/m68k/machine.dt objects/m68k/dt.h objects/m68k/dt.c <c.txt $(L2)
 	$(L0)"make vbcc"$(L1) TARGET=m68k $(MAKE) -C $(BUILD)/vbcc $(L2)
 	@mkdir -p $(PREFIX)/bin/
 	@rm -rf $(BUILD)/vbcc/bin/*.dSYM

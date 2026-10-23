@@ -12,6 +12,6 @@ libnix             https://github.com/AmigaPorts/libnix             master
 newlib-cygwin      https://github.com/AmigaPorts/newlib-cygwin      amiga
 sfdc               https://github.com/AmigaPorts/sfdc               master
 vasm               https://github.com/AmigaPorts/vasm               master
-vbcc               https://github.com/AmigaPorts/vbcc               master
+vbcc               https://github.com/AmigaPorts/vbcc               vbcc-20260112
 vlink              https://github.com/AmigaPorts/vlink              master
 aros-stuff         https://github.com/AmigaPorts/aros-stuff         master
