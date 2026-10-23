@@ -1,14 +1,17 @@
 --- old/devices/timer.h	2022-02-03 11:59:06.000000000 +0100
 +++ new/devices/timer.h	2022-06-27 00:29:43.590685664 +0200
-@@ -71,10 +71,19 @@
- 
+@@ -71,10 +71,25 @@
+
  #ifndef __USE_NEW_TIMEVAL__
- 
+
 +#ifndef _TIMEVAL_DEFINED
 +#define _TIMEVAL_DEFINED
  struct timeval {
--	ULONG tv_secs;
--	ULONG tv_micro;
++#ifdef __VBCC__
++	/* vbcc takes anonymous unions only in C11 mode (-c11) */
+ 	ULONG tv_secs;
+ 	ULONG tv_micro;
++#else
 +    union {
 +        ULONG          tv_sec;         /* seconds */
 +        ULONG          tv_secs;
@@ -17,6 +20,7 @@
 +        ULONG     tv_usec;        /* and microseconds */
 +        ULONG     tv_micro;
 +    };
++#endif
  };
 +#endif
  
