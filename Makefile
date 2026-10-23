@@ -1780,10 +1780,16 @@ $(PROJECTS)/ixemul/configure:
 .PHONY: ixemul
 ixemul:	$(BUILD)/ixemul/_done
 
-$(BUILD)/ixemul/_done: $(DOWNLOAD)/ixemul-sdk.lha | $(LHA_PREREQ)
+# The SDK is the gg/ tree of the ixemul release archive: headers, startup
+# files and the libc.a stubs.  The archive also carries ixemul.library and
+# ixnet.library for each CPU, the ixpipe handler and the sources, which are
+# not installed.  ranlib: the libc.a files of 80.1 ship with a stale symbol
+# index that misses poll.o, so poll() did not link.
+$(BUILD)/ixemul/_done: $(DOWNLOAD)/$(ixemul-sdk_ARCHIVE) $(BUILD)/binutils/_done | $(LHA_PREREQ)
 	@mkdir -p $(BUILD)/ixemul $(PREFIX)/$(TARGET)/ixemul
-	$(L0)"unpacking ixemul-sdk.lha"$(L1) cd $(BUILD)/ixemul && $(LHA_FOR_BUILD) xf $(DOWNLOAD)/ixemul-sdk.lha $(L2)
-	$(L0)"installing ixemul-sdk"$(L1) rsync -a --no-group --exclude=_done $(BUILD)/ixemul/* $(PREFIX)/$(TARGET)/ixemul/ $(L2)
+	$(L0)"unpacking $(ixemul-sdk_ARCHIVE)"$(L1) cd $(BUILD)/ixemul && $(LHA_FOR_BUILD) xf $(DOWNLOAD)/$(ixemul-sdk_ARCHIVE) 'gg/include/*' 'gg/lib/*' $(L2)
+	$(L0)"installing ixemul-sdk"$(L1) rsync -a --no-group --delete $(BUILD)/ixemul/gg/ $(PREFIX)/$(TARGET)/ixemul/ $(L2)
+	@$(TARGET_RANLIB_FOR_BUILD) $(PREFIX)/$(TARGET)/ixemul/lib/libc.a $(PREFIX)/$(TARGET)/ixemul/lib/libc_p.a $(PREFIX)/$(TARGET)/ixemul/lib/libb/libc.a $(PREFIX)/$(TARGET)/ixemul/lib/libb32/libm020/libc.a
 	@# ixemul's libc.a has the math functions, and the SDK ships no libm.a, so
 	@# -lm fell through to newlib's libm.a and failed on _impure_ptr.  An
 	@# empty archive in ixemul/lib, which -mcrt=ixemul searches first,
