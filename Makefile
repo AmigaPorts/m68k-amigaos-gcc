@@ -1780,10 +1780,14 @@ $(PROJECTS)/ixemul/configure:
 .PHONY: ixemul
 ixemul:	$(BUILD)/ixemul/_done
 
-$(BUILD)/ixemul/_done: $(DOWNLOAD)/ixemul-sdk.lha $(DOWNLOAD)/ixemul-000s.lha | $(LHA_PREREQ)
+$(BUILD)/ixemul/_done: $(DOWNLOAD)/ixemul-sdk.lha $(DOWNLOAD)/ixemul-000s.lha $(PROJECTS)/ixemul/configure | $(LHA_PREREQ)
 	@mkdir -p $(BUILD)/ixemul $(BUILD)/ixemul-libs $(PREFIX)/$(TARGET)/ixemul/libs
 	$(L0)"unpacking ixemul-sdk.lha"$(L1) cd $(BUILD)/ixemul && $(LHA_FOR_BUILD) xf $(DOWNLOAD)/ixemul-sdk.lha $(L2)
 	$(L0)"installing ixemul-sdk"$(L1) rsync -a --no-group --exclude=_done $(BUILD)/ixemul/* $(PREFIX)/$(TARGET)/ixemul/ $(L2)
+	@# The SDK has no <stdint.h> or <inttypes.h>, so they came from newlib's
+	@# sys-include, whose int32_t (long) clashes with ixemul's (int).  The
+	@# ixemul sources' own pair agrees with ixemul's <machine/types.h>.
+	@cp $(PROJECTS)/ixemul/include/stdint.h $(PROJECTS)/ixemul/include/inttypes.h $(PREFIX)/$(TARGET)/ixemul/include/
 	@# the matching ixemul.library and ixnet.library (68000), for the
 	@# volamos-ixemul testsuite board: run with --libs-dir ixemul/libs
 	$(L0)"unpacking ixemul-000s.lha"$(L1) cd $(BUILD)/ixemul-libs && $(LHA_FOR_BUILD) xf $(DOWNLOAD)/ixemul-000s.lha $(L2)
