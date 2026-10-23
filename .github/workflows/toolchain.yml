@@ -16,6 +16,7 @@
 #   ci-check-c-newlib, ci-check-c++-newlib - the same two, with the tests
 #                      linked against newlib instead of libnix
 #   ci-check-c-fpu   - make check-c with 68020/68881 code on an emulated FPU
+#   ci-check-c-ixemul - make check-c with the tests linked against ixemul
 #   ci-check-newlib  - make check-newlib, newlib's own testsuite
 # The ci-check-* labels build only what the tests need (make min): no gdb,
 # SDKs, vbcc, zlib/libpng or release tarball.
@@ -113,7 +114,7 @@ jobs:
     name: Select module refs
     if: >-
       github.event_name != 'pull_request' ||
-      contains(fromJSON('["ci-linux", "ci-linux-arm", "ci-linux-gcc6", "ci-macos", "ci-amigaos", "ci-mingw", "ci-check-c", "ci-check-c-fpu", "ci-check-c++", "ci-check-c-newlib", "ci-check-c++-newlib", "ci-check-newlib"]'),
+      contains(fromJSON('["ci-linux", "ci-linux-arm", "ci-linux-gcc6", "ci-macos", "ci-amigaos", "ci-mingw", "ci-check-c", "ci-check-c-fpu", "ci-check-c-ixemul", "ci-check-c++", "ci-check-c-newlib", "ci-check-c++-newlib", "ci-check-newlib"]'),
                github.event.label.name)
     runs-on: ubuntu-24.04
     env:
@@ -147,7 +148,7 @@ jobs:
     needs: refs
     if: >-
       github.event_name != 'pull_request' ||
-      contains(fromJSON('["ci-linux", "ci-linux-arm", "ci-linux-gcc6", "ci-macos", "ci-amigaos", "ci-check-c", "ci-check-c-fpu", "ci-check-c++", "ci-check-c-newlib", "ci-check-c++-newlib", "ci-check-newlib"]'),
+      contains(fromJSON('["ci-linux", "ci-linux-arm", "ci-linux-gcc6", "ci-macos", "ci-amigaos", "ci-check-c", "ci-check-c-fpu", "ci-check-c-ixemul", "ci-check-c++", "ci-check-c-newlib", "ci-check-c++-newlib", "ci-check-newlib"]'),
                github.event.label.name)
     # the testsuites run on arm64, whose 4 vCPUs build and test faster
     runs-on: >-
@@ -158,7 +159,7 @@ jobs:
           || 'ubuntu-24.04' }}
     timeout-minutes: 300
     env:
-      RUN_TESTSUITE: ${{ inputs.run_testsuite || github.event.label.name == 'ci-check-c' || github.event.label.name == 'ci-check-c-newlib' || github.event.label.name == 'ci-check-c-fpu' }}
+      RUN_TESTSUITE: ${{ inputs.run_testsuite || github.event.label.name == 'ci-check-c' || github.event.label.name == 'ci-check-c-newlib' || github.event.label.name == 'ci-check-c-fpu' || github.event.label.name == 'ci-check-c-ixemul' }}
       RUN_TESTSUITE_CXX: ${{ inputs.run_cxx_testsuite || github.event.label.name == 'ci-check-c++' || github.event.label.name == 'ci-check-c++-newlib' }}
       RUN_TESTSUITE_NEWLIB: ${{ github.event.label.name == 'ci-check-newlib' }}
       # the check labels build only the compiler and its runtimes; the
@@ -172,6 +173,8 @@ jobs:
       #                     (ci-check-c-newlib, ci-check-c++-newlib)
       #   volamos-fpu     - volamos with an FPU, 68020/68881 code
       #                     (ci-check-c-fpu)
+      #   volamos-ixemul  - volamos, tests linked against ixemul
+      #                     (ci-check-c-ixemul)
       #   volamos         - volamos, everything else
       SIMULATOR: ${{ inputs.simulator || 'volamos' }}
       BOARD: >-
@@ -179,6 +182,7 @@ jobs:
             || endsWith(github.event.label.name, '-c-newlib') && 'volamos-newlib'
             || endsWith(github.event.label.name, '-c++-newlib') && 'volamos-newlib'
             || github.event.label.name == 'ci-check-c-fpu' && 'volamos-fpu'
+            || github.event.label.name == 'ci-check-c-ixemul' && 'volamos-ixemul'
             || 'volamos' }}
       AMITOOLS_GIT: ${{ inputs.amitools_git || 'git+https://github.com/AmigaPorts/amitools.git' }}
       # not GCC_VERSION: the Makefile reads that from gcc's BASE-VER

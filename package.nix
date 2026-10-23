@@ -33,6 +33,7 @@ let
     "mpfr"
     "ndk"
     "ixemul-sdk"
+    "ixemul-libs"
     "vbcc-target-m68k-amigaos"
     "vbcc-target-m68k-kick13"
   ];
