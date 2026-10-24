@@ -1,29 +1,7 @@
-# Build the whole m68k-amigaos toolchain, on dispatch, from release.yml,
-# or for a labelled pull request. Nothing builds on a plain push: label a
-# pull request here, or in a module repository whose toolchain-ci.yml
-# calls this workflow with its branch swapped in, with a ci-* tag. The
-# label picks what to build:
-#   ci-linux         - the Linux toolchain (plus the amigaos.exp testsuite)
-#   ci-linux-arm     - the same on an arm64 Linux runner
-#   ci-linux-gcc6    - the Linux toolchain with gcc 6 (branch amiga6), which
-#                      no other label builds
-#   ci-macos         - the macOS toolchain
-#   ci-amigaos       - the AmigaOS-hosted toolchain (builds the Linux
-#                      cross toolchain first, to bootstrap from)
-#   ci-mingw         - the MinGW-hosted toolchain
-#   ci-check-c       - make check-c, the gcc C testsuite, on an arm64 runner
-#   ci-check-c++     - make check-c++, the g++ testsuite (slow)
-#   ci-check-c-newlib, ci-check-c++-newlib - the same two, with the tests
-#                      linked against newlib instead of libnix
-#   ci-check-c-fpu   - make check-c with 68020/68881 code on an emulated FPU
-#   ci-check-c-ixemul - make check-c with the tests linked against ixemul
-#   ci-check-newlib  - make check-newlib, newlib's own testsuite
-# The ci-check-* labels build only what the tests need (make min): no gdb,
-# SDKs, vbcc, zlib/libpng or release tarball.
-# Re-add the label to rebuild after pushing new commits.
-# A /ci comment builds on the same platforms (the labels but ci-check-*)
-# without labels, against the current tip of the base branch, and runs
-# any make targets in place of the default tests: see ci-command.yml.
+# Builds and tests the whole toolchain, for a ci-* label on a pull request
+# here or in a module repository (its toolchain-ci.yml), a /ci comment
+# (ci-command.yml), a dispatch, or a release (release.yml).  How to use it,
+# with the labels and what they build: doc/ci.md.
 
 name: Bootstrap toolchain
 
@@ -116,7 +94,7 @@ on:
       make_args:
         type: string
         default: ""
-  # the ci-* labels listed at the top of this file
+  # the ci-* labels in the refs job below; doc/ci.md describes them
   pull_request:
     types: [labeled]
 
