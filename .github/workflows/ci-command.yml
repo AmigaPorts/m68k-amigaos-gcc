@@ -37,8 +37,10 @@ jobs:
     permissions:
       issues: write
       pull-requests: write
+      statuses: write
     outputs:
       labels: ${{ steps.parse.outputs.labels }}
+      context: ${{ steps.parse.outputs.context }}
       make_args: ${{ steps.parse.outputs.make_args }}
       base: ${{ steps.parse.outputs.base }}
       head: ${{ steps.parse.outputs.head }}
@@ -104,8 +106,13 @@ jobs:
             echo "base=$base"
             echo "head=$head"
             echo "gcc_version=$gcc_version"
+            echo "context=$context"
           } >> "$GITHUB_OUTPUT"
           gh api -X POST "repos/$GH_REPO/issues/comments/$COMMENT_ID/reactions" -f content=rocket >/dev/null
+          # a commit status on the head, so the run shows in the pull
+          # request's checks; the same command again updates it
+          context="/ci${labels//ci-/}${make_args:+ make $make_args}"
+          gh api "repos/$GH_REPO/statuses/$head" -f state=pending -f context="$context" -f target_url="$RUN_URL" >/dev/null
           reply "Building$labels${make_args:+ make $make_args}: ${head:0:9} merged into $base_ref at ${base:0:9}. $RUN_URL"
 
   build:
@@ -137,14 +144,15 @@ jobs:
     if: always() && needs.command.result == 'success'
     runs-on: ubuntu-24.04
     permissions:
-      issues: write
-      pull-requests: write
+      statuses: write
     env:
       GH_TOKEN: ${{ github.token }}
       GH_REPO: ${{ github.repository }}
-      PR: ${{ github.event.issue.number }}
+      HEAD: ${{ needs.command.outputs.head }}
+      CONTEXT: ${{ needs.command.outputs.context }}
       RESULT: ${{ needs.build.result }}
       RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
     steps:
       - run: |
-          gh pr comment "$PR" --body "/ci build $RESULT: $RUN_URL"
+          case $RESULT in success) state=success ;; *) state=failure ;; esac
+          gh api "repos/$GH_REPO/statuses/$HEAD" -f state=$state -f context="$CONTEXT" -f target_url="$RUN_URL" >/dev/null
