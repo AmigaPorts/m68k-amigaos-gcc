@@ -24,20 +24,22 @@ on jenkins.amigadev.com, including the AmigaOS-native one, from the
 
 ## /ci comments
 
+```
+/ci <platform> [make <target>... [VAR=value]...]
+```
+
 A comment that starts with `/ci` builds the pull request. Each `/ci` line
-is a separate job, and they all run in parallel:
+is a separate job, and they all run in parallel. For example:
 
 ```
-/ci linux macos
+/ci linux
+/ci macos
 /ci linux-arm make check-c board=volamos-newlib
 /ci linux-arm make all all-sdk libpng check-c++
-/ci make check-shell
 ```
 
-The words before `make` name platforms, each of them a job. The words after
-it go to make as they are. Without a platform, `make` runs on `linux-arm`.
-Without `make`, a platform builds the whole distribution and runs the fast
-tests:
+The words after `make` go to make as they are. Without `make`, the platform
+builds the whole distribution and runs the fast tests:
 
 ```
 make all all-sdk vbcc vlink zlib libpng check-gdb-libpython package \
@@ -72,6 +74,8 @@ passed to every target.
   GitHub does for every comment-triggered workflow. A pull request that
   changes the workflows themselves is not tested by `/ci`: use a label or
   a dispatch for it.
+- **The parser** is `.github/scripts/ci-command.py`. To see what a comment
+  would do: `echo '/ci linux-arm make check-c' | .github/scripts/ci-command.py --dry-run`.
 
 ## Labels
 

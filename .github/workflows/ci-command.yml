@@ -1,5 +1,5 @@
-# /ci comments on pull requests: parses the command and calls toolchain.yml
-# once per platform.  How to use it: doc/ci.md.
+# /ci comments on pull requests: .github/scripts/ci-command.py parses the
+# comment, and toolchain.yml runs once per /ci line.  How to use it: doc/ci.md.
 # A module repository calls this from its own ci-command.yml, with module set
 # to its name in .repos.  Like every issue_comment workflow, it runs from
 # the default branch.
@@ -42,74 +42,16 @@ jobs:
       MODULE: ${{ inputs.module }}
       RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
     steps:
+      # the parser and the platforms from this repository's master, also
+      # for a module repository, and never from the pull request
+      - uses: actions/checkout@v7
+        with:
+          repository: AmigaPorts/m68k-amigaos-gcc
+          ref: master
+          sparse-checkout: .github
+
       - id: parse
-        run: |
-          reply() { gh pr comment "$PR" --body "$1"; }
-          case "$ASSOCIATION" in
-          OWNER|MEMBER|COLLABORATOR) ;;
-          *) echo "::error::$ASSOCIATION may not start /ci builds"; exit 1 ;;
-          esac
-          # the platforms: the ci-* labels the toolchain.yml that build
-          # calls accepts, but for the ci-check-* ones
-          known=$(gh api -H 'Accept: application/vnd.github.raw' \
-                    repos/AmigaPorts/m68k-amigaos-gcc/contents/.github/workflows/toolchain.yml?ref=master |
-                  grep -o '"ci-[a-z0-9+-]*"' | tr -d '"' | sed 's/^ci-//' | grep -v '^check' | tr '\n' ' ')
-          known=${known% }
-          [ -n "$known" ] || { echo "::error::no ci-* labels in toolchain.yml"; exit 1; }
-          usage="Usage: \`/ci <platform>... [make <make args>]\`, one per line. Platforms: \`$known\`"
-          # each /ci line: platforms, then make arguments after "make";
-          # every platform of every line is a job of its own
-          entries= context=
-          while IFS= read -r line; do
-            case $line in '/ci'|'/ci '*) ;; *) continue ;; esac
-            line=${line#/ci}
-            make_args=
-            case " $line " in
-            *" make "*) make_args=${line#* make }; line=${line%% make *}; [ -n "${line// }" ] || line=linux-arm ;;
-            esac
-            labels=
-            for t in $(printf '%s\n' "$line" | tr A-Z a-z); do
-              t=${t#ci-}
-              case " $known " in
-              *" $t "*) labels="$labels ci-$t" ;;
-              *) reply "Unknown /ci platform \`$t\`. $usage"; exit 1 ;;
-              esac
-            done
-            [ -n "$labels" ] || { reply "$usage"; exit 1; }
-            for l in $labels; do
-              entries="$entries$(jq -nc --arg l "$l" --arg m "$make_args" '{label: $l, make_args: $m}')"
-            done
-            context="${context:+$context; }/ci${labels//ci-/}${make_args:+ make $make_args}"
-          done < <(printf '%s\n' "$BODY" | tr -d '\r')
-          pr=$(gh api "repos/$GH_REPO/pulls/$PR")
-          if [ "$(echo "$pr" | jq -r .state)" != open ]; then
-            reply "Pull request is not open."
-            exit 1
-          fi
-          base_ref=$(echo "$pr" | jq -r .base.ref)
-          # no refs/pull/N/merge to build; asking also refreshes it
-          if [ "$(echo "$pr" | jq -r .mergeable)" = false ]; then
-            reply "The pull request conflicts with $base_ref: rebase it first."
-            exit 1
-          fi
-          head=$(echo "$pr" | jq -r .head.sha)
-          # a gcc pull request builds the toolchain for its own branch:
-          # amiga6 for gcc 6, amiga16.2 for 16.2
-          gcc_version=
-          if [ "$MODULE" = gcc ]; then
-            gcc_version=${base_ref#amiga}
-          fi
-          {
-            echo "matrix=$(printf '%s' "$entries" | jq -sc .)"
-            echo "head=$head"
-            echo "gcc_version=$gcc_version"
-            echo "context=$context"
-          } >> "$GITHUB_OUTPUT"
-          gh api -X POST "repos/$GH_REPO/issues/comments/$COMMENT_ID/reactions" -f content=rocket >/dev/null
-          # a commit status on the head, so the run shows in the pull
-          # request's checks; the same comment again updates it
-          gh api "repos/$GH_REPO/statuses/$head" -f state=pending -f context="$context" -f target_url="$RUN_URL" >/dev/null
-          reply "Building \`$context\`: ${head:0:9} merged into $base_ref. $RUN_URL"
+        run: printf '%s\n' "$BODY" | .github/scripts/ci-command.py
 
   build:
     needs: command
