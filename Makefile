@@ -314,14 +314,20 @@ GCC6_OMIT_FRAME_POINTER = $(if $(filter 6.%,$(GCC_VERSION)),-fomit-frame-pointer
 # predates the option.
 GCC_DIR_VERSION = $(if $(filter 6.%,$(GCC_VERSION)),$(GCC_VERSION),$(firstword $(subst ., ,$(GCC_VERSION))))
 
-# Stamp gcc and binutils with the release they were built from, so bug
-# reports carry it: "m68k-amigaos-gcc (AmigaDev v16.2) 16.2.0b 2026...".
-# Untagged builds report the nearest tag plus commit count and hash.
+# Stamp gcc and binutils with the gcc they were built from, so bug reports
+# carry it: "m68k-amigaos-gcc (AmigaDev v16.2) 16.2.0b 2026...". The
+# version is projects/gcc's release tag without its m68k-amigaos-gcc-
+# prefix, plus commit count and hash past it; a gcc branch without release
+# tags, such as amiga6, reports its name and hash instead. It is not this
+# tree's own tag, which would label a gcc 6 build with the 16.2 release.
 # Set PKGVERSION on the command line for a tree without git history.
 # The string is captured when the build tree is configured, not tracked
 # afterwards: use a fresh BUILD to refresh it, or reconfigure and remove
 # $(BUILD)/gcc/gcc/build/genversion.o so gcc regenerates version.h.
-PKGVERSION ?= AmigaDev $(shell git describe --tags --dirty --always 2>/dev/null)
+PKGVERSION ?= AmigaDev $(shell cd $(PROJECTS)/gcc 2>/dev/null && \
+	{ v=$$(git describe --tags --match 'm68k-amigaos-gcc-*' --dirty 2>/dev/null) && \
+	  echo "$${v#m68k-amigaos-gcc-}" || \
+	  echo "$$(git rev-parse --abbrev-ref HEAD)-g$$(git rev-parse --short HEAD)"; })
 PKGVERSION := $(strip $(PKGVERSION))
 BUGURL ?= https://github.com/AmigaPorts/m68k-amigaos-gcc/issues
 CONFIG_VERSION := --with-pkgversion="$(PKGVERSION)" --with-bugurl="$(BUGURL)"
