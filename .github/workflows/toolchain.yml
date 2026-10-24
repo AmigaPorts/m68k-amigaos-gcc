@@ -1,5 +1,5 @@
 # Builds and tests the whole toolchain, for a ci-* label on a pull request
-# here or in a module repository (its toolchain-ci.yml), a /ci comment
+# here or in a module repository (its ci-label.yml), a /ci comment
 # (ci-command.yml), a dispatch, or a release (release.yml).  How to use it,
 # with the labels and what they build: doc/ci.md.
 
@@ -168,33 +168,25 @@ jobs:
           || 'ubuntu-24.04' }}
     timeout-minutes: 300
     env:
-      RUN_TESTSUITE: ${{ inputs.run_testsuite || needs.refs.outputs.label == 'ci-check-c' || needs.refs.outputs.label == 'ci-check-c-newlib' || needs.refs.outputs.label == 'ci-check-c-fpu' || needs.refs.outputs.label == 'ci-check-c-ixemul' }}
-      RUN_TESTSUITE_CXX: ${{ inputs.run_cxx_testsuite || needs.refs.outputs.label == 'ci-check-c++' || needs.refs.outputs.label == 'ci-check-c++-newlib' }}
-      RUN_TESTSUITE_NEWLIB: ${{ needs.refs.outputs.label == 'ci-check-newlib' }}
-      # the check labels build only the compiler and its runtimes; the
-      # steps that need the rest of the distribution check for 'all'.
-      # make_args builds nothing up front: its targets build what they need
-      MAKE_ARGS: ${{ inputs.make_args }}
-      BUILD_TARGET: ${{ inputs.make_args != '' && 'none' || startsWith(needs.refs.outputs.label, 'ci-check') && 'min' || 'all' }}
-      # The two simulators are kept side by side so their results can be
-      # compared. SIMULATOR picks one, and BOARD the baseboards/ file the
-      # testsuites run on:
-      #   amigaos         - vamos (simulator=vamos)
-      #   volamos-newlib  - volamos, tests linked against newlib
-      #                     (ci-check-c-newlib, ci-check-c++-newlib)
-      #   volamos-fpu     - volamos with an FPU, 68020/68881 code
-      #                     (ci-check-c-fpu)
-      #   volamos-ixemul  - volamos, tests linked against ixemul
-      #                     (ci-check-c-ixemul)
-      #   volamos         - volamos, everything else
+      # What the job runs, as make arguments: a /ci comment's or a
+      # dispatch's, else the label's, else (a release, a dispatch without
+      # them, and the platform labels) the whole distribution and the fast
+      # tests.  The gcc testsuites run on volamos, or on vamos for
+      # comparison (simulator=vamos)
       SIMULATOR: ${{ inputs.simulator || 'volamos' }}
-      BOARD: >-
-        ${{ (inputs.simulator || 'volamos') == 'vamos' && 'amigaos'
-            || endsWith(needs.refs.outputs.label, '-c-newlib') && 'volamos-newlib'
-            || endsWith(needs.refs.outputs.label, '-c++-newlib') && 'volamos-newlib'
-            || needs.refs.outputs.label == 'ci-check-c-fpu' && 'volamos-fpu'
-            || needs.refs.outputs.label == 'ci-check-c-ixemul' && 'volamos-ixemul'
-            || 'volamos' }}
+      MAKE_ARGS: >-
+        ${{ inputs.make_args
+            || needs.refs.outputs.label == 'ci-check-c' && 'check-c'
+            || needs.refs.outputs.label == 'ci-check-c-fpu' && 'check-c board=volamos-fpu'
+            || needs.refs.outputs.label == 'ci-check-c-ixemul' && 'check-c board=volamos-ixemul'
+            || needs.refs.outputs.label == 'ci-check-c-newlib' && 'check-c board=volamos-newlib'
+            || needs.refs.outputs.label == 'ci-check-c++' && 'check-c++'
+            || needs.refs.outputs.label == 'ci-check-c++-newlib' && 'check-c++ board=volamos-newlib'
+            || needs.refs.outputs.label == 'ci-check-newlib' && 'check-newlib'
+            || format('all all-sdk vbcc vlink zlib libpng check-gdb-libpython package check-multilib check-binutils check-gcc-amigaos check-libnix check-libpthread{0}{1}{2}',
+                      inputs.run_testsuite && ' check-c' || '',
+                      inputs.run_cxx_testsuite && ' check-c++' || '',
+                      (inputs.simulator || 'volamos') == 'vamos' && ' board=amigaos' || '') }}
       AMITOOLS_GIT: ${{ inputs.amitools_git || 'git+https://github.com/AmigaPorts/amitools.git' }}
       # not GCC_VERSION: the Makefile reads that from gcc's BASE-VER
       # (16.2.1b) and derives the lib/gcc/<target>/<version> directory (16)
@@ -273,53 +265,51 @@ jobs:
       - name: Record module revisions
         run: scripts/manifest --markdown >> $GITHUB_STEP_SUMMARY
 
-      - name: Build toolchain
-        if: env.BUILD_TARGET != 'none'
-        run: make -j $NPROC $BUILD_TARGET
+      - name: Install testsuite dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get install -y --no-install-recommends dejagnu shellcheck
 
-      # a libpython dependency would tie the release to this runner's distro
-      - name: Check that gdb does not link libpython
-        if: runner.os == 'Linux' && env.BUILD_TARGET == 'all'
+      - name: Install testsuite dependencies (macOS)
+        if: runner.os == 'macOS'
+        run: brew install dejagnu shellcheck
+
+      - name: Install amitools (vamos)
+        if: env.SIMULATOR == 'vamos'
         run: |
-          ldd "$PREFIX/bin/m68k-amigaos-gdb" > gdb-ldd.txt
-          cat gdb-ldd.txt
-          ! grep libpython gdb-ldd.txt
-
-      # modest -j: downloads are network bound, and more jobs just garble the log
-      - name: Install SDKs
-        if: env.BUILD_TARGET == 'all'
-        run: make -j4 all-sdk
-
-      # vbcc/vlink/vasm plus the vbcc target archives and vc.config
-      - name: Build vbcc toolchain
-        if: env.BUILD_TARGET == 'all'
-        run: make -j $NPROC vbcc vlink
-
-      # target libraries, one copy per multilib
-      - name: Build zlib and libpng
-        if: env.BUILD_TARGET == 'all'
-        run: make -j $NPROC zlib libpng
-
-      # release tarballs are named after the tag (16.2-rc4), which
-      # versions the whole distribution rather than just gcc
-      - name: Package
-        if: env.BUILD_TARGET == 'all'
-        run: |
-          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
-            make package \
-              PACKAGE=m68k-amigaos-gcc-${GITHUB_REF_NAME#v}-$(uname -m)-$(uname -s | tr '[:upper:]' '[:lower:]').tar.xz
-          else
-            make package
+          if [ "$RUNNER_OS" = Linux ]; then
+            sudo apt-get install -y --no-install-recommends python3-dev python3-venv
           fi
+          python3 -m venv $HOME/amitools-venv
+          $HOME/amitools-venv/bin/pip install "amitools[vamos] @ $AMITOOLS_GIT"
+          echo "$HOME/amitools-venv/bin" >> "$GITHUB_PATH"
 
+      # One make per target, in order, stopping at the first that fails;
+      # the gcc testsuites share gcc.sum, so they must not run in parallel.
+      # VAR=value words go to every target.  A release names its package
+      # after the tag (16.2-rc4), which versions the whole distribution.
+      - name: make ${{ env.MAKE_ARGS }}
+        run: |
+          vars=$(printf '%s\n' $MAKE_ARGS | grep = || true)
+          case $GITHUB_REF in
+          refs/tags/v*) vars="$vars PACKAGE=m68k-amigaos-gcc-${GITHUB_REF_NAME#v}-$(uname -m)-$(uname -s | tr '[:upper:]' '[:lower:]').tar.xz" ;;
+          esac
+          for t in $(printf '%s\n' $MAKE_ARGS | grep -v =); do
+            make -j $NPROC $t $vars
+          done
+
+      - name: Testsuite summaries
+        if: always()
+        run: |
+          { echo '```'; cat *.summary.txt 2>/dev/null || true; echo '```'; } >> $GITHUB_STEP_SUMMARY
+
+      # a release must have its tarball; other runs only when they built one
       - name: Upload toolchain tarball
-        if: env.BUILD_TARGET == 'all'
         uses: actions/upload-artifact@v7
         with:
           name: m68k-amigaos-gcc-${{ env.GCC_VER }}-${{ runner.os }}-${{ runner.arch }}
           path: m68k-amigaos-gcc-*.tar.xz
           compression-level: 0
-          if-no-files-found: error
+          if-no-files-found: ${{ startsWith(github.ref, 'refs/tags/') && 'error' || 'ignore' }}
 
       # the configure logs too: a configure failure only says "see config.log"
       - name: Upload build logs on failure
@@ -333,119 +323,6 @@ jobs:
             build-*/gcc/*/*/config.log
             build-*/newlib/newlib/config.log
           if-no-files-found: ignore
-
-      - name: Install testsuite dependencies (Linux)
-        if: runner.os == 'Linux'
-        run: sudo apt-get install -y --no-install-recommends dejagnu shellcheck
-
-      - name: Install testsuite dependencies (macOS)
-        if: runner.os == 'macOS'
-        run: brew install dejagnu shellcheck
-
-      # the volamos* boards run the target tests under this binary, which the
-      # Makefile installs into $PREFIX/bin, already on the PATH make exports
-      - name: Install volamos
-        if: env.SIMULATOR == 'volamos'
-        run: make volamos
-
-      - name: Install amitools (vamos)
-        if: env.SIMULATOR == 'vamos'
-        run: |
-          if [ "$RUNNER_OS" = Linux ]; then
-            sudo apt-get install -y --no-install-recommends python3-dev python3-venv
-          fi
-          python3 -m venv $HOME/amitools-venv
-          $HOME/amitools-venv/bin/pip install "amitools[vamos] @ $AMITOOLS_GIT"
-          echo "$HOME/amitools-venv/bin" >> "$GITHUB_PATH"
-
-      # MULTI and t-amigaos must name the same multilib directories; this
-      # only asks the driver, so it runs on every build
-      - name: Check the multilib set
-        if: env.BUILD_TARGET != 'none'
-        run: make check-multilib
-
-      # gas and ld dump tests for the hunk target; they run on the build
-      # machine, no simulator needed
-      - name: Run the binutils testsuite
-        if: env.BUILD_TARGET != 'none'
-        run: |
-          set +e
-          make check-binutils
-          rc=$?
-          { echo '```'; cat check-binutils-gas.summary.txt check-binutils-ld.summary.txt 2>/dev/null; echo '```'; } >> $GITHUB_STEP_SUMMARY
-          exit $rc
-
-      # fast, so it runs on every build
-      - name: Run the AmigaOS target testsuite
-        if: env.BUILD_TARGET != 'none'
-        run: |
-          set +e
-          make -j $NPROC check-gcc-amigaos board=$BOARD
-          rc=$?
-          { echo '```'; cat check-gcc-amigaos.summary.txt 2>/dev/null; echo '```'; } >> $GITHUB_STEP_SUMMARY
-          exit $rc
-
-      # libnix's target tests, against the libnix this build used
-      - name: Run the libnix target tests
-        if: env.SIMULATOR == 'volamos' && env.BUILD_TARGET != 'none'
-        run: |
-          set +e
-          make check-libnix
-          rc=$?
-          { echo '```'; cat check-libnix.summary.txt 2>/dev/null; echo '```'; } >> $GITHUB_STEP_SUMMARY
-          exit $rc
-
-      # The simulator cannot create Exec tasks; link every pthread test here.
-      - name: Build the libpthread regression programs
-        if: env.BUILD_TARGET != 'none'
-        run: |
-          set +e
-          make check-libpthread
-          rc=$?
-          { echo '```'; cat check-libpthread.summary.txt 2>/dev/null; echo '```'; } >> $GITHUB_STEP_SUMMARY
-          exit $rc
-
-      - name: Run the gcc C testsuite
-        if: env.RUN_TESTSUITE == 'true' && runner.os == 'Linux'
-        run: |
-          set +e
-          make -j $NPROC check-c board=$BOARD
-          rc=$?
-          { echo '```'; cat check-c.summary.txt 2>/dev/null; echo '```'; } >> $GITHUB_STEP_SUMMARY
-          exit $rc
-
-      # much slower than the C testsuite, so it is opted into separately
-      - name: Run the g++ testsuite
-        if: env.RUN_TESTSUITE_CXX == 'true' && runner.os == 'Linux'
-        run: |
-          set +e
-          make -j $NPROC check-c++ board=$BOARD
-          rc=$?
-          { echo '```'; cat check-c++.summary.txt 2>/dev/null; echo '```'; } >> $GITHUB_STEP_SUMMARY
-          exit $rc
-
-      # a FAIL on either board, or a board without results, fails the step
-      - name: Run the newlib testsuite
-        if: env.RUN_TESTSUITE_NEWLIB == 'true' && env.SIMULATOR == 'volamos'
-        run: |
-          set +e
-          make -j $NPROC check-newlib
-          rc=$?
-          { echo '```'; cat check-newlib.summary.txt 2>/dev/null; echo '```'; } >> $GITHUB_STEP_SUMMARY
-          exit $rc
-
-      # /ci ... make ...: one make per target, in order, since the gcc
-      # testsuite targets share gcc.sum; VAR=value words go to all of them
-      - name: Run make ${{ env.MAKE_ARGS }}
-        if: env.MAKE_ARGS != ''
-        run: |
-          vars=$(printf '%s\n' $MAKE_ARGS | grep = || true)
-          rc=0
-          for t in $(printf '%s\n' $MAKE_ARGS | grep -v =); do
-            make -j $NPROC $t $vars || rc=1
-          done
-          { echo '```'; cat *.summary.txt 2>/dev/null || true; echo '```'; } >> $GITHUB_STEP_SUMMARY
-          exit $rc
 
       - name: Upload testsuite results
         if: always()

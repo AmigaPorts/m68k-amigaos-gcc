@@ -2080,6 +2080,11 @@ check-c++: $(MIN_IF_MISSING) $(BOARD_SIM_PREREQ)
 check-shell:
 	shellcheck scripts/* .github/scripts/*.sh
 
+# A libpython dependency would tie the gdb in a release to the build machine's distro
+.PHONY: check-gdb-libpython
+check-gdb-libpython:
+	@! { command -v ldd >/dev/null && test -e $(PREFIX)/bin/$(TARGET)-gdb && ldd $(PREFIX)/bin/$(TARGET)-gdb | grep libpython; }
+
 # The gccrs testsuite, for a toolchain built with ADDLANG=rust. It only
 # reports: its standing failures are test bugs on a big-endian ILP32 target
 # and CR+LF output through the simulator's pty.
