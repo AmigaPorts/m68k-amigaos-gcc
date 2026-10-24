@@ -24,22 +24,31 @@ on jenkins.amigadev.com, including the AmigaOS-native one, from the
 
 ## /ci comments
 
-A comment whose first line starts with `/ci` builds the pull request:
+A comment that starts with `/ci` builds the pull request. Each `/ci` line
+is a separate job, and they all run in parallel:
 
 ```
 /ci linux macos
 /ci linux-arm make check-c board=volamos-newlib
-/ci make check-c++ board=volamos-020-baserel32
+/ci linux-arm make all all-sdk libpng check-c++
 /ci make check-shell
 ```
 
-The words before `make` name platforms. The words after it go to make as
-they are, in place of the default tests. Without a platform, `make` runs on
-`linux-arm`. `/ci` alone lists the platforms.
+The words before `make` name platforms, each of them a job. The words after
+it go to make as they are. Without a platform, `make` runs on `linux-arm`.
+Without `make`, a platform builds the whole distribution and runs the fast
+tests:
 
-| platform | runner | default build and tests |
+```
+make all all-sdk vbcc vlink zlib libpng check-gdb-libpython package \
+  check-multilib check-binutils check-gcc-amigaos check-libnix check-libpthread
+```
+
+`/ci` alone lists the platforms.
+
+| platform | runner | without `make` |
 |---|---|---|
-| `linux` | x86-64 Ubuntu | `make all`, `all-sdk`, vbcc, zlib/libpng, the release tarball; then `check-multilib`, `check-binutils`, `check-gcc-amigaos`, `check-libnix`, `check-libpthread` |
+| `linux` | x86-64 Ubuntu | the make targets above |
 | `linux-arm` | arm64 Ubuntu | same, but faster |
 | `linux-gcc6` | x86-64 Ubuntu | same, with gcc branch `amiga6` |
 | `macos` | macOS 15 | same |
@@ -49,20 +58,15 @@ they are, in place of the default tests. Without a platform, `make` runs on
 `make` works on the first four. `amigaos` and `mingw` build compilers that
 cannot run on the runner, so a `make` there fails.
 
-With `make`, nothing is built up front: each check target builds what it
-tests when it is missing. The targets run one after the other in a single
-job, because the gcc testsuites share `gcc.sum`. Any `VAR=value` word, such
-as `board=`, is passed to every target.
+A job runs its targets one after the other, because the gcc testsuites
+share `gcc.sum`, and stops at the first that fails. A check target builds
+what it tests when it is missing. Any `VAR=value` word, such as `board=`, is
+passed to every target.
 
 - **Results.** The comment gets a rocket and a reply with the run's link.
   The run shows in the pull request's checks as a commit status named after
-  the command, for example `/ci linux-arm make check-c`: pending, then
-  success or failure. Posting the same command again rebuilds and updates
-  that line.
-- **In parallel.** One comment is one run, and only its first line counts.
-  To run `check-c` and `check-c++` side by side, post two comments.
-  Several platforms in one comment build in parallel, with the same make
-  arguments.
+  the comment's `/ci` lines: pending, then success when every job passed.
+  Posting the same comment again rebuilds and updates that line.
 - **Who.** Only owners, members and collaborators can start a build.
 - **Which workflows.** `/ci` always runs the workflows on `master`, as
   GitHub does for every comment-triggered workflow. A pull request that
@@ -74,21 +78,18 @@ as `board=`, is passed to every target.
 A `ci-*` label on a pull request builds it with the pull request's own
 workflows, so it is the way to test a change to them. Remove and re-add a
 label to rebuild after a push. The platform labels are the `/ci` platforms
-above (`ci-linux`, `ci-linux-arm`, ...). The `ci-check-*` labels build only
-what the tests need (`make min`) on `linux-arm`, and run a testsuite after
-the default tests. Their board applies to `check-gcc-amigaos` too:
+above (`ci-linux`, `ci-linux-arm`, ...), without `make`. Each `ci-check-*`
+label runs one testsuite on `linux-arm`:
 
-| label | runs | board |
-|---|---|---|
-| `ci-check-c` | `make check-c` | `volamos` |
-| `ci-check-c-fpu` | `make check-c` | `volamos-fpu` |
-| `ci-check-c-ixemul` | `make check-c` | `volamos-ixemul` |
-| `ci-check-c-newlib` | `make check-c` | `volamos-newlib` |
-| `ci-check-c++` | `make check-c++` | `volamos` |
-| `ci-check-c++-newlib` | `make check-c++` | `volamos-newlib` |
-| `ci-check-newlib` | `make check-newlib` | `volamos-newlib`, `volamos-newlib-fpu` |
-
-Each of these is `/ci linux-arm make <target> board=<board>` too.
+| label | same as |
+|---|---|
+| `ci-check-c` | `/ci linux-arm make check-c` |
+| `ci-check-c-fpu` | `/ci linux-arm make check-c board=volamos-fpu` |
+| `ci-check-c-ixemul` | `/ci linux-arm make check-c board=volamos-ixemul` |
+| `ci-check-c-newlib` | `/ci linux-arm make check-c board=volamos-newlib` |
+| `ci-check-c++` | `/ci linux-arm make check-c++` |
+| `ci-check-c++-newlib` | `/ci linux-arm make check-c++ board=volamos-newlib` |
+| `ci-check-newlib` | `/ci linux-arm make check-newlib` |
 
 ## Dispatch
 
@@ -111,11 +112,11 @@ Actions tab, filtered by branch.
 
 ## Module repositories
 
-A module repository (AmigaPorts/gcc today) has a small
-`.github/workflows/toolchain-ci.yml` that calls this repository's
-workflows. Labels and `/ci` comments on its pull requests build this
-repository's `master` with the module's pull request, as merged into its
-base, swapped in for the module. That swap is the `repos` input,
+A module repository (AmigaPorts/gcc and AmigaPorts/libnix today) has two
+small workflows that call this repository's: `ci-label.yml` for the labels
+and `ci-command.yml` for `/ci` comments. Labels and `/ci` comments on its
+pull requests build this repository's `master` with the module's pull
+request, as merged into its base, swapped in for the module. That swap is the `repos` input,
 `module=URL#ref`. For example, `gcc=https://github.com/AmigaPorts/gcc.git#refs/pull/131/merge`.
 A gcc pull request builds the toolchain for its own branch: `amiga6` builds
 gcc 6, `amiga16.2` builds 16.2.

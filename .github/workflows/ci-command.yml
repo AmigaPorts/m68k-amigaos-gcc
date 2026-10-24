@@ -1,6 +1,6 @@
 # /ci comments on pull requests: parses the command and calls toolchain.yml
 # once per platform.  How to use it: doc/ci.md.
-# A module repository calls this from its toolchain-ci.yml, with module set
+# A module repository calls this from its own ci-command.yml, with module set
 # to its name in .repos.  Like every issue_comment workflow, it runs from
 # the default branch.
 
@@ -28,9 +28,8 @@ jobs:
       pull-requests: write
       statuses: write
     outputs:
-      labels: ${{ steps.parse.outputs.labels }}
+      matrix: ${{ steps.parse.outputs.matrix }}
       context: ${{ steps.parse.outputs.context }}
-      make_args: ${{ steps.parse.outputs.make_args }}
       head: ${{ steps.parse.outputs.head }}
       gcc_version: ${{ steps.parse.outputs.gcc_version }}
     env:
@@ -57,23 +56,31 @@ jobs:
                   grep -o '"ci-[a-z0-9+-]*"' | tr -d '"' | sed 's/^ci-//' | grep -v '^check' | tr '\n' ' ')
           known=${known% }
           [ -n "$known" ] || { echo "::error::no ci-* labels in toolchain.yml"; exit 1; }
-          line=$(printf '%s\n' "$BODY" | head -n 1 | tr -d '\r' | cut -c4-)
-          make_args=
-          case " $line " in
-          *" make "*) make_args=${line#* make }; line=${line%% make *}; [ -n "${line// }" ] || line=linux-arm ;;
-          esac
-          labels=
-          for t in $(printf '%s\n' "$line" | tr A-Z a-z); do
-            t=${t#ci-}
-            case " $known " in
-            *" $t "*) case " $labels " in *" ci-$t "*) ;; *) labels="$labels ci-$t" ;; esac ;;
-            *) reply "Unknown /ci platform \`$t\`. Platforms: \`$known\`"; exit 1 ;;
+          usage="Usage: \`/ci <platform>... [make <make args>]\`, one per line. Platforms: \`$known\`"
+          # each /ci line: platforms, then make arguments after "make";
+          # every platform of every line is a job of its own
+          entries= context=
+          while IFS= read -r line; do
+            case $line in '/ci'|'/ci '*) ;; *) continue ;; esac
+            line=${line#/ci}
+            make_args=
+            case " $line " in
+            *" make "*) make_args=${line#* make }; line=${line%% make *}; [ -n "${line// }" ] || line=linux-arm ;;
             esac
-          done
-          if [ -z "$labels" ]; then
-            reply "Usage: \`/ci <platform>... [make <make args>]\`. Platforms: \`$known\`"
-            exit 1
-          fi
+            labels=
+            for t in $(printf '%s\n' "$line" | tr A-Z a-z); do
+              t=${t#ci-}
+              case " $known " in
+              *" $t "*) labels="$labels ci-$t" ;;
+              *) reply "Unknown /ci platform \`$t\`. $usage"; exit 1 ;;
+              esac
+            done
+            [ -n "$labels" ] || { reply "$usage"; exit 1; }
+            for l in $labels; do
+              entries="$entries$(jq -nc --arg l "$l" --arg m "$make_args" '{label: $l, make_args: $m}')"
+            done
+            context="${context:+$context; }/ci${labels//ci-/}${make_args:+ make $make_args}"
+          done < <(printf '%s\n' "$BODY" | tr -d '\r')
           pr=$(gh api "repos/$GH_REPO/pulls/$PR")
           if [ "$(echo "$pr" | jq -r .state)" != open ]; then
             reply "Pull request is not open."
@@ -93,31 +100,29 @@ jobs:
             gcc_version=${base_ref#amiga}
           fi
           {
-            echo "labels=$(printf '%s\n' $labels | jq -R . | jq -sc .)"
-            echo "make_args=$make_args"
+            echo "matrix=$(printf '%s' "$entries" | jq -sc .)"
             echo "head=$head"
             echo "gcc_version=$gcc_version"
             echo "context=$context"
           } >> "$GITHUB_OUTPUT"
           gh api -X POST "repos/$GH_REPO/issues/comments/$COMMENT_ID/reactions" -f content=rocket >/dev/null
           # a commit status on the head, so the run shows in the pull
-          # request's checks; the same command again updates it
-          context="/ci${labels//ci-/}${make_args:+ make $make_args}"
+          # request's checks; the same comment again updates it
           gh api "repos/$GH_REPO/statuses/$head" -f state=pending -f context="$context" -f target_url="$RUN_URL" >/dev/null
-          reply "Building$labels${make_args:+ make $make_args}: ${head:0:9} merged into $base_ref. $RUN_URL"
+          reply "Building \`$context\`: ${head:0:9} merged into $base_ref. $RUN_URL"
 
   build:
     needs: command
     strategy:
       fail-fast: false
       matrix:
-        label: ${{ fromJSON(needs.command.outputs.labels) }}
+        include: ${{ fromJSON(needs.command.outputs.matrix) }}
     permissions:
       contents: read
     uses: AmigaPorts/m68k-amigaos-gcc/.github/workflows/toolchain.yml@master
     with:
       ci_label: ${{ matrix.label }}
-      make_args: ${{ needs.command.outputs.make_args }}
+      make_args: ${{ matrix.make_args }}
       gcc_version: ${{ needs.command.outputs.gcc_version || '16.2' }}
       # GitHub's merge of the pull request into its base: this repository
       # checks it out, a module builds it as its projects/<module>
