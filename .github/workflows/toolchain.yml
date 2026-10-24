@@ -111,15 +111,6 @@ on:
       ci_label:
         type: string
         default: ""
-      # a /ci comment on a pull request here: its head commit, merged into
-      # checkout_ref, the base branch commit it is tested against.  A
-      # labelled pull request here does the same with the labelled head
-      # and the base branch tip, rather than check out refs/pull/N/merge,
-      # which GitHub recomputes a while after a push: a label put on right
-      # after one could build the previous head.
-      merge_ref:
-        type: string
-        default: ""
       # make arguments to run instead of the tests a label picks: the
       # targets build what they need.  From /ci ... make ..., or a dispatch
       make_args:
@@ -148,29 +139,25 @@ jobs:
       contains(fromJSON('["ci-linux", "ci-linux-arm", "ci-linux-gcc6", "ci-macos", "ci-amigaos", "ci-mingw", "ci-check-c", "ci-check-c-fpu", "ci-check-c-ixemul", "ci-check-c++", "ci-check-c-newlib", "ci-check-c++-newlib", "ci-check-newlib"]'),
                inputs.ci_label || github.event.label.name)
     runs-on: ubuntu-24.04
-    # the jobs below check out this commit and merge merge_ref into it,
-    # so they all build the same tree even if the base branch moves
+    # the ref the jobs below check out: a pull request builds GitHub's
+    # merge of it into its base, refs/pull/N/merge, which is the event's
+    # own ref for a label here and checkout_ref for a /ci comment
     outputs:
       label: ${{ inputs.ci_label || github.event.label.name }}
-      checkout_ref: ${{ steps.base.outputs.sha }}
-      merge_ref: ${{ env.MERGE_REF }}
+      checkout_ref: ${{ inputs.checkout_ref || github.ref }}
     env:
       # the label first: gcc_version defaults to 16.2 for a module repo's call
       GCC_VER: ${{ ((inputs.ci_label || github.event.label.name) == 'ci-linux-gcc6' && '6') || inputs.gcc_version || '16.2' }}
       TAG: ${{ inputs.tag }}
-      MERGE_REF: ${{ inputs.merge_ref || (inputs.checkout_repo == '' && github.event.pull_request.head.sha) || '' }}
     steps:
       - uses: actions/checkout@v7
         with:
           repository: ${{ inputs.checkout_repo }}
-          ref: ${{ inputs.checkout_ref || github.event.pull_request.base.ref }}
+          ref: ${{ inputs.checkout_ref }}
 
-      - id: base
-        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+      - name: Record what is built
+        run: echo "Building $(git log -1 --format='%h %s')" >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Merge the pull request
-        if: env.MERGE_REF != ''
-        run: sh .github/scripts/merge-pr.sh . "$MERGE_REF"
 
       - name: Pin the module refs
         run: |
@@ -248,11 +235,6 @@ jobs:
           # the Makefile stamps the tools with git describe --tags
           fetch-depth: 0
 
-      - name: Merge the pull request
-        if: needs.refs.outputs.merge_ref != ''
-        env:
-          MERGE_REF: ${{ needs.refs.outputs.merge_ref }}
-        run: sh .github/scripts/merge-pr.sh . "$MERGE_REF"
 
       # PREFIX reaches every make invocation through the environment
       - name: Set prefix
@@ -531,11 +513,6 @@ jobs:
           # the Makefile stamps the tools with git describe --tags
           fetch-depth: 0
 
-      - name: Merge the pull request
-        if: needs.refs.outputs.merge_ref != ''
-        env:
-          MERGE_REF: ${{ needs.refs.outputs.merge_ref }}
-        run: sh .github/scripts/merge-pr.sh . "$MERGE_REF"
 
       - name: Install build dependencies
         run: |
@@ -649,11 +626,6 @@ jobs:
           # the Makefile stamps the tools with git describe --tags
           fetch-depth: 0
 
-      - name: Merge the pull request
-        if: needs.refs.outputs.merge_ref != ''
-        env:
-          MERGE_REF: ${{ needs.refs.outputs.merge_ref }}
-        run: sh .github/scripts/merge-pr.sh . "$MERGE_REF"
 
       # the runner checked the tree out as its own user and the container
       # runs as root: git refuses the repository without this
@@ -782,12 +754,6 @@ jobs:
           repository: ${{ inputs.checkout_repo }}
           ref: ${{ needs.refs.outputs.checkout_ref }}
 
-      - name: Merge the pull request
-        if: needs.refs.outputs.merge_ref != ''
-        shell: bash
-        env:
-          MERGE_REF: ${{ needs.refs.outputs.merge_ref }}
-        run: sh .github/scripts/merge-pr.sh . "$MERGE_REF"
 
       - name: Download Windows toolchain tree
         uses: actions/download-artifact@v7

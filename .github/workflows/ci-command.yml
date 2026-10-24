@@ -1,6 +1,7 @@
-# /ci comments: build a pull request, merged into the current tip of its
-# base branch, on one or more of the platforms of toolchain.yml (its ci-*
-# labels other than ci-check-*; the ci- prefix is optional):
+# /ci comments: build a pull request as GitHub merges it into its base
+# branch (refs/pull/N/merge), on one or more of the platforms of
+# toolchain.yml (its ci-* labels other than ci-check-*; the ci- prefix is
+# optional):
 #   /ci linux macos
 # Words after "make" go to make as they are, in place of the default tests,
 # on ci-linux-arm if no platform is named:
@@ -42,7 +43,6 @@ jobs:
       labels: ${{ steps.parse.outputs.labels }}
       context: ${{ steps.parse.outputs.context }}
       make_args: ${{ steps.parse.outputs.make_args }}
-      base: ${{ steps.parse.outputs.base }}
       head: ${{ steps.parse.outputs.head }}
       gcc_version: ${{ steps.parse.outputs.gcc_version }}
     env:
@@ -92,7 +92,11 @@ jobs:
             exit 1
           fi
           base_ref=$(echo "$pr" | jq -r .base.ref)
-          base=$(gh api "repos/$GH_REPO/commits/$base_ref" -q .sha)
+          # no refs/pull/N/merge to build; asking also refreshes it
+          if [ "$(echo "$pr" | jq -r .mergeable)" = false ]; then
+            reply "The pull request conflicts with $base_ref: rebase it first."
+            exit 1
+          fi
           head=$(echo "$pr" | jq -r .head.sha)
           # a gcc pull request builds the toolchain for its own branch:
           # amiga6 for gcc 6, amiga16.2 for 16.2
@@ -103,7 +107,6 @@ jobs:
           {
             echo "labels=$(printf '%s\n' $labels | jq -R . | jq -sc .)"
             echo "make_args=$make_args"
-            echo "base=$base"
             echo "head=$head"
             echo "gcc_version=$gcc_version"
             echo "context=$context"
@@ -113,7 +116,7 @@ jobs:
           # request's checks; the same command again updates it
           context="/ci${labels//ci-/}${make_args:+ make $make_args}"
           gh api "repos/$GH_REPO/statuses/$head" -f state=pending -f context="$context" -f target_url="$RUN_URL" >/dev/null
-          reply "Building$labels${make_args:+ make $make_args}: ${head:0:9} merged into $base_ref at ${base:0:9}. $RUN_URL"
+          reply "Building$labels${make_args:+ make $make_args}: ${head:0:9} merged into $base_ref. $RUN_URL"
 
   build:
     needs: command
@@ -128,15 +131,14 @@ jobs:
       ci_label: ${{ matrix.label }}
       make_args: ${{ needs.command.outputs.make_args }}
       gcc_version: ${{ needs.command.outputs.gcc_version || '16.2' }}
-      # this repository: build the base commit with the head merged in
+      # GitHub's merge of the pull request into its base: this repository
+      # checks it out, a module builds it as its projects/<module>
       checkout_repo: ${{ inputs.module == '' && github.repository || 'AmigaPorts/m68k-amigaos-gcc' }}
-      checkout_ref: ${{ inputs.module == '' && needs.command.outputs.base || 'master' }}
-      merge_ref: ${{ inputs.module == '' && needs.command.outputs.head || '' }}
-      # a module: the same, for its projects/<module> checkout
+      checkout_ref: ${{ inputs.module == '' && format('refs/pull/{0}/merge', github.event.issue.number) || 'master' }}
       repos: >-
         ${{ inputs.module != ''
-            && format('{0}={1}/{2}.git#{3}:{4}', inputs.module, github.server_url, github.repository,
-                      needs.command.outputs.base, needs.command.outputs.head)
+            && format('{0}={1}/{2}.git#refs/pull/{3}/merge', inputs.module, github.server_url, github.repository,
+                      github.event.issue.number)
             || '' }}
 
   report:

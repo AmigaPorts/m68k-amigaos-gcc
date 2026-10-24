@@ -2,9 +2,8 @@
 # Apply module source overrides from the workflow's `repos` input to the
 # build tree. Each space-separated word in $REPOS is one of:
 #   module=branch     - select a branch on the module's default remote
-#   module=URL#ref    - build ref (a branch or an exact commit sha) from URL
-#   module=URL#base:head - build commit head merged into commit base, as
-#                       merging a pull request would (ci-command.yml)
+#   module=URL#ref    - build ref (a branch, a commit sha, or a pull
+#                       request's refs/pull/N/merge) from URL
 # Run after the gcc branch has been selected and before `make update`, so a
 # module=branch form is not overwritten by the gcc branch selection.
 set -e
@@ -21,20 +20,12 @@ for spec in $REPOS; do
 		# before the checkout runs.
 		url=${ref%%#*}
 		want=${ref##*#}
-		head=
-		case "$want" in
-		*:*)
-			head=${want#*:}
-			want=${want%%:*}
-			;;
-		esac
 		echo "fetching $mod from $url @ $want"
 		rm -rf "projects/$mod"
 		git init -q "projects/$mod"
 		git -C "projects/$mod" remote add origin "$url"
 		git -C "projects/$mod" fetch -q --depth 16 origin "$want"
 		git -C "projects/$mod" checkout -q FETCH_HEAD
-		[ -z "$head" ] || sh .github/scripts/merge-pr.sh "projects/$mod" "$head"
 		;;
 	*)
 		make branch mod="$mod" branch="$ref"
