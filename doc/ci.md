@@ -92,6 +92,7 @@ label runs one testsuite on `linux-arm`:
 | `ci-check-c-ixemul` | `/ci linux-arm make check-c board=volamos-ixemul` |
 | `ci-check-c-newlib` | `/ci linux-arm make check-c board=volamos-newlib` |
 | `ci-check-c++` | `/ci linux-arm make check-c++` |
+| `ci-check-c++-baserel32` | `/ci linux-arm make check-c++ board=volamos-020-baserel32` |
 | `ci-check-c++-newlib` | `/ci linux-arm make check-c++ board=volamos-newlib` |
 | `ci-check-newlib` | `/ci linux-arm make check-newlib` |
 

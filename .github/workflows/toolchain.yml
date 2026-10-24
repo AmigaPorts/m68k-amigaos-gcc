@@ -114,7 +114,7 @@ jobs:
     name: Select module refs
     if: >-
       (inputs.ci_label || github.event.label.name) == '' ||
-      contains(fromJSON('["ci-linux", "ci-linux-arm", "ci-linux-gcc6", "ci-macos", "ci-amigaos", "ci-mingw", "ci-check-c", "ci-check-c-fpu", "ci-check-c-ixemul", "ci-check-c++", "ci-check-c-newlib", "ci-check-c++-newlib", "ci-check-newlib"]'),
+      contains(fromJSON('["ci-linux", "ci-linux-arm", "ci-linux-gcc6", "ci-macos", "ci-amigaos", "ci-mingw", "ci-check-c", "ci-check-c-fpu", "ci-check-c-ixemul", "ci-check-c++", "ci-check-c++-baserel32", "ci-check-c-newlib", "ci-check-c++-newlib", "ci-check-newlib"]'),
                inputs.ci_label || github.event.label.name)
     runs-on: ubuntu-24.04
     # the ref the jobs below check out: a pull request builds GitHub's
@@ -181,6 +181,7 @@ jobs:
             || needs.refs.outputs.label == 'ci-check-c-ixemul' && 'check-c board=volamos-ixemul'
             || needs.refs.outputs.label == 'ci-check-c-newlib' && 'check-c board=volamos-newlib'
             || needs.refs.outputs.label == 'ci-check-c++' && 'check-c++'
+            || needs.refs.outputs.label == 'ci-check-c++-baserel32' && 'check-c++ board=volamos-020-baserel32'
             || needs.refs.outputs.label == 'ci-check-c++-newlib' && 'check-c++ board=volamos-newlib'
             || needs.refs.outputs.label == 'ci-check-newlib' && 'check-newlib'
             || format('all all-sdk vbcc vlink zlib libpng check-gdb-libpython package check-multilib check-binutils check-gcc-amigaos check-libnix check-libpthread{0}{1}{2}',
