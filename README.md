@@ -157,27 +157,6 @@ in a project's development shell:
 `default-repos`; to build another branch, change the input's URL, for
 example `github:AmigaPorts/gcc/amiga13.4`.
 
-## Continuous integration
-
-The GitHub Actions workflow in `.github/workflows/toolchain.yml`
-bootstraps the toolchain from scratch, runs amigaos.exp and the libnix
-tests under volamos by default (with `simulator=vamos`, amigaos.exp runs
-under vamos and the libnix tests are skipped), runs the full gcc testsuites
-on request, and uploads the native `.tar.xz` packages as build artifacts.
-
-By default it also Canadian-cross-builds the `amiga16.2` compiler for AmigaOS
-and MinGW hosts, using the published `amigadev/crosstools:m68k-amigaos-gcc10`
-and `amigadev/crosstools:x86_64-w64-mingw32` build environments. The local hosted
-build Dockerfiles are not rebuilt by CI. The AmigaOS package is an `.lha`; the
-Windows runner uses the files in `setup/` to compile an Inno Setup installer
-without running the generated installer. If installer compilation fails, the
-workflow uploads a portable `.zip` instead.
-
-## Releases
-
-Pushing a tag matching `v*` publishes the binary archives as a GitHub release,
-with the gcc testsuite as a release gate.
-
 ## Libraries/Runtimes
 
 You can select one of the various runtimes:
@@ -193,75 +172,12 @@ Always specify the runtime, even when you want the default:
 it affects the include path as well as the libraries, so
 **compiling for one runtime and linking against another breaks quietly**.
 
-## Testing
+## Development
 
-To check the built toolchain, run the gcc dejagnu execution tests.
-
-This does not cover everything but it's a start. The tests run each
-compiled testcase under [volamos](https://github.com/sidick/volamos), which
-emulates the AmigaOS APIs; `make check` downloads its release binary into
-`$PREFIX/bin` first (`make volamos` does just that).
-
-Install dejagnu (`sudo apt install dejagnu` on Debian/Ubuntu,
-`brew install dejagnu` on macOS), then run the testsuite:
-```shell
-make -j$(nproc) check
-```
-
-The `baseboards/amigaos*.exp` boards run the same tests under
-[vamos](https://github.com/AmigaPorts/amitools) instead, for comparison.
-Install amitools, in a venv to keep it out of the system Python, and
-select one with `board`:
-```shell
-python3 -m venv .venv
-.venv/bin/pip install "amitools[vamos] @ git+https://github.com/AmigaPorts/amitools.git"
-source .venv/bin/activate
-make -j$(nproc) check board=amigaos
-```
-(`board=volamos-020`, `board=volamos-baserel`, etc. have matching
-`amigaos-020`, `amigaos-baserel`, ... counterparts).
-
-## Version management
-
-The **Makefile** provides some targets to switch to an older state
-for all modules.
-
-### Rebuilding a release
-A release tags every module as `m68k-amigaos-gcc-<tag>`. Check out the
-release here, then every module at its tag:
-```
-git checkout v16.2-rc17
-make v ref=m68k-amigaos-gcc-v16.2-rc17
-```
-This also pins `.repos` to the tag, so `make update` clones any module
-not checked out yet at the same tag. A module without the tag is an
-error. Any tag, branch or commit that exists in every module works.
-
-### Switching amiga-gcc to a given date
-Use make to switch all modules to a given date. You may also add the time
-```
-make v date=2021-04-01
-```
-### Switching amiga-gcc back to the branches
-Run make to switch all modules back to the branch
-```
-make v
-```
-After `make v ref=...`, restore the branches in `.repos` first:
-`cp default-repos .repos`, then `make branch` for any module that was not
-on its default branch.
-### Show the current commit for all submodules
-This lists all modules with the last commit. Useful if you switched to a given date to show what's where.
-```
-make l
-```
-### Switch a module to a different branch
-You can switch modules to different branches. E.g.
-```
-make branch mod=binutils branch=devel1
-```
-The default branches and repositories are in the file **default-repos**, the local state is managed in the file **.repos**.
-The archives the build downloads, with their checksums, are in the file **default-archives**.
+* [doc/devel.md](doc/devel.md): testing the toolchain, and switching modules to other branches or dates.
+* [doc/changes.md](doc/changes.md): making, reviewing and merging changes.
+* [doc/ci.md](doc/ci.md): testing pull requests in continuous integration (GitHub Actions).
+* [doc/releng.md](doc/releng.md): making and rebuilding releases.
 
 ## Copyrights
 
