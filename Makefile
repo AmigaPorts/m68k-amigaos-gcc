@@ -757,7 +757,6 @@ update-libpthread: $(PROJECTS)/aros-stuff/pthreads/Makefile
 
 .PHONY: update-ndk
 update-ndk: $(DOWNLOAD)/$(NDK_ARC_NAME).lha
-	$(MAKE) --no-print-directory $(PROJECTS)/$(NDK_FOLDER_NAME)/_unpacked
 
 .PHONY: update-newlib
 update-newlib: $(PROJECTS)/newlib-cygwin/newlib/configure
