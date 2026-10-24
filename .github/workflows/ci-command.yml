@@ -1,20 +1,8 @@
-# /ci comments: build a pull request as GitHub merges it into its base
-# branch (refs/pull/N/merge), on one or more of the platforms of
-# toolchain.yml (its ci-* labels other than ci-check-*; the ci- prefix is
-# optional):
-#   /ci linux macos
-# Words after "make" go to make as they are, in place of the default tests,
-# on ci-linux-arm if no platform is named:
-#   /ci linux-arm make check-c board=volamos-newlib
-# /ci alone lists the platforms.  Posting the comment again rebuilds,
-# against the base branch as it is then.  Only members and collaborators
-# can start a build.
-#
-# This repository runs it on its own pull requests; a module repository
-# calls it from its toolchain-ci.yml with module set to its name in
-# .repos.  Like every issue_comment workflow, it runs from the default
-# branch, and its runs show in the Actions tab rather than in the pull
-# request's checks: the reply links them.
+# /ci comments on pull requests: parses the command and calls toolchain.yml
+# once per platform.  How to use it: doc/ci.md.
+# A module repository calls this from its toolchain-ci.yml, with module set
+# to its name in .repos.  Like every issue_comment workflow, it runs from
+# the default branch.
 
 name: CI command
 
