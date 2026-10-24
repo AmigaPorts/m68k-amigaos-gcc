@@ -1,9 +1,13 @@
-# /ci comments: build a pull request with one or more of the ci-* targets
-# of toolchain.yml, merged into the current tip of its base branch.
-#   /ci linux check-c-fpu
-# runs ci-linux and ci-check-c-fpu (the ci- prefix is optional); /ci alone
-# lists the targets.  Posting the comment again rebuilds, against the base
-# branch as it is then.  Only members and collaborators can start a build.
+# /ci comments: build a pull request, merged into the current tip of its
+# base branch, on one or more of the platforms of toolchain.yml (its ci-*
+# labels other than ci-check-*; the ci- prefix is optional):
+#   /ci linux macos
+# Words after "make" go to make as they are, in place of the default tests,
+# on ci-linux-arm if no platform is named:
+#   /ci linux-arm make check-c board=volamos-newlib
+# /ci alone lists the platforms.  Posting the comment again rebuilds,
+# against the base branch as it is then.  Only members and collaborators
+# can start a build.
 #
 # This repository runs it on its own pull requests; a module repository
 # calls it from its toolchain-ci.yml with module set to its name in
@@ -35,6 +39,7 @@ jobs:
       pull-requests: write
     outputs:
       labels: ${{ steps.parse.outputs.labels }}
+      make_args: ${{ steps.parse.outputs.make_args }}
       base: ${{ steps.parse.outputs.base }}
       head: ${{ steps.parse.outputs.head }}
       gcc_version: ${{ steps.parse.outputs.gcc_version }}
@@ -55,22 +60,28 @@ jobs:
           OWNER|MEMBER|COLLABORATOR) ;;
           *) echo "::error::$ASSOCIATION may not start /ci builds"; exit 1 ;;
           esac
-          # the ci-* labels the toolchain.yml that build calls accepts
+          # the platforms: the ci-* labels the toolchain.yml that build
+          # calls accepts, but for the ci-check-* ones
           known=$(gh api -H 'Accept: application/vnd.github.raw' \
                     repos/AmigaPorts/m68k-amigaos-gcc/contents/.github/workflows/toolchain.yml?ref=master |
-                  grep -o '"ci-[a-z0-9+-]*"' | tr -d '"' | sed 's/^ci-//' | tr '\n' ' ')
+                  grep -o '"ci-[a-z0-9+-]*"' | tr -d '"' | sed 's/^ci-//' | grep -v '^check' | tr '\n' ' ')
           known=${known% }
           [ -n "$known" ] || { echo "::error::no ci-* labels in toolchain.yml"; exit 1; }
+          line=$(printf '%s\n' "$BODY" | head -n 1 | tr -d '\r' | cut -c4-)
+          make_args=
+          case " $line " in
+          *" make "*) make_args=${line#* make }; line=${line%% make *}; [ -n "${line// }" ] || line=linux-arm ;;
+          esac
           labels=
-          for t in $(printf '%s\n' "$BODY" | head -n 1 | tr -d '\r' | cut -c4- | tr A-Z a-z); do
+          for t in $(printf '%s\n' "$line" | tr A-Z a-z); do
             t=${t#ci-}
             case " $known " in
             *" $t "*) case " $labels " in *" ci-$t "*) ;; *) labels="$labels ci-$t" ;; esac ;;
-            *) reply "Unknown /ci target \`$t\`. Targets: \`$known\`"; exit 1 ;;
+            *) reply "Unknown /ci platform \`$t\`. Platforms: \`$known\`"; exit 1 ;;
             esac
           done
           if [ -z "$labels" ]; then
-            reply "Usage: \`/ci <target>...\`. Targets: \`$known\`"
+            reply "Usage: \`/ci <platform>... [make <make args>]\`. Platforms: \`$known\`"
             exit 1
           fi
           pr=$(gh api "repos/$GH_REPO/pulls/$PR")
@@ -89,12 +100,13 @@ jobs:
           fi
           {
             echo "labels=$(printf '%s\n' $labels | jq -R . | jq -sc .)"
+            echo "make_args=$make_args"
             echo "base=$base"
             echo "head=$head"
             echo "gcc_version=$gcc_version"
           } >> "$GITHUB_OUTPUT"
           gh api -X POST "repos/$GH_REPO/issues/comments/$COMMENT_ID/reactions" -f content=rocket >/dev/null
-          reply "Building$labels: ${head:0:9} merged into $base_ref at ${base:0:9}. $RUN_URL"
+          reply "Building$labels${make_args:+ make $make_args}: ${head:0:9} merged into $base_ref at ${base:0:9}. $RUN_URL"
 
   build:
     needs: command
@@ -107,6 +119,7 @@ jobs:
     uses: AmigaPorts/m68k-amigaos-gcc/.github/workflows/toolchain.yml@master
     with:
       ci_label: ${{ matrix.label }}
+      make_args: ${{ needs.command.outputs.make_args }}
       gcc_version: ${{ needs.command.outputs.gcc_version || '16.2' }}
       # this repository: build the base commit with the head merged in
       checkout_repo: ${{ inputs.module == '' && github.repository || 'AmigaPorts/m68k-amigaos-gcc' }}

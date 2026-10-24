@@ -21,8 +21,9 @@
 # The ci-check-* labels build only what the tests need (make min): no gdb,
 # SDKs, vbcc, zlib/libpng or release tarball.
 # Re-add the label to rebuild after pushing new commits.
-# A /ci comment builds the same targets without labels, against the current
-# tip of the base branch: see ci-command.yml.
+# A /ci comment builds on the same platforms (the labels but ci-check-*)
+# without labels, against the current tip of the base branch, and runs
+# any make targets in place of the default tests: see ci-command.yml.
 
 name: Bootstrap toolchain
 
@@ -60,6 +61,9 @@ on:
         description: build AmigaOS and MinGW hosted toolchains
         type: boolean
         default: true
+      make_args:
+        description: "make targets to run instead of the default build and tests, e.g. check-c board=volamos-newlib"
+        default: ""
   # same inputs again: workflow_call, used by release.yml, does not
   # share the workflow_dispatch input declarations
   workflow_call:
@@ -114,6 +118,11 @@ on:
       # which GitHub recomputes a while after a push: a label put on right
       # after one could build the previous head.
       merge_ref:
+        type: string
+        default: ""
+      # make arguments to run instead of the tests a label picks: the
+      # targets build what they need.  From /ci ... make ..., or a dispatch
+      make_args:
         type: string
         default: ""
   # the ci-* labels listed at the top of this file
@@ -181,7 +190,7 @@ jobs:
   build:
     # each ci-* label starts its own run of this job: name it after the
     # label, or a PR's checks list keeps only the latest of them
-    name: build (${{ needs.refs.outputs.label || github.event_name }})
+    name: build (${{ needs.refs.outputs.label || github.event_name }}${{ inputs.make_args != '' && format(' make {0}', inputs.make_args) || '' }})
     needs: refs
     # every label but ci-mingw, which cross-builds from a container
     if: needs.refs.outputs.label != 'ci-mingw'
@@ -198,8 +207,10 @@ jobs:
       RUN_TESTSUITE_CXX: ${{ inputs.run_cxx_testsuite || needs.refs.outputs.label == 'ci-check-c++' || needs.refs.outputs.label == 'ci-check-c++-newlib' }}
       RUN_TESTSUITE_NEWLIB: ${{ needs.refs.outputs.label == 'ci-check-newlib' }}
       # the check labels build only the compiler and its runtimes; the
-      # steps that need the rest of the distribution check for 'all'
-      BUILD_TARGET: ${{ startsWith(needs.refs.outputs.label, 'ci-check') && 'min' || 'all' }}
+      # steps that need the rest of the distribution check for 'all'.
+      # make_args builds nothing up front: its targets build what they need
+      MAKE_ARGS: ${{ inputs.make_args }}
+      BUILD_TARGET: ${{ inputs.make_args != '' && 'none' || startsWith(needs.refs.outputs.label, 'ci-check') && 'min' || 'all' }}
       # The two simulators are kept side by side so their results can be
       # compared. SIMULATOR picks one, and BOARD the baseboards/ file the
       # testsuites run on:
@@ -303,6 +314,7 @@ jobs:
         run: scripts/manifest --markdown >> $GITHUB_STEP_SUMMARY
 
       - name: Build toolchain
+        if: env.BUILD_TARGET != 'none'
         run: make -j $NPROC $BUILD_TARGET
 
       # a libpython dependency would tie the release to this runner's distro
@@ -364,11 +376,11 @@ jobs:
 
       - name: Install testsuite dependencies (Linux)
         if: runner.os == 'Linux'
-        run: sudo apt-get install -y --no-install-recommends dejagnu
+        run: sudo apt-get install -y --no-install-recommends dejagnu shellcheck
 
       - name: Install testsuite dependencies (macOS)
         if: runner.os == 'macOS'
-        run: brew install dejagnu
+        run: brew install dejagnu shellcheck
 
       # the volamos* boards run the target tests under this binary, which the
       # Makefile installs into $PREFIX/bin, already on the PATH make exports
@@ -389,11 +401,13 @@ jobs:
       # MULTI and t-amigaos must name the same multilib directories; this
       # only asks the driver, so it runs on every build
       - name: Check the multilib set
+        if: env.BUILD_TARGET != 'none'
         run: make check-multilib
 
       # gas and ld dump tests for the hunk target; they run on the build
       # machine, no simulator needed
       - name: Run the binutils testsuite
+        if: env.BUILD_TARGET != 'none'
         run: |
           set +e
           make check-binutils
@@ -403,6 +417,7 @@ jobs:
 
       # fast, so it runs on every build
       - name: Run the AmigaOS target testsuite
+        if: env.BUILD_TARGET != 'none'
         run: |
           set +e
           make -j $NPROC check-gcc-amigaos board=$BOARD
@@ -412,7 +427,7 @@ jobs:
 
       # libnix's target tests, against the libnix this build used
       - name: Run the libnix target tests
-        if: env.SIMULATOR == 'volamos'
+        if: env.SIMULATOR == 'volamos' && env.BUILD_TARGET != 'none'
         run: |
           set +e
           make check-libnix
@@ -422,6 +437,7 @@ jobs:
 
       # The simulator cannot create Exec tasks; link every pthread test here.
       - name: Build the libpthread regression programs
+        if: env.BUILD_TARGET != 'none'
         run: |
           set +e
           make check-libpthread
@@ -458,12 +474,26 @@ jobs:
           { echo '```'; cat check-newlib.summary.txt 2>/dev/null; echo '```'; } >> $GITHUB_STEP_SUMMARY
           exit $rc
 
+      # /ci ... make ...: one make per target, in order, since the gcc
+      # testsuite targets share gcc.sum; VAR=value words go to all of them
+      - name: Run make ${{ env.MAKE_ARGS }}
+        if: env.MAKE_ARGS != ''
+        run: |
+          vars=$(printf '%s\n' $MAKE_ARGS | grep = || true)
+          rc=0
+          for t in $(printf '%s\n' $MAKE_ARGS | grep -v =); do
+            make -j $NPROC $t $vars || rc=1
+          done
+          { echo '```'; cat *.summary.txt 2>/dev/null || true; echo '```'; } >> $GITHUB_STEP_SUMMARY
+          exit $rc
+
       - name: Upload testsuite results
         if: always()
         uses: actions/upload-artifact@v7
         with:
           name: testsuite-results-${{ runner.os }}
           path: |
+            *.summary.txt
             build-*/gcc/gcc/testsuite/gcc/gcc-execute.sum
             build-*/gcc/gcc/testsuite/gcc/gcc-execute.log
             build-*/gcc/gcc/testsuite/gcc/gcc-amigaos.sum
@@ -478,7 +508,7 @@ jobs:
     name: Build AmigaOS hosted toolchain
     if: >-
       needs.refs.outputs.label == 'ci-amigaos' ||
-      (needs.refs.outputs.label == '' && inputs.build_hosted)
+      (needs.refs.outputs.label == '' && inputs.build_hosted && inputs.make_args == '')
     # bootstrapped with the cross toolchain the build job just produced, so
     # this exercises the branch's own compiler, assembler and linker rather
     # than a container's copy, and the runner supplies the native compiler
@@ -590,7 +620,7 @@ jobs:
     needs: refs
     if: >-
       needs.refs.outputs.label == 'ci-mingw' ||
-      (needs.refs.outputs.label == '' && inputs.build_hosted)
+      (needs.refs.outputs.label == '' && inputs.build_hosted && inputs.make_args == '')
     runs-on: ubuntu-24.04
     timeout-minutes: 300
     container:
