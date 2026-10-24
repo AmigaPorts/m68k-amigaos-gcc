@@ -1898,22 +1898,35 @@ endif
 # unless overridden; forward SIM= to runtest only when the caller set one,
 # e.g. `make check SIM=/path/to/wrapper`.
 RUNTEST_SIM = $(if $(SIM), SIM=$(SIM))
+
 # A volamos board installs volamos first, unless SIM= names another binary.
 BOARD_SIM_PREREQ = $(if $(and $(filter volamos%,$(board)),$(if $(SIM),,y)),$(PREFIX)/bin/volamos)
 
 # Point dejagnu at the in-repo board descriptions in baseboards/ which wire up
 # vamos/volamos as the simulator.
 export DEJAGNU ?= $(CURDIR)/dejagnu-site.exp
+
 # The ixemul.library the volamos-ixemul board runs the tests with.
 export IXEMUL_LIBS ?= $(PREFIX)/$(TARGET)/ixemul/libs
+
 # Directory where dejagnu writes gcc.sum / gcc.log.
 TESTSUITE = $(BUILD)/gcc/gcc/testsuite/gcc
+
 # The C++ testsuite writes into a separate g++ directory.
 CXXTESTSUITE = $(BUILD)/gcc/gcc/testsuite/g++
 
-# Run the two sequentially (recipe lines run in order even under make -j): both
-# drive check-gcc-c in the same build tree, sharing gcc.sum and
-# testsuite/gcc-parallel, so they must not run at the same time.
+# A check-* target builds what it tests (min, or just binutils or gcc) when
+# its stamps are missing, so it also works in a fresh tree, as a /ci make
+# comment runs it; an existing build is left alone, even an old one.
+# $(call if-missing,FILES,TARGET) is TARGET if any of FILES is missing.
+if-missing = $(if $(filter-out $(wildcard $(1)),$(1)),$(2))
+
+# _libgcc_done comes after binutils, gcc and libnix
+MIN_IF_MISSING = $(call if-missing,$(BUILD)/gcc/_libgcc_done $(BUILD)/ixemul/_done,min)
+
+# Run the GCC testsuites sequentially: these drive check-gcc-c in the same
+# build tree, sharing gcc.sum and testsuite/gcc-parallel, so they must not
+# run at the same time.
 .PHONY: check
 check:
 	@$(MAKE) --no-print-directory check-multilib
@@ -1923,17 +1936,14 @@ check:
 	@$(MAKE) --no-print-directory check-libpthread
 	@$(MAKE) --no-print-directory check-c
 
-# The gas and ld dump tests for the hunk target run on the build machine
-# under DejaGnu.  The gas m68k tests written for ELF expect % register
-# syntax and fail on this target, so gas's own exit status is ignored and
-# only the Amiga tests decide.  The previous .sum is removed first and at
-# least one Amiga PASS is required, so a testsuite that did not run cannot
-# pass on a stale or empty summary.
+# The gas and ld dump tests for the hunk target run on the build machine under DejaGnu.
+# The gas m68k tests written for ELF expect % register syntax and fail on this target,
+# so gas's own exit status is ignored and only the Amiga tests decide.
 .PHONY: check-binutils
 check-binutils: check-binutils-gas check-binutils-ld
 
 .PHONY: check-binutils-gas
-check-binutils-gas:
+check-binutils-gas: $(call if-missing,$(BUILD)/binutils/_done,binutils)
 	@rm -f $(BUILD)/binutils/gas/testsuite/gas.sum
 	$(L0)"check gas"$(L1)$(MAKE) -C $(BUILD)/binutils/gas check "RUNTESTFLAGS=all.exp" || true$(L2)
 	@{ echo '----- gas -----'; grep -E '^(PASS|FAIL|ERROR|XPASS|UNRESOLVED).*[Aa]miga' $(BUILD)/binutils/gas/testsuite/gas.sum 2>/dev/null || echo '(no tests run)'; } | tee $@.summary.txt
@@ -1942,7 +1952,7 @@ check-binutils-gas:
 	@! grep -qE '^(FAIL|ERROR|XPASS|UNRESOLVED).*[Aa]miga' $(BUILD)/binutils/gas/testsuite/gas.sum
 
 .PHONY: check-binutils-ld
-check-binutils-ld:
+check-binutils-ld: $(call if-missing,$(BUILD)/binutils/_done,binutils)
 	@rm -f $(BUILD)/binutils/ld/ld.sum
 	$(L0)"check ld"$(L1)$(MAKE) -C $(BUILD)/binutils/ld check "RUNTESTFLAGS=amiga.exp"$(L2)
 	@{ echo '----- ld -----'; grep -E '^(PASS|FAIL|ERROR|XPASS|UNRESOLVED)' $(BUILD)/binutils/ld/ld.sum 2>/dev/null || echo '(no tests run)'; } | tee $@.summary.txt
@@ -1950,16 +1960,11 @@ check-binutils-ld:
 	@grep -qE '^PASS' $(BUILD)/binutils/ld/ld.sum
 	@! grep -qE '^(FAIL|ERROR|XPASS|UNRESOLVED)' $(BUILD)/binutils/ld/ld.sum
 
-# The C suites are expected to be clean, so any FAIL, ERROR or XPASS fails
-# the target.  UNRESOLVED is tolerated: DejaGnu cannot tell whether the
-# "amiga" object format supports weak symbols, so dg-require-weak tests
-# (20030125-1.c) come out unresolved.  The g++ suite below still has
-# standing failures, so only an ERROR fails it.  A run without a single
-# PASS fails all three: runtest reports a misspelled board only in its log
-# and leaves an empty .sum.  check-gcc-amigaos is spared this on a gcc
-# branch without amigaos.exp, such as amiga6.
+# The C suites are expected to be clean, so any FAIL, ERROR or XPASS fails the target.
+# UNRESOLVED is tolerated: DejaGnu cannot tell whether the "amiga" object format
+# supports weak symbols, so dg-require-weak tests (20030125-1.c) come out unresolved.
 .PHONY: check-c
-check-c: $(BOARD_SIM_PREREQ)
+check-c: $(MIN_IF_MISSING) $(BOARD_SIM_PREREQ)
 	@ln -sfn $(PREFIX)/$(TARGET)/libnix $(BUILD)/gcc/$(TARGET)/libnix
 	$(L0)"check execute.exp"$(L1)$(MAKE) -C $(BUILD)/gcc check-gcc-c "RUNTESTFLAGS=--target_board=$(board) execute.exp=*$(RUNTEST_SIM)"$(L2)
 	@cp -f $(TESTSUITE)/gcc.sum $(TESTSUITE)/gcc-execute.sum; cp -f $(TESTSUITE)/gcc.log $(TESTSUITE)/gcc-execute.log
@@ -1968,9 +1973,9 @@ check-c: $(BOARD_SIM_PREREQ)
 	@grep -q '^# of expected passes' $(TESTSUITE)/gcc-execute.sum
 	@! grep -qE '^(FAIL|ERROR|XPASS)' $(TESTSUITE)/gcc-execute.sum
 
-# amiga-specific target tests; a no-op on gcc branches that predate them (a .exp filter matching no file runs nothing).
+# A no-op on gcc branches that predate amigaos.exp, such as amiga6.
 .PHONY: check-gcc-amigaos
-check-gcc-amigaos: $(BOARD_SIM_PREREQ)
+check-gcc-amigaos: $(MIN_IF_MISSING) $(BOARD_SIM_PREREQ)
 	@ln -sfn $(PREFIX)/$(TARGET)/libnix $(BUILD)/gcc/$(TARGET)/libnix
 	$(L0)"check amigaos.exp"$(L1)$(MAKE) -C $(BUILD)/gcc check-gcc-c "RUNTESTFLAGS=--target_board=$(board) gcc.target/m68k/amigaos/amigaos.exp$(RUNTEST_SIM)"$(L2)
 	@cp -f $(TESTSUITE)/gcc.sum $(TESTSUITE)/gcc-amigaos.sum; cp -f $(TESTSUITE)/gcc.log $(TESTSUITE)/gcc-amigaos.log
@@ -1984,7 +1989,7 @@ check-gcc-amigaos: $(BOARD_SIM_PREREQ)
 # with its memory sanitizer.  The objects are left in projects/libnix/test
 # and rebuilt on every run (-B), since they do not depend on the compiler.
 .PHONY: check-libnix
-check-libnix: $(PREFIX)/bin/volamos
+check-libnix: $(MIN_IF_MISSING) $(PREFIX)/bin/volamos
 	@set -o pipefail; $(MAKE) --no-print-directory -B -C $(PROJECTS)/libnix/test check-target \
 	  CROSS_CC=$(PREFIX)/bin/$(TARGET)-gcc SIM=$(PREFIX)/bin/volamos \
 	  SIMFLAGS="--stack 4K --sanitize" 2>&1 | tee $@.summary.txt
@@ -2021,7 +2026,7 @@ newlib-check-dir = $(NEWLIBTESTSUITE)/$(1)/$(subst /,_,$(2:.exp=))
 NEWLIB_CHECKS = $(foreach b,$(NEWLIB_BOARDS),$(foreach e,$(NEWLIB_EXPS),$(call newlib-check-dir,$(b),$(e))/newlib.sum))
 
 .PHONY: newlib-site-exp $(NEWLIB_CHECKS)
-newlib-site-exp: $(PREFIX)/bin/volamos
+newlib-site-exp: $(MIN_IF_MISSING) $(PREFIX)/bin/volamos
 	@rm -f $(BUILD)/newlib/newlib/site.exp
 	@$(MAKE) --no-print-directory -C $(BUILD)/newlib/newlib site.exp build_alias=`$(BUILD_CC) -dumpmachine` >/dev/null
 
@@ -2046,12 +2051,16 @@ check-newlib: $(NEWLIB_CHECKS)
 	@for b in $(NEWLIB_BOARDS); do grep -q '^# of expected passes' $(NEWLIBTESTSUITE)/$$b/newlib.sum || exit 1; done
 	@! grep -qE '^(FAIL|ERROR|XPASS)' $(foreach b,$(NEWLIB_BOARDS),$(NEWLIBTESTSUITE)/$(b)/newlib.sum)
 
-# The full C++ testsuite is large and slow, so it is not part of
-# `check`; run it on demand with `make check-c++`.  SANITIZE=0 keeps the
-# volamos boards' --sanitize off here: the -fstrub tests read the scrubbed
-# stack below the stack pointer on purpose.
+# The full C++ testsuite is large and slow, so it is not part of `check`;
+# run it on demand with `make check-c++`.
+#
+# This suite still has standing failures (AmigaPorts/m68k-amigaos-gcc#57),
+# so only an ERROR fails it.
+#
+# SANITIZE=0 keeps the volamos boards' --sanitize off: the -fstrub tests
+# read the scrubbed stack below the stack pointer on purpose.
 .PHONY: check-c++
-check-c++: $(BOARD_SIM_PREREQ)
+check-c++: $(MIN_IF_MISSING) $(BOARD_SIM_PREREQ)
 	@ln -sfn $(PREFIX)/$(TARGET)/libnix $(BUILD)/gcc/$(TARGET)/libnix
 	$(L0)"check c++"$(L1)$(MAKE) -C $(BUILD)/gcc check-gcc-c++ "RUNTESTFLAGS=--target_board=$(board)$(RUNTEST_SIM) SANITIZE=0"$(L2)
 	@{ echo '----- c++ -----'; grep '^# of' $(CXXTESTSUITE)/g++.sum || echo '(no tests run)'; grep -E '^(FAIL|ERROR|XPASS)' $(CXXTESTSUITE)/g++.sum || true; } | tee $@.summary.txt
@@ -2155,7 +2164,7 @@ MULTI = MODNAME/.: \
 MULTI_DIRS := $(sort $(foreach T,$(MULTI),$(patsubst MODNAME/%,%,$(word 1,$(subst :, ,$(T))))))
 
 .PHONY: check-multilib
-check-multilib:
+check-multilib: $(call if-missing,$(BUILD)/gcc/_done,gcc)
 	@driver="$(PREFIX)/bin/$(TARGET)-gcc$(EXEEXT)"; \
 	test -f "$$driver" || { echo "check-multilib: $$driver is not built"; exit 1; }; \
 	want="$(BUILD)/check-multilib.want"; have="$(BUILD)/check-multilib.have"; mkdir -p "$(BUILD)"; \
