@@ -1,5 +1,7 @@
 # Continuous integration
 
+Part of the [development notes](devel.md).
+
 The toolchain is built and tested by GitHub Actions in this repository:
 `.github/workflows/toolchain.yml` does the work, `ci-command.yml` handles
 `/ci` comments and `release.yml` builds releases. Nothing builds on a plain
@@ -131,7 +133,7 @@ gcc 6, `amiga16.2` builds 16.2.
 
 The `/ci make` and `ci-check-*` runs use the same make targets and boards
 as a local test, so a failure reproduces with the same command, for example
-`make check-c board=volamos-fpu`.
+`make check-c board=volamos-fpu`: see [testing.md](testing.md).
 
 A run's summary page shows the module revisions it built, the commit, and
 each testsuite's summary. The `testsuite-results-*` artifact has the `.sum`
@@ -145,4 +147,5 @@ Pushing a `v*` tag runs `release.yml`. It builds every module at the
 `m68k-amigaos-gcc-<tag>` tag that `make release-tag` made in it, and fails
 if a module lacks that tag. It runs the C testsuite on Linux as a release
 gate, builds the macOS, AmigaOS and Windows packages, and publishes them as
-a GitHub release, with the tag message as the release notes.
+a GitHub release, with the tag message as the release notes. Making a
+release is in [releng.md](releng.md).
