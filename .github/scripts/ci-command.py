@@ -42,6 +42,7 @@ def gh(*args):
 
 
 def reply(text):
+    print(f"::error::{text}", flush=True)
     gh("pr", "comment", env["PR"], "--body", text)
 
 
@@ -65,8 +66,11 @@ for line in sys.stdin.read().splitlines():
     if not words or words[0] != "/ci":
         continue
     platform = words[1].lower().removeprefix("ci-") if len(words) > 1 else ""
-    if platform not in platforms or (len(words) > 2 and words[2] != "make"):
-        reply(usage)
+    if platform not in platforms:
+        reply(f"`{platform}` is not a platform. {usage}" if platform else usage)
+        sys.exit(1)
+    if len(words) > 2 and words[2] != "make":
+        reply(f"Did you mean `/ci {platform} make {' '.join(words[2:])}`? {usage}")
         sys.exit(1)
     jobs.append({"label": "ci-" + platform, "make_args": " ".join(words[3:])})
 if not jobs:
