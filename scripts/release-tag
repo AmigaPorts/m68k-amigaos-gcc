@@ -36,7 +36,7 @@ projects=${PROJECTS:-$here/projects}
 
 die() { echo "release-tag: $*" >&2; exit 1; }
 
-[ -n "$tag" ] && [ -n "$notes" ] || die "usage: release-tag TAG NOTES [--confirm]"
+if [ -z "$tag" ] || [ -z "$notes" ]; then die "usage: release-tag TAG NOTES [--confirm]"; fi
 [ -z "$confirm" ] || [ "$confirm" = --confirm ] || die "unknown option: $confirm"
 [ -s "$notes" ] || die "$notes: missing or empty"
 notes=$(readlink -f "$notes")	# git -C below would resolve it elsewhere
