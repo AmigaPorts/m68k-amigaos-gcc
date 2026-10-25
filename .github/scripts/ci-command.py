@@ -42,8 +42,13 @@ def gh(*args):
 
 
 def reply(text):
-    print(f"::error::{text}", flush=True)
     gh("pr", "comment", env["PR"], "--body", text)
+
+
+def fail(text):
+    print(f"::error::{text}", flush=True)
+    reply(text)
+    sys.exit(1)
 
 
 repo = env["GH_REPO"]
@@ -67,15 +72,12 @@ for line in sys.stdin.read().splitlines():
         continue
     platform = words[1].lower().removeprefix("ci-") if len(words) > 1 else ""
     if platform not in platforms:
-        reply(f"`{platform}` is not a platform. {usage}" if platform else usage)
-        sys.exit(1)
+        fail(f"`{platform}` is not a platform. {usage}" if platform else usage)
     if len(words) > 2 and words[2] != "make":
-        reply(f"Did you mean `/ci {platform} make {' '.join(words[2:])}`? {usage}")
-        sys.exit(1)
+        fail(f"Did you mean `/ci {platform} make {' '.join(words[2:])}`? {usage}")
     jobs.append({"label": "ci-" + platform, "make_args": " ".join(words[3:])})
 if not jobs:
-    reply(usage)
-    sys.exit(1)
+    fail(usage)
 matrix = json.dumps(jobs, separators=(",", ":"))
 # The commit status's name: the comment's /ci lines.
 context = "; ".join(f"/ci {j['label'].removeprefix('ci-')}" + (f" make {j['make_args']}" if j["make_args"] else "")
@@ -84,12 +86,10 @@ context = "; ".join(f"/ci {j['label'].removeprefix('ci-')}" + (f" make {j['make_
 pr = json.loads(gh("api", f"repos/{repo}/pulls/{env['PR']}"))
 base = pr["base"]["ref"]
 if pr["state"] != "open":
-    reply("Pull request is not open.")
-    sys.exit(1)
+    fail("Pull request is not open.")
 # No refs/pull/N/merge to build.  Asking also makes GitHub refresh it.
 if pr["mergeable"] is False:
-    reply(f"The pull request conflicts with {base}: rebase it first.")
-    sys.exit(1)
+    fail(f"The pull request conflicts with {base}: rebase it first.")
 head = pr["head"]["sha"]
 # A gcc pull request builds the toolchain for its own branch: amiga6 for gcc 6,
 # amiga16.2 for 16.2.
