@@ -973,13 +973,6 @@ CONFIG_GCC += --disable-libcc1 --without-static-standard-libraries
 # debugging helper.  Keep GCC's optional host probes from enabling those
 # paths; this affects only the compiler executables that run on HOST.
 GCC_HOST_CONFIGURE_ENV := host_configargs="ac_cv_func_clock_gettime=no ac_cv_func_getrlimit=no ac_cv_func_pclose=no ac_cv_func_popen=no ac_cv_func_setrlimit=no"
-GCC_HOST_COMPAT_LIBRARY := $(BUILD)/libamiga-host-compat.a
-GCC_HOST_COMPAT_PREREQ := $(GCC_HOST_COMPAT_LIBRARY)
-# Use a library here rather than adding the object directly: GCC's top-level
-# LDFLAGS are also inherited by libbacktrace's libtool link, and libtool does
-# not permit an ordinary non-libtool object in a .la library.
-GCC_HOST_LDFLAGS := LDFLAGS="$(LDFLAGS) -Wl,--whole-archive -L$(BUILD) -lamiga-host-compat -Wl,--no-whole-archive"
-GCC_HOST_AR := $(if $(strip $(HOST_TOOL_PREFIX)),$(HOST_TOOL_PREFIX)ar,$(TARGET)-ar)
 endif
 
 GCC_CMD := $(TARGET)-c++ $(TARGET)-g++ $(TARGET)-gcc-$(GCC_DIR_VERSION) $(TARGET)-gcc-nm \
@@ -1089,23 +1082,16 @@ GCCD := $(patsubst %,$(PROJECTS)/gcc/%, $(GCC_DIR))
 gcc: $(BUILD)/gcc/_done
 
 $(BUILD)/gcc/_done: $(BUILD)/gcc/Makefile $(shell find 2>/dev/null $(GCCD) -maxdepth 1 -type f ) $(HOST_RUNNER_SETUP_PREREQ) $(TARGET_RUNNER_WRAPPERS)
-	$(L0)"make gcc"$(L1) $(MAKE) -C $(BUILD)/gcc $(GCC_HOST_TOOLS) $(GCC_BUILD_MAKE_FLAGS) $(GCC_HOST_LDFLAGS) all-gcc $(L2)
-	$(L0)"install gcc"$(L1) $(MAKE) -C $(BUILD)/gcc $(GCC_HOST_TOOLS) $(GCC_BUILD_MAKE_FLAGS) $(GCC_HOST_LDFLAGS) install-strip-gcc $(L2)
-	@for tool in $(GCC_HOST_ALIAS_CMD); do \
+	$(L0)"make gcc"$(L1) $(MAKE) -C $(BUILD)/gcc $(GCC_HOST_TOOLS) $(GCC_BUILD_MAKE_FLAGS) all-gcc $(L2)
+	$(L0)"install gcc"$(L1) $(MAKE) -C $(BUILD)/gcc $(GCC_HOST_TOOLS) $(GCC_BUILD_MAKE_FLAGS) install-strip-gcc $(L2)
+	for tool in $(GCC_HOST_ALIAS_CMD); do \
 		ln -f "$(PREFIX)/bin/$$tool$(EXEEXT)" "$(PREFIX)/bin/$(TARGET)-$$tool$(EXEEXT)"; \
 	done
-	@echo "done" >$@
+	echo "done" >$@
 
-$(BUILD)/gcc/Makefile: Makefile $(PROJECTS)/gcc/configure $(BUILD)/binutils/_done $(GCC_PREREQUISITE_SOURCES) $(GCC_HOST_COMPAT_PREREQ) $(TARGET_RUNNER_WRAPPERS) $(TARGET_BUILD_TOOLS_PREREQ) $(TARGET_EXEC_WRAPPERS) $(TARGET_COMPILER_WRAPPERS) $(TARGET_PREFIXED_EXEC_WRAPPERS) | $(PREFIX_STAMP)
-	@mkdir -p $(BUILD)/gcc
-	$(L0)"configure gcc"$(L1) cd $(BUILD)/gcc && $(E) $(GCC_HOST_TOOLS) $(GCC_HOST_CONFIGURE_ENV) $(GCC_TARGET_CONFIGURE_ENV) $(GCC_HOST_LDFLAGS) $(PROJECTS)/gcc/configure $(CONFIG_GCC) $(L2)
-
-$(BUILD)/libamiga-host-compat.a: $(BUILD)/gcc-host-compat.o
-	$(L0)"archive Amiga host compatibility library"$(L1) $(GCC_HOST_AR) rcs $@ $< $(L2)
-
-$(BUILD)/gcc-host-compat.o: support/amiga-host-compat.c
-	@mkdir -p $(@D)
-	$(L0)"make Amiga host compatibility object"$(L1) $(CC) $(CFLAGS) -c $< -o $@ $(L2)
+$(BUILD)/gcc/Makefile: Makefile $(PROJECTS)/gcc/configure $(BUILD)/binutils/_done $(GCC_PREREQUISITE_SOURCES) $(TARGET_RUNNER_WRAPPERS) $(TARGET_BUILD_TOOLS_PREREQ) $(TARGET_EXEC_WRAPPERS) $(TARGET_COMPILER_WRAPPERS) $(TARGET_PREFIXED_EXEC_WRAPPERS) | $(PREFIX_STAMP)
+	mkdir -p $(BUILD)/gcc
+	$(L0)"configure gcc"$(L1) cd $(BUILD)/gcc && $(E) $(GCC_HOST_TOOLS) $(GCC_HOST_CONFIGURE_ENV) $(GCC_TARGET_CONFIGURE_ENV) $(PROJECTS)/gcc/configure $(CONFIG_GCC) $(L2)
 
 $(PROJECTS)/gcc/configure:
 	@cd $(PROJECTS) && git clone -b $(gcc_BRANCH) --depth 16 $(gcc_URL)
