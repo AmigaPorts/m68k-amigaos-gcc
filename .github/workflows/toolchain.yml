@@ -292,7 +292,7 @@ jobs:
         run: |
           vars=$(printf '%s\n' $MAKE_ARGS | grep = || true)
           case $GITHUB_REF in
-          refs/tags/v*) vars="$vars PACKAGE=m68k-amigaos-gcc-${GITHUB_REF_NAME#v}-$(uname -m)-$(uname -s | tr '[:upper:]' '[:lower:]').tar.xz" ;;
+          refs/tags/v*) vars="$vars PACKAGE_FILENAME=m68k-amigaos-gcc-${GITHUB_REF_NAME#v}-$(uname -m)-$(uname -s | tr '[:upper:]' '[:lower:]').tar.xz" ;;
           esac
           for t in $(printf '%s\n' $MAKE_ARGS | grep -v =); do
             make -j $NPROC $t $vars
@@ -426,7 +426,7 @@ jobs:
             package_version="${GITHUB_REF_NAME#v}"
           fi
           archive="m68k-amigaos-gcc-${package_version}-m68k-amigaos.lha"
-          make package-lha PACKAGE="$GITHUB_WORKSPACE/$archive"
+          make package-lha PACKAGE_FILENAME="$GITHUB_WORKSPACE/$archive"
           test -s "$archive"
 
       - name: Upload AmigaOS package

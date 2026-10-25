@@ -663,7 +663,7 @@ PACKAGE_PLATFORM ?= $(HOST)
 endif
 PACKAGE_FORMAT ?= tar.xz
 PACKAGE_BASENAME ?= m68k-amigaos-gcc-$(GCC_VERSION)-$(PACKAGE_PLATFORM)
-PACKAGE ?= $(PACKAGE_BASENAME).$(PACKAGE_FORMAT)
+PACKAGE_FILENAME ?= $(PACKAGE_BASENAME).$(PACKAGE_FORMAT)
 PACKAGE_LHA ?= lha
 
 .PHONY: package package-lha
@@ -674,12 +674,12 @@ package:
 	@test -n "$(GCC_VERSION)" || { echo "GCC_VERSION is empty - run make update first"; exit 1; }
 	@case "$(PACKAGE_FORMAT)" in \
 	  tar.xz) \
-	    XZ_OPT=-T0 tar -C "$(dir $(abspath $(PREFIX)))" -cJf "$(abspath $(PACKAGE))" "$(notdir $(abspath $(PREFIX)))"; \
+	    XZ_OPT=-T0 tar -C "$(dir $(abspath $(PREFIX)))" -cJf "$(abspath $(PACKAGE_FILENAME))" "$(notdir $(abspath $(PREFIX)))"; \
 	    ;; \
 	  lha) \
 	    command -v "$(PACKAGE_LHA)" >/dev/null || { echo "$(PACKAGE_LHA) is required for PACKAGE_FORMAT=lha"; exit 1; }; \
-	    rm -f "$(abspath $(PACKAGE))"; \
-	    cd "$(dir $(abspath $(PREFIX)))" && "$(PACKAGE_LHA)" aq "$(abspath $(PACKAGE))" "$(notdir $(abspath $(PREFIX)))"; \
+	    rm -f "$(abspath $(PACKAGE_FILENAME))"; \
+	    cd "$(dir $(abspath $(PREFIX)))" && "$(PACKAGE_LHA)" aq "$(abspath $(PACKAGE_FILENAME))" "$(notdir $(abspath $(PREFIX)))"; \
 	    ;; \
 	  *) \
 	    echo "unsupported PACKAGE_FORMAT=$(PACKAGE_FORMAT); use tar.xz or lha"; \
