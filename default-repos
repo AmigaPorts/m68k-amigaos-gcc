@@ -5,7 +5,6 @@ fd2pragma          https://github.com/AmigaPorts/fd2pragma          master
 fd2sfd             https://github.com/AmigaPorts/fd2sfd             master
 gcc                https://github.com/AmigaPorts/gcc                amiga16.2
 ira                https://github.com/AmigaPorts/ira                master
-ixemul             https://github.com/AmigaPorts/ixemul             master
 lha                https://github.com/AmigaPorts/lha                master
 libdebug           https://github.com/AmigaPorts/libdebug           master
 libnix             https://github.com/AmigaPorts/libnix             master
