@@ -102,4 +102,7 @@ with open(env.get("GITHUB_OUTPUT", "/dev/stdout"), "a") as out:
 # The same comment again updates it.
 gh("api", f"repos/{repo}/statuses/{head}", "-f", "state=pending", "-f", f"context={context}",
    "-f", f"target_url={env['RUN_URL']}")
-reply(f"Building `{context}`: {head[:9]} merged into {base}. {env['RUN_URL']}")
+builds = "\n".join(f"- On {j['label'].removeprefix('ci-')}: "
+                   + (f"`make {j['make_args']}`" if j["make_args"] else "the default build and tests")
+                   for j in jobs)
+reply(f"Building {head[:9]} merged into {base}: {env['RUN_URL']}\n\n{builds}")
