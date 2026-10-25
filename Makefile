@@ -61,7 +61,7 @@ ifneq (,$(strip $(HOST)))
 endif
 
 # Goals that touch nothing under PREFIX, so they run without one
-NO_PREFIX_GOALS := clean% drop-prefix help info update% branch release-tag v
+NO_PREFIX_GOALS := clean% drop-prefix help info print-% update% branch release-tag v
 
 # PREFIX has no default: the first build names it, the build tree records
 # it (written on the first build, checked below) and a make without PREFIX
@@ -70,7 +70,10 @@ PREFIX_STAMP := $(BUILD)/.prefix
 ifeq ($(origin PREFIX),undefined)
   ifneq ($(wildcard $(PREFIX_STAMP)),)
     PREFIX := $(shell cat $(PREFIX_STAMP))
-    $(info PREFIX=$(PREFIX), from $(PREFIX_STAMP))
+    # quiet for print-%, whose output scripts read
+    ifneq ($(if $(MAKECMDGOALS),$(filter-out print-%,$(MAKECMDGOALS)),all),)
+      $(info PREFIX=$(PREFIX), from $(PREFIX_STAMP))
+    endif
   else
     ifneq ($(filter-out $(NO_PREFIX_GOALS),$(MAKECMDGOALS)),)
       $(error PREFIX is not set: pass PREFIX=<install directory> once, the build tree remembers it)
@@ -316,8 +319,6 @@ GCC_DIR_VERSION = $(if $(filter 6.%,$(GCC_VERSION)),$(GCC_VERSION),$(firstword $
 
 # The release a build is part of, after the gcc it was built from: projects/gcc's release tag without its m68k-amigaos-gcc-v prefix, plus commit count and hash past it.
 # A gcc branch without release tags, such as amiga6, gives its name and hash instead.
-# It is not this tree's own tag, which would label a gcc 6 build with the 16.2 release.
-# Set it on the command line for a tree without git history.
 PACKAGE_VERSION ?= $(shell cd $(PROJECTS)/gcc 2>/dev/null && \
 	{ v=$$(git describe --tags --match 'm68k-amigaos-gcc-v*' --dirty 2>/dev/null) && \
 	  echo "$${v#m68k-amigaos-gcc-v}" || \
@@ -2109,6 +2110,10 @@ info:
 	@echo $(BUILD)
 	@echo $(PROJECTS)
 	@echo MODULES = $(modules)
+
+# make -s print-PACKAGE_VERSION prints one variable, for scripts
+print-%:
+	@echo '$($*)'
 
 # print the latest git log entry for all projects
 .PHONY: l
