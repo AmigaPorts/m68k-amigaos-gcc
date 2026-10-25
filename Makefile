@@ -314,21 +314,20 @@ GCC6_OMIT_FRAME_POINTER = $(if $(filter 6.%,$(GCC_VERSION)),-fomit-frame-pointer
 # predates the option.
 GCC_DIR_VERSION = $(if $(filter 6.%,$(GCC_VERSION)),$(GCC_VERSION),$(firstword $(subst ., ,$(GCC_VERSION))))
 
-# Stamp gcc and binutils with the gcc they were built from, so bug reports
-# carry it: "m68k-amigaos-gcc (AmigaDev v16.2) 16.2.0b 2026...". The
-# version is projects/gcc's release tag without its m68k-amigaos-gcc-
-# prefix, plus commit count and hash past it; a gcc branch without release
-# tags, such as amiga6, reports its name and hash instead. It is not this
-# tree's own tag, which would label a gcc 6 build with the 16.2 release.
-# Set PKGVERSION on the command line for a tree without git history.
-# The string is captured when the build tree is configured, not tracked
-# afterwards: use a fresh BUILD to refresh it, or reconfigure and remove
-# $(BUILD)/gcc/gcc/build/genversion.o so gcc regenerates version.h.
-PKGVERSION ?= AmigaDev $(shell cd $(PROJECTS)/gcc 2>/dev/null && \
-	{ v=$$(git describe --tags --match 'm68k-amigaos-gcc-*' --dirty 2>/dev/null) && \
-	  echo "$${v#m68k-amigaos-gcc-}" || \
+# The release a build is part of, after the gcc it was built from: projects/gcc's release tag without its m68k-amigaos-gcc-v prefix, plus commit count and hash past it.
+# A gcc branch without release tags, such as amiga6, gives its name and hash instead.
+# It is not this tree's own tag, which would label a gcc 6 build with the 16.2 release.
+# Set it on the command line for a tree without git history.
+PACKAGE_VERSION ?= $(shell cd $(PROJECTS)/gcc 2>/dev/null && \
+	{ v=$$(git describe --tags --match 'm68k-amigaos-gcc-v*' --dirty 2>/dev/null) && \
+	  echo "$${v#m68k-amigaos-gcc-v}" || \
 	  echo "$$(git rev-parse --abbrev-ref HEAD)-g$$(git rev-parse --short HEAD)"; })
-PKGVERSION := $(strip $(PKGVERSION))
+PACKAGE_VERSION := $(strip $(PACKAGE_VERSION))
+
+# Stamp gcc and binutils with the release, so bug reports carry it: "m68k-amigaos-gcc (AmigaDev 16.2-rc19) 16.2.1b 2026...".
+# It is captured when the build tree is configured, not tracked afterwards:
+# use a fresh BUILD to refresh it, or reconfigure and remove $(BUILD)/gcc/gcc/build/genversion.o so gcc regenerates version.h.
+PKGVERSION ?= AmigaDev $(PACKAGE_VERSION)
 BUGURL ?= https://github.com/AmigaPorts/m68k-amigaos-gcc/issues
 CONFIG_VERSION := --with-pkgversion="$(PKGVERSION)" --with-bugurl="$(BUGURL)"
 
@@ -662,7 +661,7 @@ else
 PACKAGE_PLATFORM ?= $(HOST)
 endif
 PACKAGE_FORMAT ?= tar.xz
-PACKAGE_BASENAME ?= m68k-amigaos-gcc-$(GCC_VERSION)-$(PACKAGE_PLATFORM)
+PACKAGE_BASENAME ?= m68k-amigaos-gcc-$(PACKAGE_VERSION)-$(PACKAGE_PLATFORM)
 PACKAGE_FILENAME ?= $(PACKAGE_BASENAME).$(PACKAGE_FORMAT)
 PACKAGE_LHA ?= lha
 
@@ -672,7 +671,7 @@ package-lha: package
 
 package:
 	@test -n "$(GCC_VERSION)" || { echo "GCC_VERSION is empty - run make update first"; exit 1; }
-	@case "$(PACKAGE_FORMAT)" in \
+	$(L0)"packaging $(notdir $(PACKAGE_FILENAME))"$(L1) case "$(PACKAGE_FORMAT)" in \
 	  tar.xz) \
 	    XZ_OPT=-T0 tar -C "$(dir $(abspath $(PREFIX)))" -cJf "$(abspath $(PACKAGE_FILENAME))" "$(notdir $(abspath $(PREFIX)))"; \
 	    ;; \
@@ -685,7 +684,7 @@ package:
 	    echo "unsupported PACKAGE_FORMAT=$(PACKAGE_FORMAT); use tar.xz or lha"; \
 	    exit 2; \
 	    ;; \
-	esac
+	esac $(L2)
 
 # =================================================
 # update all projects
