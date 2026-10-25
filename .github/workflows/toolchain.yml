@@ -114,7 +114,23 @@ jobs:
     name: Select module refs
     if: >-
       (inputs.ci_label || github.event.label.name) == '' ||
-      contains(fromJSON('["ci-linux", "ci-linux-arm", "ci-linux-gcc6", "ci-macos", "ci-amigaos", "ci-mingw", "ci-check-c", "ci-check-c-fpu", "ci-check-c-ixemul", "ci-check-c++", "ci-check-c++-baserel32", "ci-check-c-newlib", "ci-check-c++-newlib", "ci-check-newlib"]'),
+      contains(fromJSON('[
+                 "ci-linux",
+                 "ci-linux-x86",
+                 "ci-linux-arm",
+                 "ci-linux-gcc6",
+                 "ci-macos",
+                 "ci-amigaos",
+                 "ci-mingw",
+                 "ci-check-c",
+                 "ci-check-c-fpu",
+                 "ci-check-c-ixemul",
+                 "ci-check-c++",
+                 "ci-check-c++-baserel32",
+                 "ci-check-c-newlib",
+                 "ci-check-c++-newlib",
+                 "ci-check-newlib"
+               ]'),
                inputs.ci_label || github.event.label.name)
     runs-on: ubuntu-24.04
     # the ref the jobs below check out: a pull request builds GitHub's
