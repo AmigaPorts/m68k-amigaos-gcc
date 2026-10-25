@@ -286,14 +286,10 @@ jobs:
 
       # One make per target, in order, stopping at the first that fails;
       # the gcc testsuites share gcc.sum, so they must not run in parallel.
-      # VAR=value words go to every target.  A release names its package
-      # after the tag (16.2-rc4), which versions the whole distribution.
+      # VAR=value words go to every target.
       - name: make ${{ env.MAKE_ARGS }}
         run: |
           vars=$(printf '%s\n' $MAKE_ARGS | grep = || true)
-          case $GITHUB_REF in
-          refs/tags/v*) vars="$vars PACKAGE_FILENAME=m68k-amigaos-gcc-${GITHUB_REF_NAME#v}-$(uname -m)-$(uname -s | tr '[:upper:]' '[:lower:]').tar.xz" ;;
-          esac
           for t in $(printf '%s\n' $MAKE_ARGS | grep -v =); do
             make -j $NPROC $t $vars
           done
@@ -420,14 +416,7 @@ jobs:
           make -j 4 all-sdk
 
       - name: Package AmigaOS hosted toolchain
-        run: |
-          package_version=$(cat projects/gcc/gcc/BASE-VER)
-          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
-            package_version="${GITHUB_REF_NAME#v}"
-          fi
-          archive="m68k-amigaos-gcc-${package_version}-m68k-amigaos.lha"
-          make package-lha PACKAGE_FILENAME="$GITHUB_WORKSPACE/$archive"
-          test -s "$archive"
+        run: make package-lha
 
       - name: Upload AmigaOS package
         uses: actions/upload-artifact@v7
@@ -463,6 +452,7 @@ jobs:
         shell: bash
     outputs:
       package_version: ${{ steps.version.outputs.package_version }}
+      package_basename: ${{ steps.version.outputs.package_basename }}
     env:
       PREFIX: ${{ github.workspace }}/output/mingw/m68k-amigaos
       HOST: x86_64-w64-mingw32ucrt
@@ -523,11 +513,8 @@ jobs:
           make update
           make -j "$(nproc)" all
           make -j 4 all-sdk
-          package_version=$(cat projects/gcc/gcc/BASE-VER)
-          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
-            package_version="${GITHUB_REF_NAME#v}"
-          fi
-          echo "package_version=$package_version" >> "$GITHUB_OUTPUT"
+          echo "package_version=$(make -s print-PACKAGE_VERSION)" >> "$GITHUB_OUTPUT"
+          echo "package_basename=$(make -s print-PACKAGE_BASENAME)" >> "$GITHUB_OUTPUT"
 
       - name: Test MinGW hosted compiler
         run: |
@@ -601,7 +588,7 @@ jobs:
     timeout-minutes: 30
     env:
       PACKAGE_VERSION: ${{ needs.build_mingw.outputs.package_version }}
-      PACKAGE_BASENAME: m68k-amigaos-gcc-${{ needs.build_mingw.outputs.package_version }}-x86_64-w64-mingw32ucrt
+      PACKAGE_BASENAME: ${{ needs.build_mingw.outputs.package_basename }}
 
     steps:
       # this repo's setup/ files, also when a module repo calls this workflow
