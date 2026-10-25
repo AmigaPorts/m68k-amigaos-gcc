@@ -1966,13 +1966,25 @@ check-binutils-ld: $(call if-missing,$(BUILD)/binutils/_done,binutils)
 	@grep -qE '^PASS' $(BUILD)/binutils/ld/ld.sum
 	@! grep -qE '^(FAIL|ERROR|XPASS|UNRESOLVED)' $(BUILD)/binutils/ld/ld.sum
 
+# check-c runs all of execute.exp, and the gcc.dg tests that need the C library's C99
+# math functions (c99_runtime, or HAVE_C99_RUNTIME from builtins-config.h), which only
+# some of the C libraries have. Override check-c-exp to run other tests, as runtest
+# arguments: check-c check-c-exp="'dg.exp=pr12*.c'"
+c99-runtime-tests = $(notdir $(shell grep -l -e c99_runtime -e builtins-config.h $(PROJECTS)/gcc/gcc/testsuite/gcc.dg/$2*.c 2>/dev/null))
+c99-runtime-exp = $(if $(call c99-runtime-tests,$1,$2),'$1=$(call c99-runtime-tests,$1,$2)')
+check-c-exp ?= 'execute.exp=*' \
+  $(call c99-runtime-exp,dg.exp,) \
+  $(call c99-runtime-exp,dg-torture.exp,torture/) \
+  $(call c99-runtime-exp,tree-ssa.exp,tree-ssa/) \
+  $(call c99-runtime-exp,ipa.exp,ipa/)
+
 # The C suites are expected to be clean, so any FAIL, ERROR or XPASS fails the target.
 # UNRESOLVED is tolerated: DejaGnu cannot tell whether the "amiga" object format
 # supports weak symbols, so dg-require-weak tests (20030125-1.c) come out unresolved.
 .PHONY: check-c
 check-c: $(MIN_IF_MISSING) $(BOARD_SIM_PREREQ)
 	@ln -sfn $(PREFIX)/$(TARGET)/libnix $(BUILD)/gcc/$(TARGET)/libnix
-	$(L0)"check execute.exp"$(L1)$(MAKE) -C $(BUILD)/gcc check-gcc-c "RUNTESTFLAGS=--target_board=$(board) execute.exp=*$(RUNTEST_SIM)"$(L2)
+	$(L0)"check execute.exp"$(L1)$(MAKE) -C $(BUILD)/gcc check-gcc-c "RUNTESTFLAGS=--target_board=$(board) $(strip $(check-c-exp))$(RUNTEST_SIM)"$(L2)
 	@cp -f $(TESTSUITE)/gcc.sum $(TESTSUITE)/gcc-execute.sum; cp -f $(TESTSUITE)/gcc.log $(TESTSUITE)/gcc-execute.log
 	@{ echo '----- execute.exp -----'; grep '^# of' $(TESTSUITE)/gcc-execute.sum || echo '(no tests run)'; grep -E '^(FAIL|ERROR|XPASS)' $(TESTSUITE)/gcc-execute.sum || true; } | tee $@.summary.txt
 	@echo "results: $(TESTSUITE)/gcc-execute.{sum,log}"
