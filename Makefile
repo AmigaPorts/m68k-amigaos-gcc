@@ -707,7 +707,7 @@ package:
 # =================================================
 
 .PHONY: update
-update: update-gcc update-binutils update-fd2sfd update-lha update-fd2pragma update-ira update-sfdc update-vasm update-vbcc update-vlink update-libnix update-ixemul update-clib2 update-libdebug update-libpthread update-ndk update-newlib update-netinclude
+update: update-gcc update-binutils update-fd2sfd update-lha update-fd2pragma update-ira update-sfdc update-vasm update-vbcc update-vlink update-libnix update-clib2 update-libdebug update-libpthread update-ndk update-newlib update-netinclude
 
 # Each pulls a module checkout forward; see scripts/update-module.
 .PHONY: update-gcc
@@ -753,10 +753,6 @@ update-vlink: $(PROJECTS)/vlink/Makefile
 .PHONY: update-libnix
 update-libnix: $(PROJECTS)/libnix/Makefile.gcc6
 	@scripts/update-module $(PROJECTS)/libnix
-
-.PHONY: update-ixemul
-update-ixemul: $(PROJECTS)/ixemul/configure
-	@scripts/update-module $(PROJECTS)/ixemul
 
 .PHONY: update-clib2
 update-clib2: $(PROJECTS)/clib2/LICENSE
@@ -1776,9 +1772,6 @@ $(PROJECTS)/newlib-cygwin/newlib/configure:
 # =================================================
 # ixemul
 # =================================================
-$(PROJECTS)/ixemul/configure:
-	@cd $(PROJECTS) && git clone -b $(ixemul_BRANCH) $(ixemul_URL)
-
 .PHONY: ixemul
 ixemul:	$(BUILD)/ixemul/_done
 
@@ -1788,24 +1781,27 @@ ixemul:	$(BUILD)/ixemul/_done
 # 68000 libraries are installed, in ixemul/libs, for the volamos-ixemul
 # testsuite board.  ranlib: the libc.a files of 80.1 ship with a stale symbol
 # index that misses poll.o, so poll() did not link.
-$(BUILD)/ixemul/_done: $(DOWNLOAD)/$(ixemul-sdk_ARCHIVE) $(PROJECTS)/ixemul/configure $(BUILD)/binutils/_done | $(LHA_PREREQ)
-	@mkdir -p $(BUILD)/ixemul $(PREFIX)/$(TARGET)/ixemul
+#
+# patches/ixemul has the headers the SDK lacks or gets wrong:
+# - <inttypes.h> is missing, so newlib's came from sys-include, with its own int32_t (long) clashing with ixemul's (int);
+# - <assert.h> calls libgcc's __eprintf, which writes to newlib's stderr and fails to link.
+IXEMUL_HEADERS = $(addprefix patches/ixemul/,inttypes.h assert.h)
+
+$(BUILD)/ixemul/_done: $(DOWNLOAD)/$(ixemul-sdk_ARCHIVE) $(IXEMUL_HEADERS) $(BUILD)/binutils/_done | $(LHA_PREREQ)
+	mkdir -p $(BUILD)/ixemul $(PREFIX)/$(TARGET)/ixemul
 	$(L0)"unpacking $(ixemul-sdk_ARCHIVE)"$(L1) cd $(BUILD)/ixemul && $(LHA_FOR_BUILD) xf $(DOWNLOAD)/$(ixemul-sdk_ARCHIVE) 'gg/include/*' 'gg/lib/*' Sys/libs/ixemul000.library Sys/libs/ixnet000.library $(L2)
 	$(L0)"installing ixemul-sdk"$(L1) rsync -a --no-group --delete $(BUILD)/ixemul/gg/ $(PREFIX)/$(TARGET)/ixemul/ $(L2)
-	@$(TARGET_RANLIB_FOR_BUILD) $(PREFIX)/$(TARGET)/ixemul/lib/libc.a $(PREFIX)/$(TARGET)/ixemul/lib/libc_p.a $(PREFIX)/$(TARGET)/ixemul/lib/libb/libc.a $(PREFIX)/$(TARGET)/ixemul/lib/libb32/libm020/libc.a
-	@# The SDK has a <stdint.h> but no <inttypes.h>, which came from newlib's
-	@# sys-include, whose int32_t (long) clashes with ixemul's (int).  The
-	@# ixemul sources' own pair agrees with ixemul's <machine/types.h>.
-	@cp $(PROJECTS)/ixemul/include/stdint.h $(PROJECTS)/ixemul/include/inttypes.h $(PREFIX)/$(TARGET)/ixemul/include/
-	@mkdir -p $(PREFIX)/$(TARGET)/ixemul/libs
-	@cp $(BUILD)/ixemul/Sys/libs/ixemul000.library $(PREFIX)/$(TARGET)/ixemul/libs/ixemul.library
-	@cp $(BUILD)/ixemul/Sys/libs/ixnet000.library $(PREFIX)/$(TARGET)/ixemul/libs/ixnet.library
-	@# ixemul's libc.a has the math functions, and the SDK ships no libm.a, so
-	@# -lm fell through to newlib's libm.a and failed on _impure_ptr.  An
-	@# empty archive in ixemul/lib, which -mcrt=ixemul searches first,
-	@# satisfies -lm.
-	@printf '!<arch>\n' >$(PREFIX)/$(TARGET)/ixemul/lib/libm.a
-	@echo "done" >$@
+	$(TARGET_RANLIB_FOR_BUILD) $(PREFIX)/$(TARGET)/ixemul/lib/libc.a $(PREFIX)/$(TARGET)/ixemul/lib/libc_p.a $(PREFIX)/$(TARGET)/ixemul/lib/libb/libc.a $(PREFIX)/$(TARGET)/ixemul/lib/libb32/libm020/libc.a
+	cp $(IXEMUL_HEADERS) $(PREFIX)/$(TARGET)/ixemul/include/
+	mkdir -p $(PREFIX)/$(TARGET)/ixemul/libs
+	cp $(BUILD)/ixemul/Sys/libs/ixemul000.library $(PREFIX)/$(TARGET)/ixemul/libs/ixemul.library
+	cp $(BUILD)/ixemul/Sys/libs/ixnet000.library $(PREFIX)/$(TARGET)/ixemul/libs/ixnet.library
+	# ixemul's libc.a has the math functions, and the SDK ships no libm.a, so
+	# -lm fell through to newlib's libm.a and failed on _impure_ptr.  An
+	# empty archive in ixemul/lib, which -mcrt=ixemul searches first,
+	# satisfies -lm.
+	printf '!<arch>\n' >$(PREFIX)/$(TARGET)/ixemul/lib/libm.a
+	echo "done" >$@
 
 # =================================================
 # sdk installation
