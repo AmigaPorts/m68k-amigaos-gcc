@@ -342,6 +342,21 @@ endif
 
 # get git urls and branches from .repos file
 $(shell  [ ! -f .repos ] && cp default-repos .repos)
+
+# .repos is copied once and then is the user's to edit, so a later change to default-repos
+# never reaches it: name the modules whose line differs. Touching .repos silences this.
+ifeq ($(MAKELEVEL),0)
+  ifneq ($(shell [ default-repos -nt .repos ] && echo y),)
+    repos_drift := $(shell awk '!NF || substr($$1, 1, 1) == "\043" { next } NR == FNR { d[$$1] = $$2 " " $$3; next } { r[$$1] = $$2 " " $$3 } END { for (m in d) if (r[m] != d[m]) print m }' default-repos .repos)
+    ifneq ($(repos_drift),)
+      $(info )
+      $(info WARNING: default-repos changed after .repos was made from it, and differs for: $(repos_drift).)
+      $(info WARNING: Update .repos to match, or delete it to start over.)
+      $(info )
+    endif
+  endif
+endif
+
 # Blank lines and comments are skipped (a .manifest records this repository
 # in its first line, as a comment).
 modules := $(shell $(SED) -e '/^[[:blank:]]*\#/d' -e '/^[[:blank:]]*$$/d' -e 's/[[:blank:]]\+/ /g' .repos | cut -d' ' -f1)
