@@ -51,6 +51,7 @@ make all all-sdk vbcc vlink zlib libpng check-gdb-libpython package \
 | platform | runner | without `make` |
 |---|---|---|
 | `linux` | x86-64 Ubuntu | the make targets above |
+| `linux-x86` | x86-64 Ubuntu | the same as `linux`, which will become `linux-arm` |
 | `linux-arm` | arm64 Ubuntu | same, but faster |
 | `linux-gcc6` | x86-64 Ubuntu | same, with gcc branch `amiga6` |
 | `macos` | macOS 15 | same |
