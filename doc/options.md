@@ -9,10 +9,10 @@ lists them with one line each.
 
 | option | runtime |
 |---|---|
-| `-mcrt=nix20` | libnix, for Kickstart 2.0 and later: the usual choice |
+| `-mcrt=nix20` | libnix, for Kickstart 2.0 and later: a good choice for native Amiga programs, with smaller executables than newlib |
 | `-mcrt=nix13` | libnix for Kickstart 1.3, with the NDK 1.3 headers from `ndk13-include`; defines `__KICK13__` |
-| `-mcrt=newlib` | newlib: the default without `-mcrt=` |
-| `-mcrt=clib2` | clib2 |
+| `-mcrt=newlib` | newlib, the default without `-mcrt=`: good POSIX and C99 compatibility and some C11 and C23 features, but larger executables |
+| `-mcrt=clib2` | clib2: unmaintained, with gaps and some known bugs; it will be removed in a later release unless someone takes it over |
 | `-mcrt=ixemul` | ixemul: needs `ixemul.library` at run time |
 | `-mcrt=library` | libnix as a shared library: needs `libnix4.library` at run time |
 | `-noixemul` | the same as `-mcrt=nix20`, under an older name: prefer `-mcrt=nix20` |
@@ -21,6 +21,8 @@ Pass the same `-mcrt=` when compiling and when linking. It picks the headers
 when compiling, and the startup code and libraries when linking, so an object
 compiled for one runtime and linked with another breaks quietly. Passing two
 runtimes is an error.
+
+[runtimes.md](runtimes.md) compares the runtimes.
 
 ## Addressing data
 
@@ -54,7 +56,16 @@ They load a4 with `___restore_a4` from the startup code, and keep the
 caller's. Pure programs (`-resident`) can't use them: a4 depends on which run
 of the program calls.
 
-## Code
+## Code model
+
+By default, code calls functions and reaches data by absolute address, which
+the loader relocates.
+
+`-mpcrel` makes every reference to a function or to data PC-relative, with a
+16-bit offset, so the code needs fewer relocations. Everything it references
+must be within 32 KB of it, and the data in the same hunk as the code:
+writable global variables in their own hunk fail, with the linker warning
+that a reloc "is out of range".
 
 `-msmall-code` keeps function addresses out of registers and makes the
 assembler reject a branch too far for a 16-bit displacement. It doesn't
@@ -88,9 +99,16 @@ The `-ramiga-*` options need libnix (`-mcrt=nix20` or `-mcrt=nix13`).
 
 ## CPU and FPU
 
-Code runs on the 68000 by default. `-m68020`, `-m68030`, `-m68040` and
-`-m68060` (or `-mcpu=`) allow the instructions of that CPU, and the result
-no longer runs on a lesser one.
+Code runs on the 68000 by default. These options allow the instructions of
+a later CPU, and the result no longer runs on a lesser one:
+
+| option | the same as | code for |
+|---|---|---|
+| `-m68020-60` | | the 68020, tuned for the 68020 to 68060: fast on the A1200, A3000 and A4000, accelerated Amigas and emulators |
+| `-m68020` | `-march=68020`, `-mcpu=68020` | the 68020 |
+| `-m68030` | `-march=68030`, `-mcpu=68030` | the 68030 |
+| `-m68040` | `-march=68040`, `-mcpu=68040` | the 68040 |
+| `-m68060` | `-march=68060`, `-mcpu=68060` | the 68060 |
 
 Floating point code uses the FPU only with `-m68881` (or `-mhard-float`),
 also on the 68040 and 68060, whose FPU is built in. Without it, floating

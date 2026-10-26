@@ -6,6 +6,7 @@ specific to the Amiga.
 
 - [Compiler and linker options](options.md): choosing a C runtime, the data
   models, register arguments, libraries and devices, CPU and FPU.
+- [C runtimes](runtimes.md): libnix, newlib, clib2 and ixemul compared.
 
 ## Getting started
 
@@ -19,7 +20,8 @@ The options worth choosing early:
 
 - the C runtime, the same for every object and the link: `-mcrt=nix20`
   unless you need another one;
-- the CPU: `-m68020` or later for code that only runs on those, and
+- the CPU: `-m68020-60` for code that is fast on the A1200, A3000 and
+  A4000, accelerated Amigas and emulators, but no longer runs on a 68000;
   `-m68881` to use the FPU;
 - `-fbaserel` for smaller, faster code, or `-resident` for a program that
   can be made resident.
