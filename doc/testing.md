@@ -42,8 +42,6 @@ after changing sources.
 | target | what | fails on |
 |---|---|---|
 | `check-c` | gcc's `execute.exp` under the simulator | any FAIL, ERROR or XPASS, or no PASS at all |
-| `check-c-ixemul` | `check-c board=volamos-ixemul` | the same |
-| `check-c-fpu-baserel32` | `check-c board=volamos-fpu-baserel32` | the same |
 | `check-gcc-amigaos` | gcc's AmigaOS target tests (`amigaos.exp`) | the same |
 | `check-c++` | the whole g++ testsuite (slow) | ERROR lines, or no PASS at all: it has standing failures |
 | `check-newlib` | newlib's own testsuite, on both newlib boards | any FAIL, ERROR or XPASS, or a board without results |
@@ -52,7 +50,7 @@ after changing sources.
 | `check-binutils` | the gas and ld tests for the Amiga hunk format | a failing Amiga test, or none run |
 | `check-multilib` | the multilib list against the driver's | any difference |
 | `check-shell` | shellcheck on `scripts/` and `.github/scripts/` | any finding |
-| `check` | `check-multilib` to `check-c-fpu-baserel32` in turn | any of them |
+| `check` | `check-multilib` to `check-c` in turn, then `check-c` on `volamos-ixemul` and `volamos-fpu-baserel32`: what a release must pass | any of them |
 
 "No PASS at all" catches a misspelled `board=`, which runtest reports only
 in its log. Run the gcc testsuite targets one at a time, not together in

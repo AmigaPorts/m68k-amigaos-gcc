@@ -187,8 +187,8 @@ jobs:
       # What the job runs, as make arguments: a /ci comment's or a
       # dispatch's, else the label's, else (a release, a dispatch without
       # them, and the platform labels) the whole distribution and the fast
-      # tests.  The gcc testsuites run on volamos, or on vamos for
-      # comparison (simulator=vamos)
+      # tests, or make check with run_testsuite.  The gcc testsuites run on
+      # volamos, or on vamos for comparison (simulator=vamos)
       SIMULATOR: ${{ inputs.simulator || 'volamos' }}
       MAKE_ARGS: >-
         ${{ inputs.make_args
@@ -200,8 +200,8 @@ jobs:
             || needs.refs.outputs.label == 'ci-check-c++-baserel32' && 'check-c++ board=volamos-020-baserel32'
             || needs.refs.outputs.label == 'ci-check-c++-newlib' && 'check-c++ board=volamos-newlib'
             || needs.refs.outputs.label == 'ci-check-newlib' && 'check-newlib'
-            || format('all all-sdk vbcc vlink zlib libpng check-gdb-libpython package check-multilib check-binutils check-gcc-amigaos check-libnix check-libpthread{0}{1}{2}',
-                      inputs.run_testsuite && ' check-c check-c-ixemul check-c-fpu-baserel32' || '',
+            || format('all all-sdk vbcc vlink zlib libpng check-gdb-libpython package {0}{1}{2}',
+                      inputs.run_testsuite && 'check' || 'check-multilib check-binutils check-gcc-amigaos check-libnix check-libpthread',
                       inputs.run_cxx_testsuite && ' check-c++' || '',
                       (inputs.simulator || 'volamos') == 'vamos' && ' board=amigaos' || '') }}
       AMITOOLS_GIT: ${{ inputs.amitools_git || 'git+https://github.com/AmigaPorts/amitools.git' }}
