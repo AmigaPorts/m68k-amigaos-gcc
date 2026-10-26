@@ -7,22 +7,14 @@ lists them with one line each.
 
 ## Choosing a C runtime
 
-| option | runtime |
-|---|---|
-| `-mcrt=nix20` | libnix, for Kickstart 2.0 and later: a good choice for native Amiga programs, with smaller executables than newlib |
-| `-mcrt=nix13` | libnix for Kickstart 1.3, with the NDK 1.3 headers from `ndk13-include`; defines `__KICK13__` |
-| `-mcrt=newlib` | newlib, the default without `-mcrt=`: good POSIX and C99 compatibility and some C11 and C23 features, but larger executables |
-| `-mcrt=clib2` | clib2: unmaintained, with gaps and some known bugs; it will be removed in a later release unless someone takes it over |
-| `-mcrt=ixemul` | ixemul: needs `ixemul.library` at run time |
-| `-mcrt=library` | libnix as a shared library: needs `libnix4.library` at run time |
-| `-noixemul` | the same as `-mcrt=nix20`, under an older name: prefer `-mcrt=nix20` |
+`-mcrt=` picks the C runtime: newlib without it, and `-mcrt=nix20` (libnix)
+is the recommended choice for native Amiga programs.
+[runtimes.md](runtimes.md) lists all of them and compares them.
 
-Pass the same `-mcrt=` when compiling and when linking. It picks the headers
-when compiling, and the startup code and libraries when linking, so an object
-compiled for one runtime and linked with another breaks quietly. Passing two
-runtimes is an error.
-
-[runtimes.md](runtimes.md) compares the runtimes.
+**Important:** pass the same `-mcrt=` when compiling and when linking. It
+picks the headers when compiling, and the startup code and libraries when
+linking, so an object compiled for one runtime and linked with another
+breaks quietly.
 
 ## Addressing data
 
