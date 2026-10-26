@@ -157,20 +157,10 @@ in a project's development shell:
 `default-repos`; to build another branch, change the input's URL, for
 example `github:AmigaPorts/gcc/amiga13.4`.
 
-## Libraries/Runtimes
+## Using the toolchain
 
-You can select one of the various runtimes:
-
-* `-mcrt=nix20`: the libnix runtime for Kickstart 2.0+ (**recommended for most projects**)
-* `-mcrt=nix13`: the libnix static runtime for Kickstart 1.3 (also uses headers from `ndk13-include`)
-* `-mcrt=newlib`: the newlib-based static runtime for Kickstart 2.0+ (**default, but uncommon nowadays**)
-* `-mcrt=clib2`: the clib2 static runtime
-* `-mcrt=ixemul`: the ixemul dynamic runtime for Kickstart 2.0+, requires an installed `ixemul.library`
-* `-noixemul`: a misleadingly named alias for `-mcrt=nix20` (**deprecated**)
-
-Always specify the runtime, even when you want the default:
-it affects the include path as well as the libraries, so
-**compiling for one runtime and linking against another breaks quietly**.
+The [Amiga GCC User's Manual](doc/manual.md) covers the Amiga-specific
+options, such as choosing a C runtime with `-mcrt=`.
 
 ## Development
 
