@@ -1,0 +1,9 @@
+# volamos-020-baserel32 with an FPU fitted: 68881 instructions with a4-relative
+# operands, which neither volamos-fpu nor volamos-020-baserel32 produces, and the
+# libb32/libm020/libm881 multilib.
+load_board_description "volamos-020-baserel32"
+
+unset_board_info cflags
+set_board_info cflags "-mcrt=nix20 -m68020 -m68881 -fbaserel32"
+unset_board_info sim,options
+set_board_info sim,options "$volamos_options --fpu"
