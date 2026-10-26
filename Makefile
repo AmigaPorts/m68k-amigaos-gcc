@@ -1957,6 +1957,13 @@ check:
 	@$(MAKE) --no-print-directory check-libnix
 	@$(MAKE) --no-print-directory check-libpthread
 	@$(MAKE) --no-print-directory check-c
+	@$(MAKE) --no-print-directory check-c-ixemul
+
+# check-c on the ixemul board, for make check and the release workflow, whose make
+# arguments cannot give a second check-c its own board=
+.PHONY: check-c-ixemul
+check-c-ixemul:
+	@$(MAKE) --no-print-directory check-c board=volamos-ixemul
 
 # The gas and ld dump tests for the hunk target run on the build machine under DejaGnu.
 # The gas m68k tests written for ELF expect % register syntax and fail on this target,
@@ -1997,15 +2004,18 @@ check-c-exp ?= 'execute.exp=*' \
 # The C suites are expected to be clean, so any FAIL, ERROR or XPASS fails the target.
 # UNRESOLVED is tolerated: DejaGnu cannot tell whether the "amiga" object format
 # supports weak symbols, so dg-require-weak tests (20030125-1.c) come out unresolved.
+# On a board other than volamos the results are named after it, so that make check
+# keeps both runs: gcc-execute-volamos-ixemul.sum, check-c-volamos-ixemul.summary.txt.
+check-c-board = $(if $(filter volamos,$(board)),,-$(board))
 .PHONY: check-c
 check-c: $(MIN_IF_MISSING) $(BOARD_SIM_PREREQ)
 	@ln -sfn $(PREFIX)/$(TARGET)/libnix $(BUILD)/gcc/$(TARGET)/libnix
 	$(L0)"check execute.exp"$(L1)$(MAKE) -C $(BUILD)/gcc check-gcc-c "RUNTESTFLAGS=--target_board=$(board) $(strip $(check-c-exp))$(RUNTEST_SIM)"$(L2)
-	@cp -f $(TESTSUITE)/gcc.sum $(TESTSUITE)/gcc-execute.sum; cp -f $(TESTSUITE)/gcc.log $(TESTSUITE)/gcc-execute.log
-	@{ echo '----- execute.exp -----'; grep '^# of' $(TESTSUITE)/gcc-execute.sum || echo '(no tests run)'; grep -E '^(FAIL|ERROR|XPASS)' $(TESTSUITE)/gcc-execute.sum || true; } | tee $@.summary.txt
-	@echo "results: $(TESTSUITE)/gcc-execute.{sum,log}"
-	@grep -q '^# of expected passes' $(TESTSUITE)/gcc-execute.sum
-	@! grep -qE '^(FAIL|ERROR|XPASS)' $(TESTSUITE)/gcc-execute.sum
+	@cp -f $(TESTSUITE)/gcc.sum $(TESTSUITE)/gcc-execute$(check-c-board).sum; cp -f $(TESTSUITE)/gcc.log $(TESTSUITE)/gcc-execute$(check-c-board).log
+	@{ echo '----- execute.exp $(board) -----'; grep '^# of' $(TESTSUITE)/gcc-execute$(check-c-board).sum || echo '(no tests run)'; grep -E '^(FAIL|ERROR|XPASS)' $(TESTSUITE)/gcc-execute$(check-c-board).sum || true; } | tee $@$(check-c-board).summary.txt
+	@echo "results: $(TESTSUITE)/gcc-execute$(check-c-board).{sum,log}"
+	@grep -q '^# of expected passes' $(TESTSUITE)/gcc-execute$(check-c-board).sum
+	@! grep -qE '^(FAIL|ERROR|XPASS)' $(TESTSUITE)/gcc-execute$(check-c-board).sum
 
 # A no-op on gcc branches that predate amigaos.exp, such as amiga6.
 .PHONY: check-gcc-amigaos

@@ -42,6 +42,7 @@ after changing sources.
 | target | what | fails on |
 |---|---|---|
 | `check-c` | gcc's `execute.exp` under the simulator | any FAIL, ERROR or XPASS, or no PASS at all |
+| `check-c-ixemul` | `check-c board=volamos-ixemul` | the same |
 | `check-gcc-amigaos` | gcc's AmigaOS target tests (`amigaos.exp`) | the same |
 | `check-c++` | the whole g++ testsuite (slow) | ERROR lines, or no PASS at all: it has standing failures |
 | `check-newlib` | newlib's own testsuite, on both newlib boards | any FAIL, ERROR or XPASS, or a board without results |
@@ -50,7 +51,7 @@ after changing sources.
 | `check-binutils` | the gas and ld tests for the Amiga hunk format | a failing Amiga test, or none run |
 | `check-multilib` | the multilib list against the driver's | any difference |
 | `check-shell` | shellcheck on `scripts/` and `.github/scripts/` | any finding |
-| `check` | `check-multilib` to `check-c` in turn | any of them |
+| `check` | `check-multilib` to `check-c-ixemul` in turn | any of them |
 
 "No PASS at all" catches a misspelled `board=`, which runtest reports only
 in its log. Run the gcc testsuite targets one at a time, not together in
@@ -84,7 +85,7 @@ top directory, and names its `.sum` and `.log` files on a `results:` line:
 
 | target | results |
 |---|---|
-| `check-c` | `build-*/gcc/gcc/testsuite/gcc/gcc-execute.{sum,log}` |
+| `check-c` | `build-*/gcc/gcc/testsuite/gcc/gcc-execute.{sum,log}`, or `gcc-execute-<board>.{sum,log}` on another board |
 | `check-gcc-amigaos` | `build-*/gcc/gcc/testsuite/gcc/gcc-amigaos.{sum,log}` |
 | `check-c++` | `build-*/gcc/gcc/testsuite/g++/g++.{sum,log}` |
 | `check-newlib` | `build-*/newlib/newlib/testsuite/<board>/newlib.{sum,log}` |
