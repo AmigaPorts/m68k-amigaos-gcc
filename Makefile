@@ -1778,8 +1778,9 @@ ixemul:	$(BUILD)/ixemul/_done
 # The SDK is the gg/ tree of the ixemul release archive: headers, startup
 # files and the libc.a stubs.  The archive also carries ixemul.library and
 # ixnet.library for each CPU, the ixpipe handler and the sources; only the
-# 68000 libraries are installed, in ixemul/libs, for the volamos-ixemul
-# testsuite board.  ranlib: the libc.a files of 80.1 ship with a stale symbol
+# 68000 libraries are installed, in ixemul/libs, and the 68020 FPU ones, in
+# ixemul/libs-020fpu, for the volamos-ixemul and volamos-ixemul-fpu testsuite
+# boards.  ranlib: the libc.a files of 80.1 ship with a stale symbol
 # index that misses poll.o, so poll() did not link.
 #
 # patches/ixemul has the headers the SDK lacks or gets wrong:
@@ -1789,13 +1790,17 @@ IXEMUL_HEADERS = $(addprefix patches/ixemul/,inttypes.h assert.h)
 
 $(BUILD)/ixemul/_done: $(DOWNLOAD)/$(ixemul-sdk_ARCHIVE) $(IXEMUL_HEADERS) $(BUILD)/binutils/_done | $(LHA_PREREQ)
 	mkdir -p $(BUILD)/ixemul $(PREFIX)/$(TARGET)/ixemul
-	$(L0)"unpacking $(ixemul-sdk_ARCHIVE)"$(L1) cd $(BUILD)/ixemul && $(LHA_FOR_BUILD) xf $(DOWNLOAD)/$(ixemul-sdk_ARCHIVE) 'gg/include/*' 'gg/lib/*' Sys/libs/ixemul000.library Sys/libs/ixnet000.library $(L2)
+	$(L0)"unpacking $(ixemul-sdk_ARCHIVE)"$(L1) cd $(BUILD)/ixemul && $(LHA_FOR_BUILD) xf $(DOWNLOAD)/$(ixemul-sdk_ARCHIVE) 'gg/include/*' 'gg/lib/*' Sys/libs/ixemul000.library Sys/libs/ixnet000.library Sys/libs/ixemul020-fpu.library Sys/libs/ixnet020.library $(L2)
 	$(L0)"installing ixemul-sdk"$(L1) rsync -a --no-group --delete $(BUILD)/ixemul/gg/ $(PREFIX)/$(TARGET)/ixemul/ $(L2)
 	$(TARGET_RANLIB_FOR_BUILD) $(PREFIX)/$(TARGET)/ixemul/lib/libc.a $(PREFIX)/$(TARGET)/ixemul/lib/libc_p.a $(PREFIX)/$(TARGET)/ixemul/lib/libb/libc.a $(PREFIX)/$(TARGET)/ixemul/lib/libb32/libm020/libc.a
 	cp $(IXEMUL_HEADERS) $(PREFIX)/$(TARGET)/ixemul/include/
 	mkdir -p $(PREFIX)/$(TARGET)/ixemul/libs
 	cp $(BUILD)/ixemul/Sys/libs/ixemul000.library $(PREFIX)/$(TARGET)/ixemul/libs/ixemul.library
 	cp $(BUILD)/ixemul/Sys/libs/ixnet000.library $(PREFIX)/$(TARGET)/ixemul/libs/ixnet.library
+	# -m68881 code expects doubles back in fp0, which only the FPU libraries return
+	mkdir -p $(PREFIX)/$(TARGET)/ixemul/libs-020fpu
+	cp $(BUILD)/ixemul/Sys/libs/ixemul020-fpu.library $(PREFIX)/$(TARGET)/ixemul/libs-020fpu/ixemul.library
+	cp $(BUILD)/ixemul/Sys/libs/ixnet020.library $(PREFIX)/$(TARGET)/ixemul/libs-020fpu/ixnet.library
 	# ixemul's libc.a has the math functions, and the SDK ships no libm.a, so
 	# -lm fell through to newlib's libm.a and failed on _impure_ptr.  An
 	# empty archive in ixemul/lib, which -mcrt=ixemul searches first,
@@ -1913,8 +1918,9 @@ BOARD_SIM_PREREQ = $(if $(and $(filter volamos%,$(board)),$(if $(SIM),,y)),$(PRE
 # vamos/volamos as the simulator.
 export DEJAGNU ?= $(CURDIR)/dejagnu-site.exp
 
-# The ixemul.library the volamos-ixemul board runs the tests with.
+# The ixemul.library the volamos-ixemul and volamos-ixemul-fpu boards run the tests with.
 export IXEMUL_LIBS ?= $(PREFIX)/$(TARGET)/ixemul/libs
+export IXEMUL_FPU_LIBS ?= $(PREFIX)/$(TARGET)/ixemul/libs-020fpu
 
 # Directory where dejagnu writes gcc.sum / gcc.log.
 TESTSUITE = $(BUILD)/gcc/gcc/testsuite/gcc
