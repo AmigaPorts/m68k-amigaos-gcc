@@ -27,7 +27,7 @@ on jenkins.amigadev.com, including the AmigaOS-native one, from the
 ## /ci comments
 
 ```
-/ci <platform> [make <target>... [VAR=value]...]
+/ci <platform> [<module>=<branch>...] [make <target>... [VAR=value]...]
 ```
 
 A comment that starts with `/ci` builds the pull request. Each `/ci` line
@@ -38,7 +38,11 @@ is a separate job, and they all run in parallel. For example:
 /ci macos
 /ci linux-arm make check-c board=volamos-newlib
 /ci linux-arm make all all-sdk libpng check-c++
+/ci linux binutils=amiga-2.47 make check-c
 ```
+
+A `<module>=<branch>` word builds that module, named as in `default-repos`,
+from another branch of its repository.
 
 The words after `make` go to make as they are. Without `make`, the platform
 builds the whole distribution and runs the fast tests:
