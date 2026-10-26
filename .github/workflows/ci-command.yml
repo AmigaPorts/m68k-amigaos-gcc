@@ -70,11 +70,14 @@ jobs:
       # checks it out, a module builds it as its projects/<module>
       checkout_repo: ${{ inputs.module == '' && github.repository || 'AmigaPorts/m68k-amigaos-gcc' }}
       checkout_ref: ${{ inputs.module == '' && format('refs/pull/{0}/merge', github.event.issue.number) || 'master' }}
+      # and the /ci line's <module>=<branch> words
       repos: >-
-        ${{ inputs.module != ''
-            && format('{0}={1}/{2}.git#refs/pull/{3}/merge', inputs.module, github.server_url, github.repository,
-                      github.event.issue.number)
-            || '' }}
+        ${{ format('{0} {1}',
+                   inputs.module != ''
+                   && format('{0}={1}/{2}.git#refs/pull/{3}/merge', inputs.module, github.server_url, github.repository,
+                             github.event.issue.number)
+                   || '',
+                   matrix.repos) }}
 
   report:
     needs: [command, build]
