@@ -1944,12 +1944,18 @@ check:
 	$(MAKE) --no-print-directory check-libpthread
 	$(MAKE) --no-print-directory check-c
 	$(MAKE) --no-print-directory check-c-ixemul
+	$(MAKE) --no-print-directory check-c-fpu-baserel32
 
-# check-c on the ixemul board, for make check and the release workflow, whose make
+# check-c on other boards, for make check and the release workflow, whose make
 # arguments cannot give a second check-c its own board=
 .PHONY: check-c-ixemul
 check-c-ixemul:
 	$(MAKE) --no-print-directory check-c board=volamos-ixemul
+
+# 68020 code with FPU instructions on a4-relative data, in one run
+.PHONY: check-c-fpu-baserel32
+check-c-fpu-baserel32:
+	$(MAKE) --no-print-directory check-c board=volamos-fpu-baserel32
 
 # The gas and ld dump tests for the hunk target run on the build machine under DejaGnu.
 # The gas m68k tests written for ELF expect % register syntax and fail on this target,
