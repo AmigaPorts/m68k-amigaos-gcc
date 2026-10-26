@@ -74,7 +74,9 @@ with and the simulator that runs them. `board=` picks one for `check-c`,
 | `volamos-fpu-baserel32` | 68020 + 68881, `-fbaserel32` | libnix |
 | `volamos-newlib` | 68000 | newlib |
 | `volamos-newlib-fpu` | 68020 + 68881 | newlib |
+| `volamos-newlib-fpu-baserel32` | 68020 + 68881, `-fbaserel32` | newlib |
 | `volamos-ixemul` | 68000 | ixemul |
+| `volamos-ixemul-fpu` | 68020 + 68881, with the 68020 FPU ixemul.library | ixemul |
 | `amigaos`, `amigaos-020`, `amigaos-baserel`, ... | as the `volamos*` board of the same name | under vamos |
 
 `SIM=/path/to/volamos` runs a volamos other than the one in `$PREFIX/bin`,

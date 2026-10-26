@@ -1,0 +1,18 @@
+# volamos-ixemul with an FPU fitted: 68020/68881 code linked against
+# ixemul, run with the 68020 FPU ixemul.library from IXEMUL_FPU_LIBS:
+# -m68881 code expects doubles back in fp0, which the 68000 library
+# returns in d0/d1.
+load_board_description "volamos-ixemul"
+
+if {![info exists ::env(IXEMUL_FPU_LIBS)]} {
+    error "volamos-ixemul-fpu: IXEMUL_FPU_LIBS (the FPU ixemul.library directory) is not set"
+}
+if {![file isdirectory $::env(IXEMUL_FPU_LIBS)]} {
+    error "volamos-ixemul-fpu: $::env(IXEMUL_FPU_LIBS) is missing: make ixemul installs it"
+}
+
+unset_board_info cflags
+set_board_info cflags "-mcrt=ixemul -mcpu=68020 -m68881"
+unset_board_info sim,options
+regsub -- {--cpu \S+} $volamos_options {--cpu 68020} volamos_options
+set_board_info sim,options "$volamos_options --fpu --libs-dir $::env(IXEMUL_FPU_LIBS)"
