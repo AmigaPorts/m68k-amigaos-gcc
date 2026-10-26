@@ -2063,11 +2063,14 @@ newlib-site-exp: $(MIN_IF_MISSING) $(PREFIX)/bin/volamos
 	@rm -f $(BUILD)/newlib/newlib/site.exp
 	@$(MAKE) --no-print-directory -C $(BUILD)/newlib/newlib site.exp build_alias=`$(BUILD_CC) -dumpmachine` >/dev/null
 
+# Each board and .exp file runs in its own directory, in parallel: runtest reads
+# newlib's site.exp from there, and DEJAGNU_TMPDIR (see dejagnu-site.exp) keeps
+# the test executables apart, or the 68000 board would run the FPU board's.
 define newlib-check-rule
 $(call newlib-check-dir,$(1),$(2))/newlib.sum: newlib-site-exp
-	@mkdir -p $$(@D)
-	@sed 's|^set tmpdir .*|set tmpdir $$(@D)|' $(BUILD)/newlib/newlib/site.exp >$$(@D)/site.exp
-	@cd $$(@D) && runtest --tool newlib --srcdir $(NEWLIB_TESTSRC) --target_board=$(1) \
+	mkdir -p $$(@D)
+	cp $(BUILD)/newlib/newlib/site.exp $$(@D)/site.exp
+	cd $$(@D) && DEJAGNU_TMPDIR=$$(@D) runtest --tool newlib --srcdir $(NEWLIB_TESTSRC) --target_board=$(1) \
 	  --outdir $$(@D) CC_FOR_TARGET=$(PREFIX)/bin/$(TARGET)-gcc $(2) >runtest.out 2>&1 || true
 endef
 $(foreach b,$(NEWLIB_BOARDS),$(foreach e,$(NEWLIB_EXPS),$(eval $(call newlib-check-rule,$(b),$(e)))))
