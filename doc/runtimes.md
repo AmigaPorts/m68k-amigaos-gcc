@@ -51,14 +51,14 @@ The executables built with `-Os`, stripped, in bytes:
 | locale | `locale.library` | "C" and "C.UTF-8" | "C" | `locale.library` |
 | wide characters and UTF-8 | no | yes, in "C.UTF-8" | no | no |
 | threads | `-pthread` | `-pthread` | no | no |
-| minimum stack check | `__stack`, with `__stkinit` | no | `__stack` | `__stack_size` |
-| stack extension | no | no | no | no |
+| stack overflow check | no | no | no | no |
+| stack growth at startup | `__stack`, with `__stkinit` | no | `__stack` | `__stack_size` |
 | C++ | yes | yes | mostly broken | without the standard library |
 | Workbench startup | yes | yes | yes | yes |
 
-The minimum stack check gives the program a larger stack at startup when it
-gets less than the variable says. Nothing extends the stack while the
-program runs: the compiler has no `-mstackextend` or `-mstackcheck`.
+Stack growth at startup gives the program a larger stack when it gets less
+than the variable says. Nothing checks or extends the stack while the
+program runs: the compiler has no `-mstackcheck` or `-mstackextend`.
 
 The details are in each runtime's section below.
 
