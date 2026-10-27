@@ -417,7 +417,9 @@ CXXFLAGS_FOR_TARGET ?= $(CFLAGS_FOR_TARGET)
 E:=CFLAGS="$(CFLAGS)" CXXFLAGS="$(CXXFLAGS)" LDFLAGS="$(LDFLAGS)" CFLAGS_FOR_BUILD="$(BUILD_CFLAGS)" CXXFLAGS_FOR_BUILD="$(BUILD_CXXFLAGS)" LDFLAGS_FOR_BUILD="$(BUILD_LDFLAGS)" CFLAGS_FOR_TARGET="$(CFLAGS_FOR_TARGET)" CXXFLAGS_FOR_TARGET="$(CXXFLAGS_FOR_TARGET)"
 endif
 
-THREADS ?= no
+# gcc's thread model: posix uses libpthread for C++ thread_local, std::thread,
+# the static-local guards and libgcc's emutls; no is the single-task model.
+THREADS ?= posix
 
 # =================================================
 # determine exe extension for cygwin
@@ -513,7 +515,7 @@ help:
 	@echo ""
 	@echo "Parameters:"
 	@echo "PREFIX=<path>            install directory; required once, the build tree remembers it"
-	@echo "THREADS=posix            build gcc with thread support"
+	@echo "THREADS=no               build gcc without thread support (default: posix)"
 	@echo "ADDLANG=lang,lang...     configure additional language frontends"
 
 # =================================================
