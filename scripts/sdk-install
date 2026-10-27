@@ -1,4 +1,13 @@
 #!/bin/bash
+# Install an SDK described by sdk/<sdk>.sdk into <prefix>, for make all-sdk.
+#
+#   scripts/sdk-install install <sdk> <prefix>
+
+if [ $# -ne 3 ] || [ "$1" != install ]; then
+	echo "usage: $0 install <sdk> <prefix>" >&2
+	exit 2
+fi
+
 export PATH=$PATH:$3/bin
 sdk_descriptor="sdk/$2.sdk"
 sdk_prefix=$3
