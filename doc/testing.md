@@ -45,6 +45,7 @@ after changing sources.
 | `check-gcc-amigaos` | gcc's AmigaOS target tests (`amigaos.exp`) | the same |
 | `check-c++` | the whole g++ testsuite (slow) | ERROR lines, or no PASS at all: it has standing failures |
 | `check-newlib` | newlib's own testsuite, on both newlib boards | any FAIL, ERROR or XPASS, or a board without results |
+| `check-libc-test` | the math tests of [libc-test](https://wiki.musl-libc.org/libc-test.html), musl's testsuite, on one runtime (`libc-test-crt=nix20`, and `libc-test-cflags=` for the CPU and FPU); not part of `check`, it has known failures | a test that fails or doesn't build |
 | `check-libnix` | libnix's target tests | any failure |
 | `check-libpthread` | builds libpthread's test programs (the simulator cannot run them) | a build failure |
 | `check-binutils` | the gas and ld tests for the Amiga hunk format | a failing Amiga test, or none run |
@@ -91,6 +92,7 @@ top directory, and names its `.sum` and `.log` files on a `results:` line:
 | `check-gcc-amigaos` | `build-*/gcc/gcc/testsuite/gcc/gcc-amigaos.{sum,log}` |
 | `check-c++` | `build-*/gcc/gcc/testsuite/g++/g++.{sum,log}` |
 | `check-newlib` | `build-*/newlib/newlib/testsuite/<board>/newlib.{sum,log}` |
+| `check-libc-test` | `build-*/libc-test/<runtime><cflags>/summary.txt`, and a `<test>.log` per test |
 | `check-binutils` | `build-*/binutils/gas/testsuite/gas.{sum,log}`, `build-*/binutils/ld/ld.{sum,log}` |
 
 The `.log` has each test's command line and output. Search it for the
