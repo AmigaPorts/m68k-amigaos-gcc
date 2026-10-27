@@ -38,11 +38,12 @@ The executables built with `-Os`, stripped, in bytes:
 
 | | libnix | newlib | ixemul | clib2 |
 |---|---|---|---|---|
-| minimum Kickstart | 2.0; 1.3 with `-mcrt=nix13` | 2.0 | 2.04 | 2.04 |
+| minimum Kickstart | 2.0 (V36); 1.3 (V34) with `-mcrt=nix13` | 2.0 (V36) | 2.04 (V37) | 2.04 (V37) |
 | C99 math | all functions | all functions, with `-lm` | only the C89 functions | `double` and `float` functions |
 | `long double` math | computed in `double` | full precision | none | none |
 | `long long` | yes | yes | yes | 68020 and up only |
-| C11 and C23 library | little | some | none | none |
+| C11 library | none | `quick_exit()` | none | none |
+| C23 library | `strdup()`, `strndup()` | `strdup()`, `strndup()`, `memccpy()`, `<stdbit.h>` | `strdup()`, `strndup()`, `memccpy()` | `strdup()` |
 | POSIX files and directories | most | most | most | most |
 | `popen()`, `system()` | yes | no | yes | yes |
 | `fork()` | no | no | `vfork()` only | no |
@@ -50,8 +51,14 @@ The executables built with `-Os`, stripped, in bytes:
 | locale | `locale.library` | "C" and "C.UTF-8" | "C" | `locale.library` |
 | wide characters and UTF-8 | no | yes, in "C.UTF-8" | no | no |
 | threads | `-pthread` | `-pthread` | no | no |
+| minimum stack check | `__stack`, with `__stkinit` | no | `__stack` | `__stack_size` |
+| stack extension | no | no | no | no |
 | C++ | yes | yes | mostly broken | without the standard library |
 | Workbench startup | yes | yes | yes | yes |
+
+The minimum stack check gives the program a larger stack at startup when it
+gets less than the variable says. Nothing extends the stack while the
+program runs: the compiler has no `-mstackextend` or `-mstackcheck`.
 
 The details are in each runtime's section below.
 
