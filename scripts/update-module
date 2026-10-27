@@ -9,6 +9,11 @@
 
 set -euo pipefail
 
+if [ $# -ne 1 ]; then
+	echo "usage: $0 <checkout>" >&2
+	exit 2
+fi
+
 dir=$1
 name=$(basename "$dir")
 
