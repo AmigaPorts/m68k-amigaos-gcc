@@ -2125,38 +2125,22 @@ check-rust: $(BOARD_SIM_PREREQ)
 	@echo "results: $(RUSTTESTSUITE)/rust.{sum,log}"
 
 # libc-test, musl's testsuite: its math tests on one C runtime, built with
-# libc-test-cflags and run under volamos.  Not part of make check: they still
-# have failures to sort out.
+# libc-test-cflags and run under volamos, see scripts/libc-test.  Not part of
+# make check: they still have failures to sort out.
 #   make check-libc-test libc-test-crt=newlib libc-test-cflags="-m68020 -m68881"
-# libc-test's own Makefile builds and runs them, with three changes: config.mak
-# sets the flags, scripts/libc-test-run replaces runtest.exe, which needs fork(),
-# and libtest.a has only the math tests' helpers, as the rest need POSIX headers.
-# A test that fails to build shows as a FAIL too, as its run finds no program.
 LIBC_TEST_URL = https://repo.or.cz/libc-test.git
 libc-test-crt ?= nix20
 libc-test-cflags ?=
-LIBC_TEST_OUT = $(BUILD)/libc-test/$(libc-test-crt)$(subst $() ,,$(libc-test-cflags))
-LIBC_TEST_SIM = $(if $(findstring -m68881,$(libc-test-cflags)),--cpu 68020 --fpu,$(if $(filter -m6802% -m6803% -m6804% -m6806%,$(libc-test-cflags)),--cpu 68020))
 
 $(PROJECTS)/libc-test/Makefile:
 	cd $(PROJECTS) && git clone --depth 1 $(LIBC_TEST_URL)
 
+# + for the jobserver: libc-test's make, which the script runs, shares this one's -j
 .PHONY: check-libc-test
 check-libc-test: $(PROJECTS)/libc-test/Makefile $(MIN_IF_MISSING) $(PREFIX)/bin/volamos
-	rm -rf $(LIBC_TEST_OUT)
-	printf '%s\n' 'CFLAGS += -pipe -std=c99 -D_POSIX_C_SOURCE=200809L -w -fno-builtin -frounding-math $$(AMIGA_CFLAGS)' \
-	  'LDFLAGS += $$(AMIGA_CFLAGS)' 'LDLIBS += -lm' >$(PROJECTS)/libc-test/config.mak
-	$(MAKE) -k -C $(PROJECTS)/libc-test B=$(LIBC_TEST_OUT) \
-	  CC="$(PREFIX)/bin/$(TARGET)-gcc -mcrt=$(libc-test-crt)" AMIGA_CFLAGS="$(libc-test-cflags)" \
-	  AR=$(PREFIX)/bin/$(TARGET)-ar RANLIB=$(PREFIX)/bin/$(TARGET)-ranlib \
-	  RUN_TEST="$(CURDIR)/scripts/libc-test-run $(PREFIX)/bin/volamos $(LIBC_TEST_SIM)" \
-	  common.OBJS="$(LIBC_TEST_OUT)/common/mtest.o $(LIBC_TEST_OUT)/common/print.o" \
-	  $(LIBC_TEST_OUT)/math/REPORT >$(LIBC_TEST_OUT).log 2>&1 || true
-	{ echo '----- libc-test math $(libc-test-crt) $(libc-test-cflags) -----'; \
-	  echo "$$(ls $(PROJECTS)/libc-test/src/math/*.c | wc -l) tests, $$(grep -c '^FAIL' $(LIBC_TEST_OUT)/math/REPORT) failed:"; \
-	  sed -n 's|^FAIL .*/math/\([^ ]*\)\.exe .*|\1|p' $(LIBC_TEST_OUT)/math/REPORT | paste -sd' '; } | tee $@.summary.txt
-	echo "results: $(LIBC_TEST_OUT)/math/REPORT, and <test>.err for each test"
-	! grep -q '^FAIL' $(LIBC_TEST_OUT)/math/REPORT
+	+set -o pipefail; scripts/libc-test $(PROJECTS)/libc-test \
+	  $(BUILD)/libc-test/$(libc-test-crt)$(subst $() ,,$(libc-test-cflags)) \
+	  $(PREFIX) $(libc-test-crt) $(libc-test-cflags) | tee $@.summary.txt
 
 
 # =================================================

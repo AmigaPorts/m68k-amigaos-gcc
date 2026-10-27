@@ -1,0 +1,66 @@
+#!/bin/bash
+# Run libc-test's math tests on one C runtime under volamos, for make check-libc-test.
+#
+#   scripts/libc-test <libc-test> <outdir> <prefix> <crt> [cflags...]
+#
+# libc-test's own Makefile builds and runs the tests, in parallel under the
+# jobserver of the make that calls this script, with three changes: a config.mak
+# for the flags; RUN_TEST runs each test with this script's --run mode, in place
+# of runtest.exe, which needs fork(); and libtest.a has only the math tests'
+# helpers, as the others need POSIX headers.  Prints the failures, a test that
+# does not build among them, and exits with status 1 if there are any.
+#
+#   scripts/libc-test --run <volamos> [volamos options...] <test.exe>
+#
+# runs one test, and prints its output and, if it fails or crashes, a FAIL line
+# as runtest.exe does: libc-test's REPORT keeps only the standard output.
+
+usage() {
+	echo "usage: $0 <libc-test> <outdir> <prefix> <crt> [cflags...]" >&2
+	echo "       $0 --run <volamos> [volamos options...] <test.exe>" >&2
+	exit 2
+}
+
+if [ "${1-}" = --run ]; then
+	[ $# -ge 3 ] || usage
+	volamos=$2
+	shift 2
+	exe=${!#}
+	timeout 300 "$volamos" --stack 4096K "${@:1:$#-1}" "$exe" 2>&1
+	status=$?
+	[ $status -eq 0 ] || echo "FAIL $exe [status $status]"
+	exit 0
+fi
+
+[ $# -ge 4 ] || usage
+src=$1 out=$2 bin=$3/bin crt=$4
+shift 4
+cflags="$*"
+
+sim=()
+case " $cflags " in
+*" -m68881 "*) sim=(--cpu 68020 --fpu) ;;
+*" -m6802"* | *" -m6803"* | *" -m6804"* | *" -m6806"*) sim=(--cpu 68020) ;;
+esac
+
+rm -rf "$out"
+mkdir -p "$out"
+cat >"$src/config.mak" <<EOF
+CFLAGS += -pipe -std=c99 -D_POSIX_C_SOURCE=200809L -w -fno-builtin -frounding-math $cflags
+LDFLAGS += $cflags
+LDLIBS += -lm
+EOF
+
+make -k -C "$src" B="$out" \
+	CC="$bin/m68k-amigaos-gcc -mcrt=$crt" AR="$bin/m68k-amigaos-ar" RANLIB="$bin/m68k-amigaos-ranlib" \
+	RUN_TEST="$(realpath "$0") --run $bin/volamos ${sim[*]}" \
+	common.OBJS="$out/common/mtest.o $out/common/print.o" \
+	"$out/math/REPORT" >"$out.log" 2>&1
+
+report=$out/math/REPORT
+failed=$(sed -n 's|^FAIL .*/math/\([^ ]*\)\.exe .*|\1|p' "$report")
+echo "----- libc-test math $crt $cflags -----"
+echo "$(find "$src/src/math" -maxdepth 1 -name '*.c' | wc -l) tests, $(echo -n "$failed" | grep -c '') failed:"
+echo "$failed" | paste -sd' '
+echo "results: $report, and <test>.err for each test"
+[ -z "$failed" ]
