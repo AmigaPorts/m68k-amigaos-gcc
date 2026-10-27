@@ -8,7 +8,8 @@ specific to the Amiga.
 
 - [Compiler and linker options](options.md): Amiga-specific options to control code generation, register arguments and libraries.
 - [C runtimes](runtimes.md): libnix, newlib, clib2 and ixemul compared.
-- [Keywords, attributes and predefined macros](attributes.md): `__chip`, `__saveds`, `__regargs` and friends, registers for arguments, and the macros that tell runtimes and CPUs apart.
+- [Keywords and attributes](attributes.md): `__chip`, `__saveds`, `__regargs` and friends, and registers for arguments.
+- [Predefined macros](predefines.md): the macros that tell runtimes and CPUs apart.
 
 <br clear="right" />
 
