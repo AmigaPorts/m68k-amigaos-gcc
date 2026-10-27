@@ -1,16 +1,17 @@
 # Amiga GCC User's Manual
 
-<p align="center"><img src="cover.png" width="424" alt="The GNU bursting out of an Amiga monitor at a knight in armour typing at the keyboard"></p>
+<img src="cover.png" width="282" align="right" alt="The GNU bursting out of an Amiga monitor at a knight in armour typing at the keyboard">
 
 Using the m68k-amigaos toolchain to build programs, libraries and devices for
 AmigaOS. GCC's own manual covers everything else; these pages cover what is
 specific to the Amiga.
 
-- [Compiler and linker options](options.md): choosing a C runtime, the data
-  models, register arguments, libraries and devices, CPU and FPU.
+- [Compiler and linker options](options.md): Amiga-specific options to control code generation, register arguments and libraries.
 - [C runtimes](runtimes.md): libnix, newlib, clib2 and ixemul compared.
 
-## Getting started
+<br clear="right" />
+
+### Quick start
 
 A program for Kickstart 2.0 and later, on any 68000 Amiga:
 
