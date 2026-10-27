@@ -2124,6 +2124,27 @@ check-rust: $(BOARD_SIM_PREREQ)
 	@{ echo '----- rust -----'; grep '^# of' $(RUSTTESTSUITE)/rust.sum || echo '(no tests run)'; grep -E '^(FAIL|ERROR|XPASS)' $(RUSTTESTSUITE)/rust.sum || true; } | tee $@.summary.txt
 	@echo "results: $(RUSTTESTSUITE)/rust.{sum,log}"
 
+# libc-test, musl's testsuite: its math tests on one C runtime, built with
+# libc-test-cflags and run under volamos.  Not part of make check: they still
+# have failures to sort out, see scripts/libc-test-math.
+#   make check-libc-test libc-test-crt=newlib libc-test-cflags="-m68020 -m68881"
+LIBC_TEST_URL = https://repo.or.cz/libc-test.git
+libc-test-crt ?= nix20
+libc-test-cflags ?=
+LIBC_TEST_OUT = $(BUILD)/libc-test/$(libc-test-crt)$(subst $() ,,$(libc-test-cflags))
+
+$(PROJECTS)/libc-test/Makefile:
+	cd $(PROJECTS) && git clone --depth 1 $(LIBC_TEST_URL)
+
+.PHONY: check-libc-test
+check-libc-test: $(PROJECTS)/libc-test/Makefile $(MIN_IF_MISSING) $(PREFIX)/bin/volamos
+	rm -rf $(LIBC_TEST_OUT)
+	{ echo '----- libc-test math $(libc-test-crt) $(libc-test-cflags) -----'; \
+	  scripts/libc-test-math $(PROJECTS)/libc-test $(LIBC_TEST_OUT) $(PREFIX) $(libc-test-crt) $(libc-test-cflags) || true; \
+	  grep -v '^PASS ' $(LIBC_TEST_OUT)/summary.txt || true; } | tee $@.summary.txt
+	echo "results: $(LIBC_TEST_OUT)/{summary.txt,<test>.log}"
+	! grep -q -v '^PASS ' $(LIBC_TEST_OUT)/summary.txt
+
 
 # =================================================
 # info
