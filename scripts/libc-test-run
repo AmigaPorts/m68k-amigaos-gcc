@@ -5,6 +5,11 @@
 #
 #   scripts/libc-test-run <volamos> [volamos options...] <test.exe>
 
+if [ $# -lt 2 ]; then
+	echo "usage: $0 <volamos> [volamos options...] <test.exe>" >&2
+	exit 2
+fi
+
 volamos=$1
 shift
 exe=${!#}
