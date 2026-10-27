@@ -1,0 +1,13 @@
+#!/bin/bash
+# Run one libc-test program under volamos, for make check-libc-test, in place of
+# libc-test's runtest.exe, which needs fork(): it prints the test's output and,
+# when the test fails or crashes, a FAIL line as runtest.exe does.
+#
+#   scripts/libc-test-run <volamos> [volamos options...] <test.exe>
+
+volamos=$1
+shift
+exe=${!#}
+timeout 300 "$volamos" --stack 4096K "${@:1:$#-1}" "$exe" 2>&1
+status=$?
+[ $status -eq 0 ] || echo "FAIL $exe [status $status]"
