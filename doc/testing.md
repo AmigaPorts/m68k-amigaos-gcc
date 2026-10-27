@@ -92,7 +92,7 @@ top directory, and names its `.sum` and `.log` files on a `results:` line:
 | `check-gcc-amigaos` | `build-*/gcc/gcc/testsuite/gcc/gcc-amigaos.{sum,log}` |
 | `check-c++` | `build-*/gcc/gcc/testsuite/g++/g++.{sum,log}` |
 | `check-newlib` | `build-*/newlib/newlib/testsuite/<board>/newlib.{sum,log}` |
-| `check-libc-test` | `build-*/libc-test/<runtime><cflags>/summary.txt`, and a `<test>.log` per test |
+| `check-libc-test` | `build-*/libc-test/<runtime><cflags>/math/REPORT`, and a `<test>.err` per test |
 | `check-binutils` | `build-*/binutils/gas/testsuite/gas.{sum,log}`, `build-*/binutils/ld/ld.{sum,log}` |
 
 The `.log` has each test's command line and output. Search it for the
