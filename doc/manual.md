@@ -1,5 +1,7 @@
 # Amiga GCC User's Manual
 
+<p align="center"><img src="cover.png" width="424" alt="The GNU bursting out of an Amiga monitor at a knight in armour typing at the keyboard"></p>
+
 Using the m68k-amigaos toolchain to build programs, libraries and devices for
 AmigaOS. GCC's own manual covers everything else; these pages cover what is
 specific to the Amiga.
