@@ -305,9 +305,13 @@ jobs:
       # VAR=value words go to every target.
       - name: make ${{ env.MAKE_ARGS }}
         run: |
-          vars=$(printf '%s\n' $MAKE_ARGS | grep = || true)
-          for t in $(printf '%s\n' $MAKE_ARGS | grep -v =); do
-            make -j $NPROC $t $vars
+          # split as a shell would, so that a quoted VAR="a b" keeps its spaces
+          vars=() targets=()
+          while IFS= read -r w; do
+            case $w in *=*) vars+=("$w") ;; *) targets+=("$w") ;; esac
+          done < <(python3 -c 'import shlex, sys; [print(w) for w in shlex.split(sys.argv[1])]' "$MAKE_ARGS")
+          for t in "${targets[@]}"; do
+            make -j $NPROC "$t" ${vars[@]+"${vars[@]}"}
           done
 
       - name: Testsuite summaries

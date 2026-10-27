@@ -70,9 +70,14 @@ modules = re.findall(r"^([a-z0-9-]+)\s", (Path(__file__).parent.parent.parent / 
 # One job per /ci line.
 jobs = []
 for line in sys.stdin.read().splitlines():
-    words = line.split()
-    if not words or words[0] != "/ci":
+    if line.split()[:1] != ["/ci"]:
         continue
+    # Split as a shell would, so that a quoted make argument keeps its spaces:
+    # make_args goes on re-quoted, and toolchain.yml splits it the same way.
+    try:
+        words = shlex.split(line)
+    except ValueError as e:
+        fail(f"`{line}`: {e}. {usage}")
     platform = words[1].lower().removeprefix("ci-") if len(words) > 1 else ""
     if platform not in platforms:
         fail(f"`{platform}` is not a platform. {usage}" if platform else usage)
@@ -81,8 +86,8 @@ for line in sys.stdin.read().splitlines():
     while rest and (m := re.fullmatch(r"([a-z0-9-]+)=([A-Za-z0-9._/-]+)", rest[0])) and m[1] in modules:
         repos.append(rest.pop(0))
     if rest and rest[0] != "make":
-        fail(f"Did you mean `/ci {' '.join(words[1:2] + repos)} make {' '.join(rest)}`? {usage}")
-    jobs.append({"label": "ci-" + platform, "repos": " ".join(repos), "make_args": " ".join(rest[1:])})
+        fail(f"Did you mean `/ci {' '.join(words[1:2] + repos)} make {shlex.join(rest)}`? {usage}")
+    jobs.append({"label": "ci-" + platform, "repos": " ".join(repos), "make_args": shlex.join(rest[1:])})
 if not jobs:
     fail(usage)
 matrix = json.dumps(jobs, separators=(",", ":"))
