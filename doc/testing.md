@@ -82,7 +82,12 @@ programs, rather than `-m68020` alone.
 **Always give the runtime with `-mcrt=`.** Without one, the board uses
 `-mcrt=nix20` today, but that default may change.
 
-The combinations worth running, and their latest results:
+`SIM=/path/to/volamos` runs a volamos other than the one in `$PREFIX/bin`,
+such as a local build.
+
+## Tested configurations
+
+The board combinations worth running, and their latest results:
 
 | board | `check-c` | `check-c++` | `make check` | release gate |
 |---|---|---|---|---|
@@ -105,9 +110,6 @@ and a link to the issue or fix, ? not run yet. `make check` runs `check-c`
 on the combinations marked yes, and the release gate runs `make check`.
 With ixemul, `-m68881` needs the FPU build of ixemul.library, which rounds
 wrongly until ixemul 80.2.
-
-`SIM=/path/to/volamos` runs a volamos other than the one in `$PREFIX/bin`,
-such as a local build.
 
 ## Results
 
