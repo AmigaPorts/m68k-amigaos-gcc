@@ -92,11 +92,10 @@ The board combinations worth running, and their latest results:
 | `volamos/-mcrt=ixemul/-m68020-60` | ✅ | ? | |
 | `volamos/-mcrt=ixemul/-m68020-60/-m68881` | [❌ 24](https://github.com/AmigaPorts/m68k-amigaos-gcc/issues/208)[^ixemul] | ? | |
 | `volamos/-mcrt=ixemul/-m68020-60/-m68881/-fbaserel32` | [❌ 24](https://github.com/AmigaPorts/m68k-amigaos-gcc/issues/208)[^ixemul] | ? | |
-| `volamos/-mcrt=clib2` | ❌ 6[^clib2] | ? | |
+| `volamos/-mcrt=clib2` | [❌ 6](https://github.com/AmigaPorts/m68k-amigaos-gcc/issues/255) | ? | |
 
 [^check]: `make check` runs `check-c` on these, and gates releases.
 [^ixemul]: `-m68881` needs the FPU build of ixemul.library, which rounds wrongly until ixemul 80.2.
-[^clib2]: With a volamos newer than 0.13.0: clib2's startup calls `GetArgStr()` ([sidick/volamos#209](https://github.com/sidick/volamos/pull/209)).
 
 ## Results
 
