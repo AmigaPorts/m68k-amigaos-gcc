@@ -5,13 +5,13 @@ Part of the [Amiga GCC Development Manual](devel.md).
 ## Notable branches
 
 gcc:
-* `amiga6`: the legacy GCC 6.5.0b
-* `amiga13.4`: GCC 13.4, unsupported
-* `amiga16.2`: GCC 16.2, the default branch, built and tested by CI
+* `amiga16.2`: GCC 16.2, built and tested by CI (default)
+* `amiga13.4`: GCC 13.4, no longer supported
+* `amiga6`: the legacy GCC 6.5.0b, on feature freeze
 
 binutils:
-* `amiga-2.46`: binutils 2.46 with amigaos support and dwarf2 debugging, the default
-* `amiga-2.47`: binutils 2.47, the next default, with no known regressions
+* `amiga-2.46`: binutils 2.46 with AmigaOS support and DWARF2 debugging (default)
+* `amiga-2.47`: the next release, with no known regressions
 
 ## Switching modules
 
