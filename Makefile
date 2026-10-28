@@ -808,13 +808,13 @@ GCC_PREREQUISITE_SOURCES := $(PROJECTS)/gcc/gmp/configure $(PROJECTS)/gcc/mpfr/c
 BINUTILS_PREREQUISITE_SOURCES := $(PROJECTS)/binutils/gmp/configure $(PROJECTS)/binutils/mpfr/configure
 
 $(PROJECTS)/gcc/gmp/configure $(PROJECTS)/binutils/gmp/configure: $(PROJECTS)/$(GMP)/configure
-	@mkdir -p $(@D) && rsync -a --no-group $(<D)/ $(@D)
+	@mkdir -p $(@D) && rsync -a --no-group --delete $(<D)/ $(@D)
 
 $(PROJECTS)/gcc/mpfr/configure $(PROJECTS)/binutils/mpfr/configure: $(PROJECTS)/$(MPFR)/configure
-	@mkdir -p $(@D) && rsync -a --no-group $(<D)/ $(@D)
+	@mkdir -p $(@D) && rsync -a --no-group --delete $(<D)/ $(@D)
 
 $(PROJECTS)/gcc/mpc/configure: $(PROJECTS)/$(MPC)/configure
-	@mkdir -p $(@D) && rsync -a --no-group $(<D)/ $(@D)
+	@mkdir -p $(@D) && rsync -a --no-group --delete $(<D)/ $(@D)
 
 .PHONY: update-gmp
 update-gmp:
@@ -1468,9 +1468,9 @@ $(BUILD)/ndk-include_ndk0: $(PROJECTS)/$(NDK_FOLDER_NAME)/_unpacked $(NDK_INCLUD
 	@mkdir -p $(PREFIX)/$(TARGET)/ndk/lib/fd
 	@mkdir -p $(PREFIX)/$(TARGET)/ndk/lib/sfd
 	@mkdir -p $(PREFIX)/$(TARGET)/ndk/lib/libs
-	@rsync -a --no-group $(PROJECTS)/$(NDK_FOLDER_NAME_FD)/* $(PREFIX)/$(TARGET)/ndk/lib/fd
-	@rsync -a --no-group $(PROJECTS)/$(NDK_FOLDER_NAME_SFD)/* $(PREFIX)/$(TARGET)/ndk/lib/sfd
-	@rsync -a --no-group $(PROJECTS)/$(NDK_FOLDER_NAME_LIBS)/* $(PREFIX)/$(TARGET)/ndk/lib/libs
+	@rsync -a --no-group --delete $(PROJECTS)/$(NDK_FOLDER_NAME_FD)/ $(PREFIX)/$(TARGET)/ndk/lib/fd/
+	@rsync -a --no-group --delete $(PROJECTS)/$(NDK_FOLDER_NAME_SFD)/ $(PREFIX)/$(TARGET)/ndk/lib/sfd/
+	@rsync -a --no-group --delete $(PROJECTS)/$(NDK_FOLDER_NAME_LIBS)/ $(PREFIX)/$(TARGET)/ndk/lib/libs/
 	@mkdir -p $(PREFIX)/$(TARGET)/ndk-include/proto
 	@install -p -m 644 $(PROJECTS)/$(NDK_FOLDER_NAME_H)/proto/alib.h $(PREFIX)/$(TARGET)/ndk-include/proto
 	@install -p -m 644 $(PROJECTS)/$(NDK_FOLDER_NAME_H)/proto/cardres.h $(PREFIX)/$(TARGET)/ndk-include/proto
@@ -1659,7 +1659,7 @@ $(BUILD)/clib2/_done: $(PROJECTS)/clib2/LICENSE $(shell find 2>/dev/null $(PROJE
 	$(L0)"make clib2"$(L1) $(MAKE) -C $(BUILD)/clib2 -f GNUmakefile.68k$(L2)
 	@mkdir -p $(PREFIX)/$(TARGET)/clib2
 	@rsync -a --no-group --delete $(BUILD)/clib2/include $(PREFIX)/$(TARGET)/clib2
-	@rsync -a --no-group $(BUILD)/clib2/lib $(PREFIX)/$(TARGET)/clib2
+	@rsync -a --no-group --delete $(BUILD)/clib2/lib $(PREFIX)/$(TARGET)/clib2
 	@echo "done" >$@
 
 $(PROJECTS)/clib2/LICENSE:
@@ -2362,7 +2362,7 @@ $(BUILD)/$(freetype_DIR)/_done: $(PREFIX)/$(TARGET)/lib/libfreetype.a
 
 $(PREFIX)/$(TARGET)/lib/libfreetype.a: $(BUILD)/$(freetype_DIR)/libfreetype.a
 	@rsync -a --no-group $(PROJECTS)/$(freetype_DIR)/include/ft2build.h $(PREFIX)/$(TARGET)/include/
-	@rsync -a --no-group $(PROJECTS)/$(freetype_DIR)/include/freetype $(PREFIX)/$(TARGET)/include/
+	@rsync -a --no-group --delete $(PROJECTS)/$(freetype_DIR)/include/freetype $(PREFIX)/$(TARGET)/include/
 	@$(call COPY_MULTILIBS,$(freetype_DIR),.libs/libfreetype.a,libfreetype.a)
 	$(call INSTALL_MULTILIBS,$(freetype_DIR),libfreetype.a)
 	@touch $@
