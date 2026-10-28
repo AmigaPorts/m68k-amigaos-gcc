@@ -2282,9 +2282,10 @@ MULTI_STEP_END = || exit 1;
 # 1=module name 3,4... = params for make
 MULTIMAKE = $(L0)"make $1"$(L1) $(foreach T,$(subst MODNAME,$1,$(MULTI)), $(MAKE) -C $(BUILD)/$(word 1,$(subst :, ,${T})) $3 $4 $5 $6 $7 $8 $(MULTI_STEP_END)) $(L2)
 
-# 1=module name 2=multilib path 3=cflags
+# 1=module name 2=multilib path 3=cflags; a module's own flags go in
+# MULTI_CFLAGS, set on its configure target.
 MULTICONFIGURE1 = mkdir -p $(BUILD)/$2 && cd $(BUILD)/$2 && \
-	PKG_CONFIG=/bin/false CC=$(TARGET)-gcc CXX=$(TARGET)-g++ AR=$(TARGET)-ar LD=$(TARGET)-ld CFLAGS="$(subst _, ,$3) -mcrt=nix20 $(CFLAGS_FOR_TARGET)" $(PROJECTS)/$1/configure
+	PKG_CONFIG=/bin/false CC=$(TARGET)-gcc CXX=$(TARGET)-g++ AR=$(TARGET)-ar LD=$(TARGET)-ld CFLAGS="$(subst _, ,$3) -mcrt=nix20 $(MULTI_CFLAGS) $(CFLAGS_FOR_TARGET)" $(PROJECTS)/$1/configure
 
 # 1=module name 3,4...= params for configure
 MULTICONFIGURE = $(L0)"configure $1"$(L1) $(foreach T,$(subst MODNAME,$1,$(MULTI)),( $(call MULTICONFIGURE1,$1,$(word 1,$(subst :, ,${T})),$(word 2,$(subst :, ,${T}))) $3 $4 $5 $6 $7 $8 ) $(MULTI_STEP_END))$(L2)
@@ -2312,16 +2313,23 @@ $(BUILD)/$(zlib_DIR)/libz.a: $(BUILD)/$(zlib_DIR)/Makefile
 	+$(call MULTIMAKE,$(zlib_DIR),libz.a,AR=$(TARGET)-ar,ARFLAGS=rc)
 	@touch $@
 
+# zlib and libpng are built once, against libnix, but every C runtime links
+# them, so they must not depend on anything only libnix has. libnix's
+# string.h inlines memmove() as a call to its own __bcopz(); __NO_INLINE__
+# turns those inlines off.
+$(BUILD)/$(zlib_DIR)/Makefile: MULTI_CFLAGS = -D__NO_INLINE__
 $(BUILD)/$(zlib_DIR)/Makefile: $(PROJECTS)/$(zlib_DIR)/configure
 	$(call MULTICONFIGURE,$(zlib_DIR),libz.a,)
 	@touch $@
 
 # zlib 1.3.2's configure adds -fPIC unconditionally and test-compiles with
 # it; the hunk linker has no GOT and gcc rejects -fPIC, so drop it before
-# configure runs.
+# configure runs. gzdopen() calls fcntl() to set O_NONBLOCK and O_CLOEXEC,
+# which mean nothing on AmigaOS and which newlib has no fcntl() for.
 $(PROJECTS)/$(zlib_DIR)/configure: $(DOWNLOAD)/$(zlib_DIR).tar.gz
 	tar -C $(PROJECTS) -xf $(DOWNLOAD)/$(zlib_DIR).tar.gz
 	$(SED) -i 's/ -fPIC"/"/' $@
+	$(SED) -i '/fcntl(fd, /d' $(PROJECTS)/$(zlib_DIR)/gzlib.c
 	@touch $@
 
 # =================================================
@@ -2345,8 +2353,15 @@ $(PREFIX)/$(TARGET)/lib/libpng.a: $(BUILD)/$(libpng_DIR)/libpng.a
 	$(call INSTALL_MULTILIBS,$(libpng_DIR),libpng.a)
 	@touch $@
 
+# Without console I/O, libpng's default handlers print nothing: their
+# fprintf(stderr) refers to libnix's __sF, which newlib does not have. From
+# Workbench they would pop up a console window anyway. Programs that want the
+# messages install their own handlers with png_set_error_fn().
+LIBPNG_DFA = $(BUILD)/$(libpng_DIR)/amigaos.dfa
+
 $(BUILD)/$(libpng_DIR)/libpng.a: $(BUILD)/$(libpng_DIR)/Makefile
-	+$(call MULTIMAKE,$(libpng_DIR),libpng.a)
+	printf 'option CONSOLE_IO off\n' >$(LIBPNG_DFA)
+	+$(call MULTIMAKE,$(libpng_DIR),libpng.a,DFA_XTRA=$(LIBPNG_DFA))
 	@touch $@
 
 $(BUILD)/$(libpng_DIR)/Makefile: $(PROJECTS)/$(libpng_DIR)/configure
