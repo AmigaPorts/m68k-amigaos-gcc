@@ -70,38 +70,41 @@ file of its own:
 
 ```shell
 make check-c board=volamos/-mcrt=clib2
-make check-c board=volamos/-mcrt=newlib/-m68040/-m68881/-fbaserel32
+make check-c board=volamos/-mcrt=newlib/-m68020-60/-m68881/-fbaserel32
 ```
 
 volamos follows them: it emulates the CPU that `-m680x0` or `-mcpu=680x0`
-names, adds the FPU for `-m68881`, and loads ixemul.library for
-`-mcrt=ixemul`.
+names, the 68020 for `-m68020-60`, adds the FPU for `-m68881`, and loads
+ixemul.library for `-mcrt=ixemul`. Test the 68020 and later with
+`-m68020-60`, which the libraries are built with and which we recommend for
+programs, rather than `-m68020` alone.
 
 **Always give the runtime with `-mcrt=`.** Without one, the board uses
 `-mcrt=nix20` today, but that default may change.
 
-The combinations worth running, and their state on master:
+The combinations worth running, and their latest results:
 
-| board | passing | `make check` | release gate |
-|---|---|---|---|
-| `volamos/-mcrt=nix20` | ✅ | yes | yes |
-| `volamos/-mcrt=nix20/-m68020` | ? | | |
-| `volamos/-mcrt=nix20/-m68020/-m68881` | ✅ | | |
-| `volamos/-mcrt=nix20/-m68020/-m68881/-fbaserel32` | ✅ | yes | yes |
-| `volamos/-mcrt=newlib` | ❌ 1 | | |
-| `volamos/-mcrt=newlib/-m68020` | ? | | |
-| `volamos/-mcrt=newlib/-m68020/-m68881` | ❌ 2 | | |
-| `volamos/-mcrt=newlib/-m68020/-m68881/-fbaserel32` | ❌ 2 | | |
-| `volamos/-mcrt=ixemul` | ? | yes | yes |
-| `volamos/-mcrt=ixemul/-m68020` | ? | | |
-| `volamos/-mcrt=ixemul/-m68020/-m68881` | ❌ | | |
-| `volamos/-mcrt=ixemul/-m68020/-m68881/-fbaserel32` | ? | | |
-| `volamos/-mcrt=clib2` | ❌ | | |
+| board | `check-c` | `check-c++` | `make check` | release gate |
+|---|---|---|---|---|
+| `volamos/-mcrt=nix20` | ✅ | ❌ 13 | yes | yes |
+| `volamos/-mcrt=nix20/-m68020-60` | ? | ? | | |
+| `volamos/-mcrt=nix20/-m68020-60/-m68881` | ? | ? | | |
+| `volamos/-mcrt=nix20/-m68020-60/-m68881/-fbaserel32` | ? | ? | yes | yes |
+| `volamos/-mcrt=newlib` | ? | ? | | |
+| `volamos/-mcrt=newlib/-m68020-60` | ? | ? | | |
+| `volamos/-mcrt=newlib/-m68020-60/-m68881` | ? | ? | | |
+| `volamos/-mcrt=newlib/-m68020-60/-m68881/-fbaserel32` | ? | ? | | |
+| `volamos/-mcrt=ixemul` | ? | ? | yes | yes |
+| `volamos/-mcrt=ixemul/-m68020-60` | ? | ? | | |
+| `volamos/-mcrt=ixemul/-m68020-60/-m68881` | [❌](https://github.com/AmigaPorts/m68k-amigaos-gcc/issues/208) | ? | | |
+| `volamos/-mcrt=ixemul/-m68020-60/-m68881/-fbaserel32` | ? | ? | | |
+| `volamos/-mcrt=clib2` | [❌](https://github.com/AmigaPorts/clib2/pull/6) | ? | | |
 
-Passing: ✅ no unexpected failures in `check-c`, ❌ with the number of
-failures where it's known, ? not run yet. `make check` runs `check-c` on
-the combinations marked yes, and the release gate runs `make check`. With ixemul, `-m68881` needs the FPU build of
-ixemul.library, which rounds wrongly until ixemul 80.2.
+✅ no unexpected failures, ❌ with the number of failures where it's known
+and a link to the issue or fix, ? not run yet. `make check` runs `check-c`
+on the combinations marked yes, and the release gate runs `make check`.
+With ixemul, `-m68881` needs the FPU build of ixemul.library, which rounds
+wrongly until ixemul 80.2.
 
 `SIM=/path/to/volamos` runs a volamos other than the one in `$PREFIX/bin`,
 such as a local build.
