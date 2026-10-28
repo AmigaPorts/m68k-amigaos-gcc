@@ -1597,8 +1597,8 @@ $(LIBBAMIGA):
 # =================================================
 
 # IXPATHS: libnix's file functions (open, stat, chdir, mkdir, rename, ...) translate Unix paths,
-# such as /Work/src or ../include, into AmigaDOS ones only when it is defined.  The AmigaOS-hosted
-# gcc and binutils pass Unix paths around and DON'T WORK WITHOUT IT.
+# such as /Work/src or ../include, into AmigaDOS ones only when it is defined.
+# The AmigaOS-hosted gcc and binutils pass POSIX paths around and DON'T WORK WITHOUT IT.
 LIBNIX_CFLAGS = -DIXPATHS
 
 LIBNIX_SRC = $(shell find 2>/dev/null $(PROJECTS)/libnix -not \( -path $(PROJECTS)/libnix/.git -prune \) -not \( -path $(PROJECTS)/libnix/sources/stubs/libbases -prune \) -not \( -path $(PROJECTS)/libnix/sources/stubs/libnames -prune \) -type f)
