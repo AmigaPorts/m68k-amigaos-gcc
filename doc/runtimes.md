@@ -21,18 +21,79 @@ breaks quietly.
 
 ## Size
 
-The executables built with `-Os`, stripped, in bytes:
+The executables built with `-Os` for the 68000, stripped, in bytes:
 
-| runtime | `int main(void) { return 0; }` | `printf("hello, world\n")` |
-|---|---|---|
-| `-mcrt=nix20` | 2032 | 5832 |
-| `-mcrt=nix13` | 2368 | 6176 |
-| `-mcrt=library` | 2036 | 2452, plus `libnix4.library` |
-| `-mcrt=newlib` | 13572 | 17140 |
-| `-mcrt=clib2` | 15340 | 15780 |
-| `-mcrt=ixemul` | 4340 | 4388, plus `ixemul.library` |
+| runtime | empty | hello | `%f` | date | minigzip |
+|---|---:|---:|---:|---:|---:|
+| `-mcrt=nix20` | 2032 | 5832 | 23800 | 13472 | 69600 |
+| `-mcrt=nix13` | 2368 | 6176 | 24196 | 13588 | 70076 |
+| `-mcrt=library` | 2032 | 2448 | 20324 | 2616 | 54228 |
+| `-mcrt=newlib` | 13572 | 17140 | 64984 | 89092 | 136700 |
+| `-mcrt=clib2` | 15340 | 15780 | 32952 | 21708 | 78504 |
+| `-mcrt=ixemul` | 4340 | 4388 | 4460 | 11764 | 55384 |
 
-<!-- TODO: the size of a typical C program, and the speed of the runtimes. -->
+- empty: `int main(void) { return 0; }`, the startup code alone
+- hello: `puts("hello, world")`, which adds stdio
+- `%f`: `printf("%f\n", x)`, which adds floating-point formatting
+- date: `strftime(buf, sizeof(buf), "%c", localtime(&t))`, which adds time zones and dates
+- minigzip: zlib 1.3.2's example program, a typical C program: file I/O through stdio and POSIX calls, `malloc()` and the string functions, plus about 50 KB of its own code
+
+`-mcrt=library` and `-mcrt=ixemul` keep most of the C library in a shared
+library, `libnix4.library` or `ixemul.library`, which these sizes leave out.
+libnix's floating-point `printf()` comes from libm, and so is linked into
+the program even with `-mcrt=library`. newlib has no `fcntl()`, which zlib
+calls, so its minigzip is linked with a stub.
+
+To reproduce the table, write the four small programs:
+
+```c
+/* empty.c */
+int main(void) { return 0; }
+
+/* hello.c */
+#include <stdio.h>
+int main(void) { puts("hello, world"); return 0; }
+
+/* printf-f.c */
+#include <stdio.h>
+int main(int argc, char **argv) { printf("%f\n", argc * 3.14159); return 0; }
+
+/* date.c */
+#include <stdio.h>
+#include <time.h>
+int main(void)
+{
+	char buf[64];
+	time_t t = time(NULL);
+	strftime(buf, sizeof(buf), "%c", localtime(&t));
+	puts(buf);
+	return 0;
+}
+
+/* fcntl-stub.c, for newlib */
+int fcntl(int fd, int cmd, ...) { return -1; }
+```
+
+and build them, and minigzip from the zlib sources, with each runtime; `-s`
+links them stripped:
+
+```shell
+curl -LO https://github.com/madler/zlib/releases/download/v1.3.2/zlib-1.3.2.tar.gz
+tar xzf zlib-1.3.2.tar.gz
+z=zlib-1.3.2
+for crt in nix20 nix13 library newlib clib2 ixemul; do
+  for p in empty hello printf-f date; do
+    m68k-amigaos-gcc -mcrt=$crt -Os -fomit-frame-pointer -s -o $p-$crt $p.c -lm
+  done
+  m68k-amigaos-gcc -mcrt=$crt -Os -fomit-frame-pointer -s -DZ_HAVE_UNISTD_H -I$z \
+    -o minigzip-$crt $z/test/minigzip.c \
+    $z/{adler32,crc32,deflate,inflate,inffast,inftrees,trees,zutil,gzlib,gzread,gzwrite,gzclose}.c \
+    $([ $crt = newlib ] && echo fcntl-stub.c)
+done
+ls -l *-nix20 *-nix13 *-library *-newlib *-clib2 *-ixemul
+```
+
+<!-- TODO: the speed of the runtimes. -->
 
 ## Features
 
