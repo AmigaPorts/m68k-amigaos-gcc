@@ -1,6 +1,6 @@
 # Changes
 
-Part of the [development guide](devel.md).
+Part of the [Amiga GCC Development Manual](devel.md).
 
 How to make a change to the toolchain, get it reviewed and merge it, in
 this repository or in one of its modules.

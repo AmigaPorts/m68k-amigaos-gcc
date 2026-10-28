@@ -1,16 +1,14 @@
-# Development
+# Amiga GCC Development Manual
 
-Working on the toolchain itself: testing it, and switching its modules to
-other branches or dates. CI is in [ci.md](ci.md). Building it is in the
-[README](../README.md), and making and rebuilding releases in
-[releng.md](releng.md).
+Working on the toolchain itself. The
+[Amiga GCC User's Manual](manual.md) covers using it.
 
-## Testing
-
-`make -j$(nproc) check` runs the testsuites under [volamos](https://github.com/sidick/volamos),
-which emulates the AmigaOS APIs.
-
-See [testing.md](testing.md) for the other check targets, the boards and rerunning a few tests.
+- [Building](build.md): prerequisites, getting the sources, and building the toolchain.
+- [Packaging](package.md): archives of the installed toolchain, and the Nix package.
+- [Testing](testing.md): the testsuites under [volamos](https://github.com/sidick/volamos), which emulates the AmigaOS APIs, their boards and the results.
+- [Changes](changes.md): making, reviewing and merging changes.
+- [Continuous integration](ci.md): testing pull requests on GitHub Actions.
+- [Release engineering](releng.md): making and rebuilding releases.
 
 ## Version management
 

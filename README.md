@@ -12,6 +12,11 @@ Currently, these tools are built:
 * vbcc, vasm, vlink
 * ira (m68k reassembler)
 
+## Documentation
+
+* [Amiga GCC User's Manual](doc/manual.md): using the toolchain, and its Amiga-specific options, attributes and C runtimes.
+* [Amiga GCC Development Manual](doc/devel.md): building, packaging, testing and releasing the toolchain, and making changes to it.
+
 ## Branches
 ### Notable branches of gcc
 * `amiga6`: The legacy GCC 6.5.0b
@@ -20,154 +25,6 @@ Currently, these tools are built:
 
 ### Notable branches of binutils
 * `amiga-2.46`: binutils 2.46 with amigaos support and dwarf2 debugging (the default)
-
-
-## Prerequisites
-
-### Fedora
-```
-sudo dnf install curl gcc gcc-c++ patch make bison flex rsync ncurses-devel which
-```
-
-### Ubuntu, Debian
-```
-sudo apt install make curl gcc g++ flex bison gettext rsync libreadline-dev
-```
-
-### macOS
-Install Homebrew (https://brew.sh/) or any other package manager first. The compiler will be installed together with XCode. Once XCode and Homebrew are up install the required packages:
-
-```
-brew install bash bison coreutils curl flex gettext \
-  gnu-sed gnu-tar grep make wget xz
-```
-
-Apple ships old or BSD versions of many of these tools. Put the Homebrew GNU
-versions first on `PATH` under their plain names, so the build machinery does
-not need BSD workarounds (add these lines to your shell profile to make them
-permanent):
-
-```
-export PATH="$(brew --prefix bison)/bin:$(brew --prefix flex)/bin:$PATH"
-for pkg in coreutils gnu-sed gnu-tar grep make; do
-  export PATH="$(brew --prefix $pkg)/libexec/gnubin:$PATH"
-done
-```
-
-**NOTE**
-
-* With the `PATH` above, `make` is Homebrew's GNU make 4.x; Apple's GNU Make 3.81 is known to produce link failures on the same machine and project, so use it for your own projects too
-* If you want `m68k-amigaos-gdb` then you have to build it with `gcc` rather than the default Apple toolchain, e.g. `brew install gcc@12` and then:
-
-```
-CC=gcc-12 CXX=g++-12 make all
-```
-
-### Nix
-`nix develop` enters a shell with all build prerequisites, for the
-`make update` and `make all` steps below. To get the toolchain itself
-as a Nix package instead, see [Nix package](#nix-package).
-
-### Windows with msys2
-
-```
-pacman -S curl git base-devel gcc flex rsync
-```
-
-Also note that you **MUST** cd into an **absolute path** e.g. `cd /c/msys64/home/test/amiga-gcc/` before running make, or builds may fail, because some files aren't found correctly (that's a msys2 bug).
-
-
-## Cloning and Downloading Sources
-
-```
-git clone https://github.com/AmigaPorts/m68k-amigaos-gcc
-cd m68k-amigaos-gcc
-make update
-```
-
-The default configuration builds GCC 16.2. Use `make branch` as described
-under Version management if you need a different GCC branch.
-
-Use `make help` to see which targets can be built.
-
-## Install Prefix
-
-The build performs the installation automatically, there is no separate `make install` step.
-
-The first build must set the installation directory with `PREFIX=<path>`,
-which must be writable for the user doing the build:
-
-```
-make all PREFIX=$HOME/m68k-amigaos-gcc
-```
-
-The build tree remembers that prefix, so later invocations in the same
-checkout need no `PREFIX=` unless you want another one.
-
-## Building
-
-You can use `-j$(nproc)` to speed up the build:
-
-```
-time make all -j$(nproc)
-```
-A full bootstrap takes roughly 5 to 15 minutes on current Linux hardware, dominated by multilib phases.
-
-## Packaging
-
-This packages the PREFIX folder into a redistributable archive:
-
-```
-make package      # builds a .tar.xz archive
-make package-lha  # builds a .lha archive
-```
-Native builds use the build machine's OS and architecture in the filename.
-Cross builds use `HOST`, so their filenames identify the system on which the tools
-will run rather than the build machine.
-
-### Nix package
-
-The flake builds the toolchain of `make all` as a package, from the modules
-of `default-repos` pinned in `flake.lock` and the archives of
-`default-archives`:
-
-```
-nix build github:AmigaPorts/m68k-amigaos-gcc   # or nix build . in a checkout
-./result/bin/m68k-amigaos-gcc --version
-nix profile install github:AmigaPorts/m68k-amigaos-gcc
-```
-
-Other flakes can use `packages.<system>.default` or add
-`m68k-amigaos-gcc` to their nixpkgs with `overlays.default`, for example
-in a project's development shell:
-
-```nix
-{
-  inputs.amiga-gcc.url = "github:AmigaPorts/m68k-amigaos-gcc";
-  outputs = { nixpkgs, amiga-gcc, ... }: {
-    devShells.x86_64-linux.default = nixpkgs.legacyPackages.x86_64-linux.mkShell {
-      packages = [ amiga-gcc.packages.x86_64-linux.default ];
-    };
-  };
-}
-```
-
-`nix flake update` moves every module to the head of its branch, and
-`nix flake update gcc` just one. The inputs in `flake.nix` mirror
-`default-repos`; to build another branch, change the input's URL, for
-example `github:AmigaPorts/gcc/amiga13.4`.
-
-## Using the toolchain
-
-The [Amiga GCC User's Manual](doc/manual.md) covers the Amiga-specific
-options, such as choosing a C runtime with `-mcrt=`.
-
-## Development
-
-* [doc/devel.md](doc/devel.md): testing the toolchain, and switching modules to other branches or dates.
-* [doc/changes.md](doc/changes.md): making, reviewing and merging changes.
-* [doc/ci.md](doc/ci.md): testing pull requests in continuous integration (GitHub Actions).
-* [doc/releng.md](doc/releng.md): making and rebuilding releases.
 
 ## Copyrights
 
