@@ -60,7 +60,6 @@ if {[string match "*-mcrt=*" $variant_flags]} {
 } else {
     set_board_info cflags "-mcrt=nix20"
 }
-set_board_info ldflags [expr {$variant_ixemul ? "" : "-lpthread"}]
 set_board_info ldscript "";
 
 set_board_info gcc,stack_size 4096
