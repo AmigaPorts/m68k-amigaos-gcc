@@ -52,6 +52,18 @@ def fail(text):
     sys.exit(1)
 
 
+# A failed gh call shows gh's message, not just its exit status; ci-command.yml
+# posts the output of a crash as a reply.
+def crashed(kind, value, tb):
+    stderr = getattr(value, "stderr", None)
+    if stderr:
+        print(stderr.strip(), file=sys.stderr, flush=True)
+    sys.__excepthook__(kind, value, tb)
+
+
+sys.excepthook = crashed
+
+
 repo = env["GH_REPO"]
 if env["ASSOCIATION"] not in ("OWNER", "MEMBER", "COLLABORATOR"):
     sys.exit(f"::error::{env['ASSOCIATION']} may not start /ci builds")
@@ -96,6 +108,9 @@ matrix = json.dumps(jobs, separators=(",", ":"))
 context = "; ".join(f"/ci {j['label'].removeprefix('ci-')}" + (f" {j['repos']}" if j["repos"] else "")
                     + (f" make {j['make_args']}" if j["make_args"] else "")
                     for j in jobs)
+# GitHub rejects a long one: five /ci lines were too many.
+if len(context) > 100:
+    context = context[:97] + "..."
 
 pr = json.loads(gh("api", f"repos/{repo}/pulls/{env['PR']}"))
 base = pr["base"]["ref"]

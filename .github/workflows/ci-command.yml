@@ -51,7 +51,15 @@ jobs:
           sparse-checkout: .github
 
       - id: parse
-        run: printf '%s\n' "$BODY" | .github/scripts/ci-command.py
+        shell: bash
+        run: printf '%s\n' "$BODY" | .github/scripts/ci-command.py 2>&1 | tee parse.log
+
+      # The script replies itself to a /ci it understands but can't run, with
+      # an ::error:: annotation; when it crashed instead, post its output.
+      - if: failure() && steps.parse.conclusion == 'failure'
+        run: |
+          grep -q '^::error::' parse.log && exit 0
+          printf '/ci crashed, see %s\n```\n%s\n```\n' "$RUN_URL" "$(tail -c 3000 parse.log)" | gh pr comment "$PR" --body-file -
 
   build:
     needs: command
