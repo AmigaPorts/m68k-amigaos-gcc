@@ -15,16 +15,7 @@ Currently, these tools are built:
 ## Documentation
 
 * [Amiga GCC User's Manual](doc/manual.md): using the toolchain, and its Amiga-specific options, attributes and C runtimes.
-* [Amiga GCC Development Manual](doc/devel.md): building, packaging, testing and releasing the toolchain, and making changes to it.
-
-## Branches
-### Notable branches of gcc
-* `amiga6`: The legacy GCC 6.5.0b
-* `amiga13.4`: GCC 13.4, unsupported but still widely used
-* `amiga16.2`: GCC 16.2, the default branch, built and tested by CI
-
-### Notable branches of binutils
-* `amiga-2.46`: binutils 2.46 with amigaos support and dwarf2 debugging (the default)
+* [Amiga GCC Development Manual](doc/devel.md): building, packaging, testing and releasing the toolchain, its branches, and making changes to it.
 
 ## Copyrights
 
