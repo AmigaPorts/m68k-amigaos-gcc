@@ -1919,7 +1919,10 @@ endif
 RUNTEST_SIM = $(if $(SIM), SIM=$(SIM))
 
 # A volamos board installs volamos first, unless SIM= names another binary.
-BOARD_SIM_PREREQ = $(if $(and $(filter volamos%,$(board)),$(if $(SIM),,y)),$(PREFIX)/bin/volamos)
+BOARD_PREREQ = $(if $(and $(filter volamos%,$(board)),$(if $(SIM),,y)),$(PREFIX)/bin/volamos)
+
+# min builds every runtime but clib2, so a clib2 board builds it first, with the libdebug it links.
+BOARD_PREREQ += $(if $(findstring -mcrt=clib2,$(board)),$(BUILD)/clib2/_done $(BUILD)/libdebug/_done)
 
 # Point dejagnu at the in-repo board descriptions in baseboards/ which wire up
 # vamos/volamos as the simulator.
@@ -2005,7 +2008,7 @@ check-c-exp ?= 'execute.exp=*' \
 # Board options lose their slashes: volamos/-mcrt=clib2 gives gcc-execute-volamos-mcrt=clib2.sum.
 check-c-board = $(if $(filter volamos,$(board)),,-$(subst /,,$(board)))
 .PHONY: check-c
-check-c: $(MIN_IF_MISSING) $(BOARD_SIM_PREREQ)
+check-c: $(MIN_IF_MISSING) $(BOARD_PREREQ)
 	ln -sfn $(PREFIX)/$(TARGET)/libnix $(BUILD)/gcc/$(TARGET)/libnix
 	$(L0)"check execute.exp"$(L1)$(MAKE) -C $(BUILD)/gcc check-gcc-c "RUNTESTFLAGS=--target_board=$(board) $(strip $(check-c-exp))$(RUNTEST_SIM)"$(L2)
 	cp -f $(TESTSUITE)/gcc.sum $(TESTSUITE)/gcc-execute$(check-c-board).sum; cp -f $(TESTSUITE)/gcc.log $(TESTSUITE)/gcc-execute$(check-c-board).log
@@ -2016,7 +2019,7 @@ check-c: $(MIN_IF_MISSING) $(BOARD_SIM_PREREQ)
 
 # A no-op on gcc branches that predate amigaos.exp, such as amiga6.
 .PHONY: check-gcc-amigaos
-check-gcc-amigaos: $(MIN_IF_MISSING) $(BOARD_SIM_PREREQ)
+check-gcc-amigaos: $(MIN_IF_MISSING) $(BOARD_PREREQ)
 	@ln -sfn $(PREFIX)/$(TARGET)/libnix $(BUILD)/gcc/$(TARGET)/libnix
 	$(L0)"check amigaos.exp"$(L1)$(MAKE) -C $(BUILD)/gcc check-gcc-c "RUNTESTFLAGS=--target_board=$(board) gcc.target/m68k/amigaos/amigaos.exp$(RUNTEST_SIM)"$(L2)
 	@cp -f $(TESTSUITE)/gcc.sum $(TESTSUITE)/gcc-amigaos.sum; cp -f $(TESTSUITE)/gcc.log $(TESTSUITE)/gcc-amigaos.log
@@ -2104,7 +2107,7 @@ check-newlib: $(NEWLIB_CHECKS)
 # SANITIZE=0 keeps the volamos boards' --sanitize off: the -fstrub tests
 # read the scrubbed stack below the stack pointer on purpose.
 .PHONY: check-c++
-check-c++: $(MIN_IF_MISSING) $(BOARD_SIM_PREREQ)
+check-c++: $(MIN_IF_MISSING) $(BOARD_PREREQ)
 	@ln -sfn $(PREFIX)/$(TARGET)/libnix $(BUILD)/gcc/$(TARGET)/libnix
 	$(L0)"check c++"$(L1)$(MAKE) -C $(BUILD)/gcc check-gcc-c++ "RUNTESTFLAGS=--target_board=$(board)$(RUNTEST_SIM) SANITIZE=0"$(L2)
 	@{ echo '----- c++ -----'; grep '^# of' $(CXXTESTSUITE)/g++.sum || echo '(no tests run)'; grep -E '^(FAIL|ERROR|XPASS)' $(CXXTESTSUITE)/g++.sum || true; } | tee $@.summary.txt
@@ -2126,7 +2129,7 @@ check-gdb-libpython:
 # reports: its standing failures are test bugs on a big-endian ILP32 target
 # and CR+LF output through the simulator's pty.
 .PHONY: check-rust
-check-rust: $(BOARD_SIM_PREREQ)
+check-rust: $(BOARD_PREREQ)
 	@ln -sfn $(PREFIX)/$(TARGET)/libnix $(BUILD)/gcc/$(TARGET)/libnix
 	$(L0)"check rust"$(L1)$(MAKE) -C $(BUILD)/gcc check-gcc-rust "RUNTESTFLAGS=--target_board=$(board)$(RUNTEST_SIM)"$(L2)
 	@{ echo '----- rust -----'; grep '^# of' $(RUSTTESTSUITE)/rust.sum || echo '(no tests run)'; grep -E '^(FAIL|ERROR|XPASS)' $(RUSTTESTSUITE)/rust.sum || true; } | tee $@.summary.txt
