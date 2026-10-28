@@ -14,17 +14,6 @@ Install dejagnu: `sudo apt install dejagnu` on Debian and Ubuntu,
 volamos itself needs nothing: a target that needs it downloads its release
 binary into `$PREFIX/bin` first (`make volamos` does just that).
 
-The `amigaos*` boards run the tests under
-[vamos](https://github.com/AmigaPorts/amitools) instead, for comparison.
-Install amitools in a venv, to keep it out of the system Python:
-
-```shell
-python3 -m venv .venv
-.venv/bin/pip install "amitools[vamos] @ git+https://github.com/AmigaPorts/amitools.git"
-source .venv/bin/activate
-make -j$(nproc) check board=amigaos
-```
-
 ## Running
 
 ```shell
@@ -96,7 +85,7 @@ The board combinations worth running, and their latest results:
 | `volamos/-mcrt=nix20/-m68020-60/-m68881` | ? | ? | | |
 | `volamos/-mcrt=nix20/-m68020-60/-m68881/-fbaserel32` | ? | ? | yes | yes |
 | `volamos/-mcrt=newlib` | ? | ? | | |
-| `volamos/-mcrt=newlib/-m68020-60` | ? | ? | | |
+| `volamos/-mcrt=newlib/-m68020-60` | ✅ | ? | | |
 | `volamos/-mcrt=newlib/-m68020-60/-m68881` | ? | ? | | |
 | `volamos/-mcrt=newlib/-m68020-60/-m68881/-fbaserel32` | ? | ? | | |
 | `volamos/-mcrt=ixemul` | ? | ? | yes | yes |
@@ -167,4 +156,18 @@ has `-m68020-60`:
 | `volamos-newlib-fpu-baserel32` | `volamos/-mcrt=newlib/-m68020-60/-m68881/-fbaserel32` |
 | `volamos-ixemul` | `volamos/-mcrt=ixemul` |
 | `volamos-ixemul-fpu` | `volamos/-mcrt=ixemul/-m68020-60/-m68881` |
-| `amigaos`, `amigaos-020`, `amigaos-baserel`, ... | the `volamos*` board of the same name, under vamos |
+
+### vamos
+
+The `amigaos`, `amigaos-020`, `amigaos-baserel`, ... boards run the tests of
+the `volamos*` board of the same name under
+[vamos](https://github.com/AmigaPorts/amitools) instead. Nothing tests them
+any more, and they are probably broken. To try them, install amitools in a
+venv, to keep it out of the system Python:
+
+```shell
+python3 -m venv .venv
+.venv/bin/pip install "amitools[vamos] @ git+https://github.com/AmigaPorts/amitools.git"
+source .venv/bin/activate
+make -j$(nproc) check-c board=amigaos
+```
