@@ -78,6 +78,18 @@ with and the simulator that runs them. `board=` picks one for `check-c`,
 | `volamos-ixemul-fpu` | 68020 + 68881, with the 68020 FPU ixemul.library | ixemul |
 | `amigaos`, `amigaos-020`, `amigaos-baserel`, ... | as the `volamos*` board of the same name | under vamos |
 
+Options after `volamos` and a slash are added to every compile and link, so
+any combination works without a board file of its own:
+
+```shell
+make check-c board=volamos/-mcrt=clib2
+make check-c board=volamos/-mcrt=newlib/-m68040/-m68881/-fbaserel32
+```
+
+volamos follows them: it emulates the CPU that `-m680x0` or `-mcpu=680x0`
+names, adds the FPU for `-m68881`, and loads ixemul.library for
+`-mcrt=ixemul`. Without `-mcrt=`, the tests use libnix.
+
 `SIM=/path/to/volamos` runs a volamos other than the one in `$PREFIX/bin`,
 such as a local build.
 
