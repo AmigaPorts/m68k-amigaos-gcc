@@ -843,9 +843,10 @@ ifeq (,$(findstring amigaos,$(HOST)))
   CONFIG_BINUTILS += --enable-targets=m68k-elf
 endif
 
-# Portable release binaries: no libpython, and a static libstdc++ and libgcc
-# (the MinGW package ships neither DLL).
-CONFIG_BINUTILS += --without-python --without-guile --with-static-standard-libraries
+# Portable release binaries: no libpython or libsource-highlight, and a static libstdc++ and libgcc
+# (the MinGW package ships neither DLL).  gdb's configure rejects a host's source-highlight with a
+# static libstdc++, so it must be turned off explicitly.
+CONFIG_BINUTILS += --without-python --without-guile --with-static-standard-libraries --disable-source-highlight
 
 ifneq (,$(findstring mingw,$(HOST)))
   CONFIG_BINUTILS += --enable-plugins
