@@ -65,7 +65,7 @@ make update
 ```
 
 The default configuration builds GCC 16.2. Use `make branch` as described
-under [Version management](versions.md) if you need a different GCC
+under [Version management](branches.md) if you need a different GCC
 branch.
 
 Use `make help` to see which targets can be built.
