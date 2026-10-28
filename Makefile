@@ -1958,8 +1958,8 @@ check:
 	$(MAKE) --no-print-directory check-libnix
 	$(MAKE) --no-print-directory check-libpthread
 	$(MAKE) --no-print-directory check-c
-	$(MAKE) --no-print-directory check-c board=volamos-ixemul
-	$(MAKE) --no-print-directory check-c board=volamos-fpu-baserel32
+	$(MAKE) --no-print-directory check-c board=volamos/-mcrt=ixemul
+	$(MAKE) --no-print-directory check-c board=volamos/-mcrt=nix20/-m68020-60/-m68881/-fbaserel32
 
 # The gas and ld dump tests for the hunk target run on the build machine under DejaGnu.
 # The gas m68k tests written for ELF expect % register syntax and fail on this target,
