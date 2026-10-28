@@ -1921,8 +1921,8 @@ RUNTEST_SIM = $(if $(SIM), SIM=$(SIM))
 # A volamos board installs volamos first, unless SIM= names another binary.
 BOARD_PREREQ = $(if $(and $(filter volamos%,$(board)),$(if $(SIM),,y)),$(PREFIX)/bin/volamos)
 
-# min builds every runtime but clib2, so a clib2 board builds it first, with the libdebug it links.
-BOARD_PREREQ += $(if $(findstring -mcrt=clib2,$(board)),$(BUILD)/clib2/_done $(BUILD)/libdebug/_done)
+# min builds every runtime but clib2, so a clib2 board builds it if missing, with the libdebug it links.
+BOARD_PREREQ += $(if $(findstring -mcrt=clib2,$(board)),$(call if-missing,$(BUILD)/clib2/_done $(BUILD)/libdebug/_done,clib2 libdebug))
 
 # Point dejagnu at the in-repo board descriptions in baseboards/ which wire up
 # vamos/volamos as the simulator.
