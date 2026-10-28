@@ -149,19 +149,20 @@ They write `gcc.sum` and `gcc.log` in `build-*/gcc/gcc/testsuite/gcc/`.
 ## Obsolete boards
 
 These board files predate the options after a slash, and will be removed.
-Each is the same as the combination next to it:
+Use the combination next to each instead; where the file has `-m68020`, it
+has `-m68020-60`:
 
-| board | same as |
+| board | use instead |
 |---|---|
-| `volamos-020` | `volamos/-mcrt=nix20/-m68020` |
-| `volamos-fpu` | `volamos/-mcrt=nix20/-m68020/-m68881` |
+| `volamos-020` | `volamos/-mcrt=nix20/-m68020-60` |
+| `volamos-fpu` | `volamos/-mcrt=nix20/-m68020-60/-m68881` |
 | `volamos-baserel` | `volamos/-mcrt=nix20/-fbaserel` |
-| `volamos-020-baserel` | `volamos/-mcrt=nix20/-m68020/-fbaserel` |
-| `volamos-020-baserel32` | `volamos/-mcrt=nix20/-m68020/-fbaserel32` |
-| `volamos-fpu-baserel32` | `volamos/-mcrt=nix20/-m68020/-m68881/-fbaserel32` |
+| `volamos-020-baserel` | `volamos/-mcrt=nix20/-m68020-60/-fbaserel` |
+| `volamos-020-baserel32` | `volamos/-mcrt=nix20/-m68020-60/-fbaserel32` |
+| `volamos-fpu-baserel32` | `volamos/-mcrt=nix20/-m68020-60/-m68881/-fbaserel32` |
 | `volamos-newlib` | `volamos/-mcrt=newlib` |
-| `volamos-newlib-fpu` | `volamos/-mcrt=newlib/-m68020/-m68881` |
-| `volamos-newlib-fpu-baserel32` | `volamos/-mcrt=newlib/-m68020/-m68881/-fbaserel32` |
+| `volamos-newlib-fpu` | `volamos/-mcrt=newlib/-m68020-60/-m68881` |
+| `volamos-newlib-fpu-baserel32` | `volamos/-mcrt=newlib/-m68020-60/-m68881/-fbaserel32` |
 | `volamos-ixemul` | `volamos/-mcrt=ixemul` |
-| `volamos-ixemul-fpu` | `volamos/-mcrt=ixemul/-m68020/-m68881` |
+| `volamos-ixemul-fpu` | `volamos/-mcrt=ixemul/-m68020-60/-m68881` |
 | `amigaos`, `amigaos-020`, `amigaos-baserel`, ... | the `volamos*` board of the same name, under vamos |

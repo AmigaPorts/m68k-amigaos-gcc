@@ -2135,7 +2135,7 @@ check-rust: $(BOARD_SIM_PREREQ)
 # libc-test, musl's testsuite: its math tests on one C runtime, built with
 # libc-test-cflags and run under volamos, see scripts/libc-test.  Not part of
 # make check: they still have failures to sort out.
-#   make check-libc-test libc-test-crt=newlib libc-test-cflags="-m68020 -m68881"
+#   make check-libc-test libc-test-crt=newlib libc-test-cflags="-m68020-60 -m68881"
 LIBC_TEST_URL = https://repo.or.cz/libc-test.git
 libc-test-crt ?= nix20
 libc-test-cflags ?=
