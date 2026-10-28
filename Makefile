@@ -1654,10 +1654,11 @@ clib2: $(BUILD)/clib2/_done
 $(BUILD)/clib2/_done: $(PROJECTS)/clib2/LICENSE $(shell find 2>/dev/null $(PROJECTS)/clib2 -not \( -path $(PROJECTS)/clib2/.git -prune \) -type f) $(BUILD)/libnix/_done $(LIBAMIGA)
 	@mkdir -p $(BUILD)/clib2/
 	@rsync -a --no-group $(PROJECTS)/clib2/library/* $(BUILD)/clib2
+	@rsync -a --no-group --delete $(PROJECTS)/clib2/library/include/ $(BUILD)/clib2/include/
 	@cd $(BUILD)/clib2 && find * -name lib\*.a -delete
 	$(L0)"make clib2"$(L1) $(MAKE) -C $(BUILD)/clib2 -f GNUmakefile.68k$(L2)
 	@mkdir -p $(PREFIX)/$(TARGET)/clib2
-	@rsync -a --no-group $(BUILD)/clib2/include $(PREFIX)/$(TARGET)/clib2
+	@rsync -a --no-group --delete $(BUILD)/clib2/include $(PREFIX)/$(TARGET)/clib2
 	@rsync -a --no-group $(BUILD)/clib2/lib $(PREFIX)/$(TARGET)/clib2
 	@echo "done" >$@
 
@@ -1785,15 +1786,21 @@ ixemul:	$(BUILD)/ixemul/_done
 #
 # patches/ixemul has the headers the SDK lacks or gets wrong:
 # - <inttypes.h> is missing, so newlib's came from sys-include, with its own int32_t (long) clashing with ixemul's (int);
-# - <assert.h> calls libgcc's __eprintf, which writes to newlib's stderr and fails to link.
-IXEMUL_HEADERS = $(addprefix patches/ixemul/,inttypes.h assert.h)
+# - <assert.h> calls libgcc's __eprintf, which writes to newlib's stderr and fails to link;
+# - <machine/ansi.h> makes wchar_t and ptrdiff_t int, while GCC's <stddef.h> has long.
+# The SDK's own <stddef.h>, <stdarg.h>, <float.h>, <varargs.h> and <math-68881.h> are removed,
+# so that GCC's are used: its <stdarg.h> broke variadic functions that GCC inlines, and its
+# <float.h> gave long double 53 bits.
+IXEMUL_HEADERS = $(addprefix patches/ixemul/,inttypes.h assert.h machine/ansi.h)
+IXEMUL_COMPILER_HEADERS = stddef.h stdarg.h float.h varargs.h math-68881.h
 
 $(BUILD)/ixemul/_done: $(DOWNLOAD)/$(ixemul-sdk_ARCHIVE) $(IXEMUL_HEADERS) $(BUILD)/binutils/_done | $(LHA_PREREQ)
 	mkdir -p $(BUILD)/ixemul $(PREFIX)/$(TARGET)/ixemul
 	$(L0)"unpacking $(ixemul-sdk_ARCHIVE)"$(L1) cd $(BUILD)/ixemul && $(LHA_FOR_BUILD) xf $(DOWNLOAD)/$(ixemul-sdk_ARCHIVE) 'gg/include/*' 'gg/lib/*' Sys/libs/ixemul000.library Sys/libs/ixnet000.library Sys/libs/ixemul020-fpu.library Sys/libs/ixnet020.library $(L2)
 	$(L0)"installing ixemul-sdk"$(L1) rsync -a --no-group --delete $(BUILD)/ixemul/gg/ $(PREFIX)/$(TARGET)/ixemul/ $(L2)
 	$(TARGET_RANLIB_FOR_BUILD) $(PREFIX)/$(TARGET)/ixemul/lib/libc.a $(PREFIX)/$(TARGET)/ixemul/lib/libc_p.a $(PREFIX)/$(TARGET)/ixemul/lib/libb/libc.a $(PREFIX)/$(TARGET)/ixemul/lib/libb32/libm020/libc.a
-	cp $(IXEMUL_HEADERS) $(PREFIX)/$(TARGET)/ixemul/include/
+	rsync -a --no-group patches/ixemul/ $(PREFIX)/$(TARGET)/ixemul/include/
+	rm -f $(addprefix $(PREFIX)/$(TARGET)/ixemul/include/,$(IXEMUL_COMPILER_HEADERS))
 	mkdir -p $(PREFIX)/$(TARGET)/ixemul/libs
 	cp $(BUILD)/ixemul/Sys/libs/ixemul000.library $(PREFIX)/$(TARGET)/ixemul/libs/ixemul.library
 	cp $(BUILD)/ixemul/Sys/libs/ixnet000.library $(PREFIX)/$(TARGET)/ixemul/libs/ixnet.library
