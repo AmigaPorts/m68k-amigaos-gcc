@@ -2002,7 +2002,8 @@ check-c-exp ?= 'execute.exp=*' \
 # supports weak symbols, so dg-require-weak tests (20030125-1.c) come out unresolved.
 # On a board other than volamos the results are named after it, so that make check
 # keeps both runs: gcc-execute-volamos-ixemul.sum, check-c-volamos-ixemul.summary.txt.
-check-c-board = $(if $(filter volamos,$(board)),,-$(board))
+# Board options lose their slashes: volamos/-mcrt=clib2 gives gcc-execute-volamos-mcrt=clib2.sum.
+check-c-board = $(if $(filter volamos,$(board)),,-$(subst /,,$(board)))
 .PHONY: check-c
 check-c: $(MIN_IF_MISSING) $(BOARD_SIM_PREREQ)
 	ln -sfn $(PREFIX)/$(TARGET)/libnix $(BUILD)/gcc/$(TARGET)/libnix

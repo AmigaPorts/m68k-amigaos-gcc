@@ -26,18 +26,41 @@ set volamos_options "--cpu 68000 --stack 4096K --ram 11264K"
 if {![info exists SANITIZE] || $SANITIZE} {
     append volamos_options " --sanitize"
 }
+
+# Options after the board name are added to every compile and link, as in
+# board=volamos/-mcrt=clib2/-m68020/-m68881, and volamos follows them: the
+# CPU, the FPU, and ixemul.library for -mcrt=ixemul.
+process_multilib_options ""
+set variant_flags [board_info $board multilib_flags]
+if {[regexp -- {-m(?:cpu=)?(680[2346]0)} $variant_flags -> cpu]} {
+    regsub -- {--cpu \S+} $volamos_options "--cpu $cpu" volamos_options
+}
+set variant_fpu [regexp -- {-m68881|-mhard-float} $variant_flags]
+if {$variant_fpu} {
+    append volamos_options " --fpu"
+}
+set variant_ixemul [string match "*-mcrt=ixemul*" $variant_flags]
+if {$variant_ixemul} {
+    set libs [expr {$variant_fpu ? "IXEMUL_FPU_LIBS" : "IXEMUL_LIBS"}]
+    if {![info exists ::env($libs)]} {
+        error "volamos: $libs (the ixemul.library directory) is not set"
+    }
+    append volamos_options " --libs-dir $::env($libs)"
+}
 set_board_info sim,options $volamos_options
 # Wall-clock limit for each program run; sim.exp's default is 240 s.  The
 # slowest tests take about 10 s, 40 s on a loaded machine, so a hang costs a
 # parallel slot 2 minutes rather than 4.
 set_board_info sim_time_limit 120
 
-# No multilib options needed by default.
-process_multilib_options ""
-
 set_board_info compiler "[find_gcc]"
-set_board_info cflags "-mcrt=nix20"
-set_board_info ldflags "-lpthread"
+# libnix unless a variant picks another runtime: two -mcrt= options conflict.
+if {[string match "*-mcrt=*" $variant_flags]} {
+    set_board_info cflags ""
+} else {
+    set_board_info cflags "-mcrt=nix20"
+}
+set_board_info ldflags [expr {$variant_ixemul ? "" : "-lpthread"}]
 set_board_info ldscript "";
 
 set_board_info gcc,stack_size 4096
