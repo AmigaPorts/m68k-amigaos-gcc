@@ -1767,10 +1767,13 @@ $(BUILD)/newlib/_headers: $(NEWLIB_HEADERS) $(BUILD)/gcc/_done | $(PREFIX_STAMP)
 # --disable-newlib-reent-check-verify: with reent-small, newlib otherwise
 # asserts on every lazily allocated reent field, so rand(), strtok() or
 # gmtime() alone link assert(), fiprintf() and all of stdio.
+# --disable-newlib-mb: AmigaOS is ISO-8859-1 throughout, and the multibyte
+# support made scanf() and the isw*() functions link 29 KB of Unicode and
+# Japanese tables.
 $(BUILD)/newlib/newlib/Makefile: $(PROJECTS)/newlib-cygwin/newlib/configure $(BUILD)/ndk-include_ndk $(BUILD)/gcc/_done $(BUILD)/newlib/_headers | $(PREFIX_STAMP)
 	@mkdir -p $(BUILD)/newlib/newlib
 	@if [ ! -f "$(BUILD)/newlib/newlib/Makefile" ]; then \
-	$(L00)"configure newlib"$(L1) cd $(BUILD)/newlib/newlib && $(NEWLIB_CONFIG) CFLAGS="$(NEWLIB_CFLAGS)" CC_FOR_BUILD="$(CC)" CXXFLAGS="$(NEWLIB_CXXFLAGS)" $(PROJECTS)/newlib-cygwin/newlib/configure --host=$(TARGET) --prefix=$(PREFIX) --enable-newlib-io-long-long --enable-newlib-io-c99-formats --enable-newlib-reent-small --enable-newlib-mb --enable-newlib-long-time_t --disable-newlib-reent-check-verify $(L2) \
+	$(L00)"configure newlib"$(L1) cd $(BUILD)/newlib/newlib && $(NEWLIB_CONFIG) CFLAGS="$(NEWLIB_CFLAGS)" CC_FOR_BUILD="$(CC)" CXXFLAGS="$(NEWLIB_CXXFLAGS)" $(PROJECTS)/newlib-cygwin/newlib/configure --host=$(TARGET) --prefix=$(PREFIX) --enable-newlib-io-long-long --enable-newlib-io-c99-formats --enable-newlib-reent-small --disable-newlib-mb --enable-newlib-long-time_t --disable-newlib-reent-check-verify $(L2) \
 	; else touch "$(BUILD)/newlib/newlib/Makefile"; fi
 
 $(PROJECTS)/newlib-cygwin/newlib/configure:
