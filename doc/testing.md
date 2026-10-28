@@ -80,11 +80,11 @@ The board combinations worth running, and their latest results:
 
 | board | `check-c` | `check-c++` | `check`[^check] |
 |---|---|---|---|
-| `volamos/-mcrt=nix20` | ✅ | ❌ 13 | yes |
+| `volamos/-mcrt=nix20` | ✅ | ❌ 1 | yes |
 | `volamos/-mcrt=nix20/-m68020-60` | ✅ | ❌ 1 | |
 | `volamos/-mcrt=nix20/-m68020-60/-m68881` | ✅ | ? | |
-| `volamos/-mcrt=nix20/-m68020-60/-m68881/-fbaserel32` | ✅ | ❌ 377 | yes |
-| `volamos/-mcrt=newlib` | ✅ | ❌ 10 | |
+| `volamos/-mcrt=nix20/-m68020-60/-m68881/-fbaserel32` | ✅ | [❌ 377](https://github.com/AmigaPorts/m68k-amigaos-gcc/issues/253) | yes |
+| `volamos/-mcrt=newlib` | ✅ | [❌ 10](https://github.com/AmigaPorts/gcc/pull/147) | |
 | `volamos/-mcrt=newlib/-m68020-60` | ✅ | ? | |
 | `volamos/-mcrt=newlib/-m68020-60/-m68881` | ✅ | ❌ 9 | |
 | `volamos/-mcrt=newlib/-m68020-60/-m68881/-fbaserel32` | ✅ | ? | |
