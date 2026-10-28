@@ -1597,6 +1597,11 @@ $(LIBBAMIGA):
 # libnix
 # =================================================
 
+# IXPATHS: libnix's file functions (open, stat, chdir, mkdir, rename, ...) translate Unix paths,
+# such as /Work/src or ../include, into AmigaDOS ones only when it is defined.
+# The AmigaOS-hosted gcc and binutils pass POSIX paths around and DON'T WORK WITHOUT IT.
+LIBNIX_CFLAGS = -DIXPATHS
+
 LIBNIX_SRC = $(shell find 2>/dev/null $(PROJECTS)/libnix -not \( -path $(PROJECTS)/libnix/.git -prune \) -not \( -path $(PROJECTS)/libnix/sources/stubs/libbases -prune \) -not \( -path $(PROJECTS)/libnix/sources/stubs/libnames -prune \) -type f)
 
 .PHONY: libnix
@@ -1607,7 +1612,7 @@ $(BUILD)/libnix/_done: $(BUILD)/newlib/_done $(BUILD)/ndk-include_ndk $(BUILD)/n
 	@mkdir -p $(BUILD)/libnix
 	@mkdir -p $(PREFIX)/lib/gcc/$(TARGET)/$(GCC_DIR_VERSION)
 	@if [ ! -e $(PREFIX)/lib/gcc/$(TARGET)/$(GCC_DIR_VERSION)/libgcc.a ]; then $(TARGET_AR_FOR_BUILD) rcs $(PREFIX)/lib/gcc/$(TARGET)/$(GCC_DIR_VERSION)/libgcc.a; fi
-	$(L0)"make libnix"$(L1) CFLAGS="$(CFLAGS_FOR_TARGET)" $(MAKE) -C $(BUILD)/libnix -f $(PROJECTS)/libnix/Makefile.gcc6 root=$(PROJECTS)/libnix all $(L2)
+	$(L0)"make libnix"$(L1) CFLAGS="$(CFLAGS_FOR_TARGET) $(LIBNIX_CFLAGS)" $(MAKE) -C $(BUILD)/libnix -f $(PROJECTS)/libnix/Makefile.gcc6 root=$(PROJECTS)/libnix all $(L2)
 	$(L0)"install libnix"$(L1) $(MAKE) -C $(BUILD)/libnix -f $(PROJECTS)/libnix/Makefile.gcc6 root=$(PROJECTS)/libnix install $(L2)
 	@rsync --delete -a --no-group $(PROJECTS)/libnix/sources/headers/* $(PREFIX)/$(TARGET)/libnix/include/
 	@echo "done" >$@
@@ -1642,7 +1647,7 @@ endif
 .PHONY: libnix4.library
 libnix4.library: $(BUILD)/libnix/libb/libnix4.library
 $(BUILD)/libnix/libb/libnix4.library: $(BUILD)/gcc/_libgcc_done $(BUILD)/libnix/_done
-	$(L0)"make libnix4.library"$(L1) CFLAGS="$(CFLAGS_FOR_TARGET)" \
+	$(L0)"make libnix4.library"$(L1) CFLAGS="$(CFLAGS_FOR_TARGET) $(LIBNIX_CFLAGS)" \
 	$(MAKE) -C $(BUILD)/libnix -f $(PROJECTS)/libnix/Makefile.gcc6 root=$(PROJECTS)/libnix libb/libnix4.library $(L2)
 
 # =================================================
