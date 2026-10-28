@@ -87,7 +87,7 @@ The combinations worth running, and their latest results:
 | board | `check-c` | `check-c++` | `make check` | release gate |
 |---|---|---|---|---|
 | `volamos/-mcrt=nix20` | ✅ | ❌ 13 | yes | yes |
-| `volamos/-mcrt=nix20/-m68020-60` | ? | ? | | |
+| `volamos/-mcrt=nix20/-m68020-60` | ✅ | ? | | |
 | `volamos/-mcrt=nix20/-m68020-60/-m68881` | ? | ? | | |
 | `volamos/-mcrt=nix20/-m68020-60/-m68881/-fbaserel32` | ? | ? | yes | yes |
 | `volamos/-mcrt=newlib` | ? | ? | | |
