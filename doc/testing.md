@@ -61,25 +61,12 @@ one `make -j` or in two shells on the same build tree: they share `gcc.sum`.
 
 A board is a `baseboards/*.exp` file: the compiler flags the tests are built
 with and the simulator that runs them. `board=` picks one for `check-c`,
-`check-gcc-amigaos` and `check-c++`, and defaults to `volamos`:
-
-| board | code | runtime |
-|---|---|---|
-| `volamos` | 68000 | libnix |
-| `volamos-020` | 68020 | libnix |
-| `volamos-fpu` | 68020 + 68881, on an emulated FPU | libnix |
-| `volamos-baserel`, `volamos-020-baserel` | 68000 / 68020, `-fbaserel` | libnix |
-| `volamos-020-baserel32` | 68020, `-fbaserel32` | libnix |
-| `volamos-fpu-baserel32` | 68020 + 68881, `-fbaserel32` | libnix |
-| `volamos-newlib` | 68000 | newlib |
-| `volamos-newlib-fpu` | 68020 + 68881 | newlib |
-| `volamos-newlib-fpu-baserel32` | 68020 + 68881, `-fbaserel32` | newlib |
-| `volamos-ixemul` | 68000 | ixemul |
-| `volamos-ixemul-fpu` | 68020 + 68881, with the 68020 FPU ixemul.library | ixemul |
-| `amigaos`, `amigaos-020`, `amigaos-baserel`, ... | as the `volamos*` board of the same name | under vamos |
+`check-gcc-amigaos` and `check-c++`, and defaults to `volamos`, which runs
+the tests on a 68000 under volamos.
 
 Options after `volamos` and a slash are added to every compile and link, so
-any combination works without a board file of its own:
+any combination of runtime, CPU, FPU and code model works without a board
+file of its own:
 
 ```shell
 make check-c board=volamos/-mcrt=clib2
@@ -88,7 +75,33 @@ make check-c board=volamos/-mcrt=newlib/-m68040/-m68881/-fbaserel32
 
 volamos follows them: it emulates the CPU that `-m680x0` or `-mcpu=680x0`
 names, adds the FPU for `-m68881`, and loads ixemul.library for
-`-mcrt=ixemul`. Without `-mcrt=`, the tests use libnix.
+`-mcrt=ixemul`.
+
+**Always give the runtime with `-mcrt=`.** Without one, the board uses
+`-mcrt=nix20` today, but that default may change.
+
+The combinations worth running, and their state on master:
+
+| board | passing | `make check` | release gate |
+|---|---|---|---|
+| `volamos/-mcrt=nix20` | ✅ | yes | yes |
+| `volamos/-mcrt=nix20/-m68020` | ? | | |
+| `volamos/-mcrt=nix20/-m68020/-m68881` | ✅ | | |
+| `volamos/-mcrt=nix20/-m68020/-m68881/-fbaserel32` | ✅ | yes | yes |
+| `volamos/-mcrt=newlib` | ❌ 1 | | |
+| `volamos/-mcrt=newlib/-m68020` | ? | | |
+| `volamos/-mcrt=newlib/-m68020/-m68881` | ❌ 2 | | |
+| `volamos/-mcrt=newlib/-m68020/-m68881/-fbaserel32` | ❌ 2 | | |
+| `volamos/-mcrt=ixemul` | ? | yes | yes |
+| `volamos/-mcrt=ixemul/-m68020` | ? | | |
+| `volamos/-mcrt=ixemul/-m68020/-m68881` | ❌ | | |
+| `volamos/-mcrt=ixemul/-m68020/-m68881/-fbaserel32` | ? | | |
+| `volamos/-mcrt=clib2` | ❌ | | |
+
+Passing: ✅ no unexpected failures in `check-c`, ❌ with the number of
+failures where it's known, ? not run yet. `make check` runs `check-c` on
+the combinations marked yes, and the release gate runs `make check`. With ixemul, `-m68881` needs the FPU build of
+ixemul.library, which rounds wrongly until ixemul 80.2.
 
 `SIM=/path/to/volamos` runs a volamos other than the one in `$PREFIX/bin`,
 such as a local build.
@@ -129,3 +142,23 @@ make -C build-*/gcc check-gcc-c \
 They write `gcc.sum` and `gcc.log` in `build-*/gcc/gcc/testsuite/gcc/`.
 `SANITIZE=0` in `RUNTESTFLAGS` turns off volamos's memory sanitizer, which
 `check-c++` always does.
+
+## Obsolete boards
+
+These board files predate the options after a slash, and will be removed.
+Each is the same as the combination next to it:
+
+| board | same as |
+|---|---|
+| `volamos-020` | `volamos/-mcrt=nix20/-m68020` |
+| `volamos-fpu` | `volamos/-mcrt=nix20/-m68020/-m68881` |
+| `volamos-baserel` | `volamos/-mcrt=nix20/-fbaserel` |
+| `volamos-020-baserel` | `volamos/-mcrt=nix20/-m68020/-fbaserel` |
+| `volamos-020-baserel32` | `volamos/-mcrt=nix20/-m68020/-fbaserel32` |
+| `volamos-fpu-baserel32` | `volamos/-mcrt=nix20/-m68020/-m68881/-fbaserel32` |
+| `volamos-newlib` | `volamos/-mcrt=newlib` |
+| `volamos-newlib-fpu` | `volamos/-mcrt=newlib/-m68020/-m68881` |
+| `volamos-newlib-fpu-baserel32` | `volamos/-mcrt=newlib/-m68020/-m68881/-fbaserel32` |
+| `volamos-ixemul` | `volamos/-mcrt=ixemul` |
+| `volamos-ixemul-fpu` | `volamos/-mcrt=ixemul/-m68020/-m68881` |
+| `amigaos`, `amigaos-020`, `amigaos-baserel`, ... | the `volamos*` board of the same name, under vamos |
