@@ -1,9 +1,0 @@
-# volamos-020 with an FPU fitted: 68020/68881 code, the libm020/libm881
-# multilib, so that the testsuites run the 68881 patterns and the FPU
-# prologues and epilogues, which no other volamos board does.
-load_board_description "volamos-020"
-
-unset_board_info cflags
-set_board_info cflags "-mcrt=nix20 -m68020 -m68881"
-unset_board_info sim,options
-set_board_info sim,options "$volamos_options --fpu"

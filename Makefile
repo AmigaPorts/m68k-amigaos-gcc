@@ -1786,8 +1786,7 @@ ixemul:	$(BUILD)/ixemul/_done
 # files and the libc.a stubs.  The archive also carries ixemul.library and
 # ixnet.library for each CPU, the ixpipe handler and the sources; only the
 # 68000 libraries are installed, in ixemul/libs, and the 68020 FPU ones, in
-# ixemul/libs-020fpu, for the volamos-ixemul and volamos-ixemul-fpu testsuite
-# boards.  ranlib: the libc.a files of 80.1 ship with a stale symbol
+# ixemul/libs-020fpu, for the testsuite's -mcrt=ixemul boards.  ranlib: the libc.a files of 80.1 ship with a stale symbol
 # index that misses poll.o, so poll() did not link.
 #
 # patches/ixemul has the headers the SDK lacks or gets wrong:
@@ -1871,7 +1870,7 @@ update-repos:
 # =================================================
 # volamos
 # =================================================
-# The simulator the volamos* boards run the target testsuite under.  A
+# The simulator the volamos board runs the target testsuite under.  A
 # published release binary is used rather than a source build, so neither CI
 # nor a contributor needs a Rust toolchain; hosts without a release build it
 # themselves and put it on PATH.
@@ -1913,8 +1912,7 @@ endif
 # =================================================
 # run gcc torture check
 # =================================================
-# The volamos* boards are the default; the amigaos* ones run the same tests
-# under vamos, for comparison.
+# volamos is the default board; the vamos one runs the same tests under vamos, for comparison.
 ifeq (,$(board))
 board = volamos
 endif
@@ -1934,7 +1932,7 @@ BOARD_PREREQ += $(if $(findstring -mcrt=clib2,$(board)),$(call if-missing,$(BUIL
 # vamos/volamos as the simulator.
 export DEJAGNU ?= $(CURDIR)/dejagnu-site.exp
 
-# The ixemul.library the volamos-ixemul and volamos-ixemul-fpu boards run the tests with.
+# The ixemul.library volamos runs -mcrt=ixemul tests with, without and with -m68881.
 export IXEMUL_LIBS ?= $(PREFIX)/$(TARGET)/ixemul/libs
 export IXEMUL_FPU_LIBS ?= $(PREFIX)/$(TARGET)/ixemul/libs-020fpu
 
@@ -1957,8 +1955,8 @@ MIN_IF_MISSING = $(call if-missing,$(BUILD)/gcc/_libgcc_done $(BUILD)/ixemul/_do
 # What a release must pass; the release workflow runs it.  The GCC testsuites run
 # sequentially: they drive check-gcc-c in the same build tree, sharing gcc.sum
 # and testsuite/gcc-parallel, so they must not run at the same time.
-# volamos-fpu-baserel32 covers 68020 code with FPU instructions on a4-relative
-# data in one run.
+# volamos/-mcrt=nix20/-m68020-60/-m68881/-fbaserel32 covers 68020 code with FPU instructions on
+# a4-relative data in one run.
 .PHONY: check
 check:
 	$(MAKE) --no-print-directory check-multilib
@@ -2010,8 +2008,8 @@ check-c-exp ?= 'execute.exp=*' \
 # UNRESOLVED is tolerated: DejaGnu cannot tell whether the "amiga" object format
 # supports weak symbols, so dg-require-weak tests (20030125-1.c) come out unresolved.
 # On a board other than volamos the results are named after it, so that make check
-# keeps both runs: gcc-execute-volamos-ixemul.sum, check-c-volamos-ixemul.summary.txt.
-# Board options lose their slashes: volamos/-mcrt=clib2 gives gcc-execute-volamos-mcrt=clib2.sum.
+# keeps the runs apart, with the slashes dropped: board=volamos/-mcrt=ixemul gives
+# gcc-execute-volamos-mcrt=ixemul.sum and check-c-volamos-mcrt=ixemul.summary.txt.
 check-c-board = $(if $(filter volamos,$(board)),,-$(subst /,,$(board)))
 .PHONY: check-c
 check-c: $(MIN_IF_MISSING) $(BOARD_PREREQ)
@@ -2056,8 +2054,7 @@ check-libpthread: $(BUILD)/libpthread/_done
 	  2>&1 | tee $@.summary.txt
 
 # newlib's own testsuite, linked against the installed newlib: the base
-# multilib without an FPU (volamos-newlib) and the 68020/68881 one with an
-# FPU (volamos-newlib-fpu).
+# multilib without an FPU and the 68020/68881 one with an FPU.
 # newlib's check-DEJAGNU runs a single runtest in one directory, where every
 # test program is written to a fixed name, so it uses one core.  Instead, one
 # runtest per board and .exp file runs in its own directory, with a site.exp
@@ -2068,11 +2065,14 @@ check-libpthread: $(BUILD)/libpthread/_done
 # runs go to the end, then any FAIL, or a board without results, fails the
 # target.
 NEWLIBTESTSUITE = $(BUILD)/newlib/newlib/testsuite
-NEWLIB_BOARDS = volamos-newlib volamos-newlib-fpu
+NEWLIB_BOARDS = volamos/-mcrt=newlib volamos/-mcrt=newlib/-m68020-60/-m68881
+# a board's results directory: no slashes, and _ for =, which make doesn't allow in targets
+newlib-board-dir = $(subst =,_,$(subst /,,$(1)))
+NEWLIB_BOARD_DIRS = $(call newlib-board-dir,$(NEWLIB_BOARDS))
 NEWLIB_TESTSRC = $(PROJECTS)/newlib-cygwin/newlib/testsuite
 NEWLIB_EXPS = $(patsubst $(NEWLIB_TESTSRC)/%,%,$(sort $(wildcard $(NEWLIB_TESTSRC)/newlib.*/*.exp)))
 # the results directory of board $(1) and .exp file $(2)
-newlib-check-dir = $(NEWLIBTESTSUITE)/$(1)/$(subst /,_,$(2:.exp=))
+newlib-check-dir = $(NEWLIBTESTSUITE)/$(call newlib-board-dir,$(1))/$(subst /,_,$(2:.exp=))
 NEWLIB_CHECKS = $(foreach b,$(NEWLIB_BOARDS),$(foreach e,$(NEWLIB_EXPS),$(call newlib-check-dir,$(b),$(e))/newlib.sum))
 
 .PHONY: newlib-site-exp $(NEWLIB_CHECKS)
@@ -2094,15 +2094,15 @@ $(foreach b,$(NEWLIB_BOARDS),$(foreach e,$(NEWLIB_EXPS),$(eval $(call newlib-che
 
 .PHONY: check-newlib
 check-newlib: $(NEWLIB_CHECKS)
-	@for b in $(NEWLIB_BOARDS); do \
+	@for b in $(NEWLIB_BOARD_DIRS); do \
 	  sums=; for e in $(NEWLIB_EXPS); do sums="$$sums $(NEWLIBTESTSUITE)/$$b/`echo $${e%.exp} | tr / _`/newlib.sum"; done; \
 	  $(PROJECTS)/gcc/contrib/dg-extract-results.sh $$sums >$(NEWLIBTESTSUITE)/$$b/newlib.sum; \
 	  $(PROJECTS)/gcc/contrib/dg-extract-results.sh -L `echo $$sums | sed 's/newlib\.sum/newlib.log/g'` >$(NEWLIBTESTSUITE)/$$b/newlib.log; \
 	done
-	@for b in $(NEWLIB_BOARDS); do echo "----- newlib $$b -----"; grep -E '^(# of|FAIL|ERROR|XPASS)' $(NEWLIBTESTSUITE)/$$b/newlib.sum || echo '(no tests run)'; done | tee $@.summary.txt
+	@for b in $(NEWLIB_BOARD_DIRS); do echo "----- newlib $$b -----"; grep -E '^(# of|FAIL|ERROR|XPASS)' $(NEWLIBTESTSUITE)/$$b/newlib.sum || echo '(no tests run)'; done | tee $@.summary.txt
 	@echo "results: $(NEWLIBTESTSUITE)/<board>/newlib.{sum,log}"
-	@for b in $(NEWLIB_BOARDS); do grep -q '^# of expected passes' $(NEWLIBTESTSUITE)/$$b/newlib.sum || exit 1; done
-	@! grep -qE '^(FAIL|ERROR|XPASS)' $(foreach b,$(NEWLIB_BOARDS),$(NEWLIBTESTSUITE)/$(b)/newlib.sum)
+	@for b in $(NEWLIB_BOARD_DIRS); do grep -q '^# of expected passes' $(NEWLIBTESTSUITE)/$$b/newlib.sum || exit 1; done
+	@! grep -qE '^(FAIL|ERROR|XPASS)' $(foreach b,$(NEWLIB_BOARD_DIRS),$(NEWLIBTESTSUITE)/$(b)/newlib.sum)
 
 # The full C++ testsuite is large and slow, so it is not part of `check`;
 # run it on demand with `make check-c++`.

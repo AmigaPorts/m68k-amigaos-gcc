@@ -40,7 +40,7 @@ on:
         type: boolean
         default: true
       make_args:
-        description: "make targets to run instead of the default build and tests, e.g. check-c board=volamos-newlib"
+        description: "make targets to run instead of the default build and tests, e.g. check-c board=volamos/-mcrt=newlib"
         default: ""
   # same inputs again: workflow_call, used by release.yml, does not
   # share the workflow_dispatch input declarations
@@ -193,17 +193,17 @@ jobs:
       MAKE_ARGS: >-
         ${{ inputs.make_args
             || needs.refs.outputs.label == 'ci-check-c' && 'check-c'
-            || needs.refs.outputs.label == 'ci-check-c-fpu' && 'check-c board=volamos-fpu'
-            || needs.refs.outputs.label == 'ci-check-c-ixemul' && 'check-c board=volamos-ixemul'
-            || needs.refs.outputs.label == 'ci-check-c-newlib' && 'check-c board=volamos-newlib'
+            || needs.refs.outputs.label == 'ci-check-c-fpu' && 'check-c board=volamos/-mcrt=nix20/-m68020-60/-m68881'
+            || needs.refs.outputs.label == 'ci-check-c-ixemul' && 'check-c board=volamos/-mcrt=ixemul'
+            || needs.refs.outputs.label == 'ci-check-c-newlib' && 'check-c board=volamos/-mcrt=newlib'
             || needs.refs.outputs.label == 'ci-check-c++' && 'check-c++'
-            || needs.refs.outputs.label == 'ci-check-c++-baserel32' && 'check-c++ board=volamos-020-baserel32'
-            || needs.refs.outputs.label == 'ci-check-c++-newlib' && 'check-c++ board=volamos-newlib'
+            || needs.refs.outputs.label == 'ci-check-c++-baserel32' && 'check-c++ board=volamos/-mcrt=nix20/-m68020-60/-fbaserel32'
+            || needs.refs.outputs.label == 'ci-check-c++-newlib' && 'check-c++ board=volamos/-mcrt=newlib'
             || needs.refs.outputs.label == 'ci-check-newlib' && 'check-newlib'
             || format('all all-sdk vbcc vlink zlib libpng check-gdb-libpython package {0}{1}{2}',
                       inputs.run_testsuite && 'check' || 'check-multilib check-binutils check-gcc-amigaos check-libnix check-libpthread',
                       inputs.run_cxx_testsuite && ' check-c++' || '',
-                      (inputs.simulator || 'volamos') == 'vamos' && ' board=amigaos' || '') }}
+                      (inputs.simulator || 'volamos') == 'vamos' && ' board=vamos' || '') }}
       AMITOOLS_GIT: ${{ inputs.amitools_git || 'git+https://github.com/AmigaPorts/amitools.git' }}
       # not GCC_VERSION: the Makefile reads that from gcc's BASE-VER
       # (16.2.1b) and derives the lib/gcc/<target>/<version> directory (16)

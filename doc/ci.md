@@ -36,7 +36,7 @@ is a separate job, and they all run in parallel. For example:
 ```
 /ci linux
 /ci macos
-/ci linux-arm make check-c board=volamos-newlib
+/ci linux-arm make check-c board=volamos/-mcrt=newlib
 /ci linux-arm make all all-sdk libpng check-c++
 /ci linux binutils=amiga-2.47 make check-c
 ```
@@ -95,12 +95,12 @@ label runs one testsuite on `linux-arm`:
 | label | same as |
 |---|---|
 | `ci-check-c` | `/ci linux-arm make check-c` |
-| `ci-check-c-fpu` | `/ci linux-arm make check-c board=volamos-fpu` |
-| `ci-check-c-ixemul` | `/ci linux-arm make check-c board=volamos-ixemul` |
-| `ci-check-c-newlib` | `/ci linux-arm make check-c board=volamos-newlib` |
+| `ci-check-c-fpu` | `/ci linux-arm make check-c board=volamos/-mcrt=nix20/-m68020-60/-m68881` |
+| `ci-check-c-ixemul` | `/ci linux-arm make check-c board=volamos/-mcrt=ixemul` |
+| `ci-check-c-newlib` | `/ci linux-arm make check-c board=volamos/-mcrt=newlib` |
 | `ci-check-c++` | `/ci linux-arm make check-c++` |
-| `ci-check-c++-baserel32` | `/ci linux-arm make check-c++ board=volamos-020-baserel32` |
-| `ci-check-c++-newlib` | `/ci linux-arm make check-c++ board=volamos-newlib` |
+| `ci-check-c++-baserel32` | `/ci linux-arm make check-c++ board=volamos/-mcrt=nix20/-m68020-60/-fbaserel32` |
+| `ci-check-c++-newlib` | `/ci linux-arm make check-c++ board=volamos/-mcrt=newlib` |
 | `ci-check-newlib` | `/ci linux-arm make check-newlib` |
 
 ## Dispatch
@@ -111,7 +111,7 @@ command line:
 
 ```
 gh workflow run toolchain.yml --ref my-branch \
-  -f make_args='check-c board=volamos-fpu' \
+  -f make_args='check-c board=volamos/-mcrt=nix20/-m68020-60/-m68881' \
   -f runner=ubuntu-24.04-arm \
   -f build_hosted=false
 ```
@@ -137,7 +137,7 @@ gcc 6, `amiga16.2` builds 16.2.
 
 The `/ci make` and `ci-check-*` runs use the same make targets and boards
 as a local test, so a failure reproduces with the same command, for example
-`make check-c board=volamos-fpu`: see [testing.md](testing.md).
+`make check-c board=volamos/-mcrt=nix20/-m68020-60/-m68881`: see [testing.md](testing.md).
 
 A run's summary page shows the module revisions it built, the commit, and
 each testsuite's summary. The `testsuite-results-*` artifact has the `.sum`

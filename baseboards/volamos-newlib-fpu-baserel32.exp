@@ -1,9 +1,0 @@
-# volamos-newlib-fpu with -fbaserel32: FPU instructions on a4-relative data
-# with newlib, and newlib's libb32/libm020/libm881 multilib.
-load_board_description "volamos-newlib"
-
-unset_board_info cflags
-set_board_info cflags "-mcrt=newlib -mcpu=68020 -m68881 -fbaserel32"
-unset_board_info sim,options
-regsub -- {--cpu \S+} $volamos_options {--cpu 68020} volamos_options
-set_board_info sim,options "$volamos_options --fpu"
