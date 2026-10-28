@@ -111,11 +111,14 @@ The driver links the runtime libraries built for the options:
 | options | libraries |
 |---|---|
 | none, or `-m68010` | 68000 |
-| `-m68020` to `-m68060` | 68020 |
-| `-m68020` to `-m68060` with `-m68881` | 68020 with FPU |
+| `-m68020-60` | 68020 |
+| `-m68020-60 -m68881` | 68020 with FPU |
 | `-fbaserel`, `-resident` | base-relative 68000 |
-| `-fbaserel` or `-resident` with `-m68020` to `-m68060` | base-relative 68020, with FPU for `-m68881` |
-| `-fbaserel32`, `-resident32` with `-m68020` to `-m68060` | 32-bit base-relative 68020, with FPU for `-m68881` |
+| `-fbaserel` or `-resident` with `-m68020-60` | base-relative 68020, with FPU for `-m68881` |
+| `-fbaserel32`, `-resident32` with `-m68020-60` | 32-bit base-relative 68020, with FPU for `-m68881` |
+
+The 68020 libraries are built with `-m68020-60`, and `-m68020` to `-m68060`
+pick them too.
 
 `m68k-amigaos-gcc -print-multi-lib` lists them, and
 `m68k-amigaos-gcc <options> -print-multi-directory` names the one a set of
