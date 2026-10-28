@@ -78,27 +78,23 @@ such as a local build.
 
 The board combinations worth running, and their latest results:
 
-| board | `check-c` | `check-c++` | `make check` | release gate |
-|---|---|---|---|---|
-| `volamos/-mcrt=nix20` | ✅ | ❌ 13 | yes | yes |
-| `volamos/-mcrt=nix20/-m68020-60` | ✅ | ? | | |
-| `volamos/-mcrt=nix20/-m68020-60/-m68881` | ? | ? | | |
-| `volamos/-mcrt=nix20/-m68020-60/-m68881/-fbaserel32` | ? | ? | yes | yes |
-| `volamos/-mcrt=newlib` | ? | ? | | |
-| `volamos/-mcrt=newlib/-m68020-60` | ✅ | ? | | |
-| `volamos/-mcrt=newlib/-m68020-60/-m68881` | ? | ? | | |
-| `volamos/-mcrt=newlib/-m68020-60/-m68881/-fbaserel32` | ? | ? | | |
-| `volamos/-mcrt=ixemul` | ? | ? | yes | yes |
-| `volamos/-mcrt=ixemul/-m68020-60` | ? | ? | | |
-| `volamos/-mcrt=ixemul/-m68020-60/-m68881` | [❌](https://github.com/AmigaPorts/m68k-amigaos-gcc/issues/208) | ? | | |
-| `volamos/-mcrt=ixemul/-m68020-60/-m68881/-fbaserel32` | ? | ? | | |
-| `volamos/-mcrt=clib2` | [❌](https://github.com/AmigaPorts/clib2/pull/6) | ? | | |
+| board | `check-c` | `check-c++` | `check`[^1] |
+|---|---|---|---|
+| `volamos/-mcrt=nix20` | ✅ | ❌ 13 | yes |
+| `volamos/-mcrt=nix20/-m68020-60` | ✅ | ? | |
+| `volamos/-mcrt=nix20/-m68020-60/-m68881` | ? | ? | |
+| `volamos/-mcrt=nix20/-m68020-60/-m68881/-fbaserel32` | ? | ? | yes |
+| `volamos/-mcrt=newlib` | ? | ? | |
+| `volamos/-mcrt=newlib/-m68020-60` | ✅ | ? | |
+| `volamos/-mcrt=newlib/-m68020-60/-m68881` | ? | ? | |
+| `volamos/-mcrt=newlib/-m68020-60/-m68881/-fbaserel32` | ? | ? | |
+| `volamos/-mcrt=ixemul` | ? | ? | yes |
+| `volamos/-mcrt=ixemul/-m68020-60` | ? | ? | |
+| `volamos/-mcrt=ixemul/-m68020-60/-m68881` | [❌](https://github.com/AmigaPorts/m68k-amigaos-gcc/issues/208) | ? | |
+| `volamos/-mcrt=ixemul/-m68020-60/-m68881/-fbaserel32` | ? | ? | |
+| `volamos/-mcrt=clib2` | [❌](https://github.com/AmigaPorts/clib2/pull/6) | ? | |
 
-✅ no unexpected failures, ❌ with the number of failures where it's known
-and a link to the issue or fix, ? not run yet. `make check` runs `check-c`
-on the combinations marked yes, and the release gate runs `make check`.
-With ixemul, `-m68881` needs the FPU build of ixemul.library, which rounds
-wrongly until ixemul 80.2.
+[^1]: `make check` runs `check-c` on these, and gates releases.
 
 ## Results
 
@@ -161,9 +157,8 @@ has `-m68020-60`:
 
 The `amigaos`, `amigaos-020`, `amigaos-baserel`, ... boards run the tests of
 the `volamos*` board of the same name under
-[vamos](https://github.com/AmigaPorts/amitools) instead. Nothing tests them
-any more, and they are probably broken. To try them, install amitools in a
-venv, to keep it out of the system Python:
+[vamos](https://github.com/AmigaPorts/amitools) instead. CI doesn't run
+them. Install amitools in a venv, to keep it out of the system Python:
 
 ```shell
 python3 -m venv .venv
