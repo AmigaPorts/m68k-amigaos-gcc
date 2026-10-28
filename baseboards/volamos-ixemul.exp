@@ -10,7 +10,5 @@ if {![info exists ::env(IXEMUL_LIBS)]} {
 
 unset_board_info cflags
 set_board_info cflags "-mcrt=ixemul"
-unset_board_info ldflags
-set_board_info ldflags ""
 unset_board_info sim,options
 set_board_info sim,options "$volamos_options --libs-dir $::env(IXEMUL_LIBS)"
