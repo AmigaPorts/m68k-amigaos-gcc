@@ -16,13 +16,20 @@ if {![info exists SIM]} {
     set SIM vamos
 }
 setup_sim amigaos
+# vamos runs as a 68020, which also runs 68000 code.
 set_board_info sim,options "-C 68020 -s 4096 -m 11264"
 
-# No multilib options needed by default.
+# Options after the board name are added to every compile and link, as in
+# board=vamos/-mcrt=newlib/-fbaserel.
 process_multilib_options ""
 
 set_board_info compiler "[find_gcc]"
-set_board_info cflags "-mcrt=nix20 -m68020 -fbaserel"
+# libnix unless an option picks another runtime: two -mcrt= options conflict.
+if {[string match "*-mcrt=*" [board_info $board multilib_flags]]} {
+    set_board_info cflags ""
+} else {
+    set_board_info cflags "-mcrt=nix20"
+}
 set_board_info ldscript "";
 
 set_board_info gcc,stack_size 4096

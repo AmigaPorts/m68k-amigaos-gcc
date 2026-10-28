@@ -17,9 +17,9 @@ binary into `$PREFIX/bin` first (`make volamos` does just that).
 ## Running
 
 ```shell
-make -j$(nproc) check                          # the usual set, see below
-make -j$(nproc) check-c board=volamos-fpu      # one testsuite on one board
-make -j$(nproc) check-c++                      # the g++ testsuite (slow)
+make -j$(nproc) check                                  # the usual set, see below
+make -j$(nproc) check-c board=volamos/-mcrt=newlib     # one testsuite on one board
+make -j$(nproc) check-c++                              # the g++ testsuite (slow)
 ```
 
 The build tree remembers its `PREFIX`, so no `PREFIX=` is needed after
@@ -40,7 +40,7 @@ after changing sources.
 | `check-binutils` | the gas and ld tests for the Amiga hunk format | a failing Amiga test, or none run |
 | `check-multilib` | the multilib list against the driver's | any difference |
 | `check-shell` | shellcheck on `scripts/` and `.github/scripts/` | any finding |
-| `check` | `check-multilib` to `check-c` in turn, then `check-c` on `volamos-ixemul` and `volamos-fpu-baserel32`: what a release must pass | any of them |
+| `check` | `check-multilib` to `check-c` in turn, then `check-c` on `volamos/-mcrt=ixemul` and `volamos/-mcrt=nix20/-m68020-60/-m68881/-fbaserel32`: what a release must pass | any of them |
 
 "No PASS at all" catches a misspelled `board=`, which runtest reports only
 in its log. Run the gcc testsuite targets one at a time, not together in
@@ -128,43 +128,24 @@ export DEJAGNU=$PWD/dejagnu-site.exp PATH=$(cat build-*/.prefix)/bin:$PATH
 make -C build-*/gcc check-gcc-c \
   RUNTESTFLAGS="--target_board=volamos execute.exp=pr58831*.c"
 make -C build-*/gcc check-gcc-c \
-  RUNTESTFLAGS="--target_board=volamos-fpu gcc.target/m68k/amigaos/amigaos.exp=regparm*.c"
+  RUNTESTFLAGS="--target_board=volamos/-mcrt=nix20/-m68020-60/-m68881 gcc.target/m68k/amigaos/amigaos.exp=regparm*.c"
 ```
 
 They write `gcc.sum` and `gcc.log` in `build-*/gcc/gcc/testsuite/gcc/`.
 `SANITIZE=0` in `RUNTESTFLAGS` turns off volamos's memory sanitizer, which
 `check-c++` always does.
 
-## Obsolete boards
+## vamos
 
-These board files predate the options after a slash, and will be removed.
-Use the combination next to each instead; where the file has `-m68020`, it
-has `-m68020-60`:
-
-| board | use instead |
-|---|---|
-| `volamos-020` | `volamos/-mcrt=nix20/-m68020-60` |
-| `volamos-fpu` | `volamos/-mcrt=nix20/-m68020-60/-m68881` |
-| `volamos-baserel` | `volamos/-mcrt=nix20/-fbaserel` |
-| `volamos-020-baserel` | `volamos/-mcrt=nix20/-m68020-60/-fbaserel` |
-| `volamos-020-baserel32` | `volamos/-mcrt=nix20/-m68020-60/-fbaserel32` |
-| `volamos-fpu-baserel32` | `volamos/-mcrt=nix20/-m68020-60/-m68881/-fbaserel32` |
-| `volamos-newlib` | `volamos/-mcrt=newlib` |
-| `volamos-newlib-fpu` | `volamos/-mcrt=newlib/-m68020-60/-m68881` |
-| `volamos-newlib-fpu-baserel32` | `volamos/-mcrt=newlib/-m68020-60/-m68881/-fbaserel32` |
-| `volamos-ixemul` | `volamos/-mcrt=ixemul` |
-| `volamos-ixemul-fpu` | `volamos/-mcrt=ixemul/-m68020-60/-m68881` |
-
-### vamos
-
-The `amigaos`, `amigaos-020`, `amigaos-baserel`, ... boards run the tests of
-the `volamos*` board of the same name under
-[vamos](https://github.com/AmigaPorts/amitools) instead. CI doesn't run
-them. Install amitools in a venv, to keep it out of the system Python:
+The `vamos` board runs the tests under
+[vamos](https://github.com/AmigaPorts/amitools) instead of volamos, always as
+a 68020, and takes the same options after a slash: `board=vamos/-mcrt=newlib`.
+CI doesn't run it. Install amitools in a venv, to keep it out of the system
+Python:
 
 ```shell
 python3 -m venv .venv
 .venv/bin/pip install "amitools[vamos] @ git+https://github.com/AmigaPorts/amitools.git"
 source .venv/bin/activate
-make -j$(nproc) check-c board=amigaos
+make -j$(nproc) check-c board=vamos
 ```

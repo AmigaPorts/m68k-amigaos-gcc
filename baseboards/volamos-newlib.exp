@@ -1,7 +1,0 @@
-# The volamos board linking newlib instead of libnix, for newlib's own
-# testsuite (make check-newlib): the same as volamos/-mcrt=newlib.  No FPU
-# is fitted, so a stray FPU instruction in the soft-float multilib traps.
-load_board_description "volamos"
-
-unset_board_info cflags
-set_board_info cflags "-mcrt=newlib"

@@ -5,7 +5,7 @@
 # --dry-run prints the gh commands instead of running them, as if on an open
 # pull request, so a comment can be tried without GitHub:
 #
-#   echo '/ci linux-arm make check-c board=volamos-fpu' | .github/scripts/ci-command.py --dry-run
+#   echo '/ci linux-arm make check-c board=volamos/-mcrt=nix20/-m68020-60/-m68881' | .github/scripts/ci-command.py --dry-run
 #
 # The outputs for the workflow go to $GITHUB_OUTPUT, or to stdout without it.
 
