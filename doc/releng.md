@@ -1,6 +1,6 @@
 # Release engineering
 
-Part of the [development notes](devel.md).
+Part of the [Amiga GCC Development Manual](devel.md).
 
 A release is a tag in this repository, `v<version>` (`v16.2-rc19`), plus a
 tag in every module of `default-repos`, `m68k-amigaos-gcc-v<version>`. The

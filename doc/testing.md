@@ -1,6 +1,6 @@
 # Testing
 
-Part of the [development notes](devel.md).
+Part of the [Amiga GCC Development Manual](devel.md).
 
 The testsuites are ordinary make targets. They run the compiled tests under
 [volamos](https://github.com/sidick/volamos), which emulates the AmigaOS
