@@ -2115,8 +2115,8 @@ check-newlib: $(NEWLIB_CHECKS)
 check-c++: $(MIN_IF_MISSING) $(BOARD_PREREQ)
 	ln -sfn $(PREFIX)/$(TARGET)/libnix $(BUILD)/gcc/$(TARGET)/libnix
 	$(L0)"check c++"$(L1)$(MAKE) -C $(BUILD)/gcc check-gcc-c++ "RUNTESTFLAGS=--target_board=$(board)$(RUNTEST_SIM) SANITIZE=0"$(L2)
-	@{ echo '----- c++ -----'; grep '^# of' $(CXXTESTSUITE)/g++.sum || echo '(no tests run)'; grep -E '^(FAIL|ERROR|XPASS)' $(CXXTESTSUITE)/g++.sum || true; } | tee $@.summary.txt
-	@echo "results: $(CXXTESTSUITE)/g++.{sum,log}"
+	{ echo '----- c++ -----'; grep '^# of' $(CXXTESTSUITE)/g++.sum || echo '(no tests run)'; grep -E '^(FAIL|ERROR|XPASS)' $(CXXTESTSUITE)/g++.sum || true; } | tee $@.summary.txt
+	echo "results: $(CXXTESTSUITE)/g++.{sum,log}"
 	grep -q '^# of expected passes' $(CXXTESTSUITE)/g++.sum
 	! grep -qE '^(FAIL|ERROR|XPASS)' $(CXXTESTSUITE)/g++.sum
 
@@ -2316,8 +2316,8 @@ $(BUILD)/$(zlib_DIR)/libz.a: $(BUILD)/$(zlib_DIR)/Makefile
 	@touch $@
 
 # zlib and libpng are built once, against libnix, but every C runtime links
-# them, so they must not depend on anything only libnix has. libnix's
-# string.h inlines memmove() as a call to its own __bcopz(); __NO_INLINE__
+# them, so they must not depend on anything only libnix has.
+# libnix's string.h inlines memmove(), which calls __bcopz(): __NO_INLINE__
 # turns those inlines off.
 $(BUILD)/$(zlib_DIR)/Makefile: MULTI_CFLAGS = -D__NO_INLINE__
 $(BUILD)/$(zlib_DIR)/Makefile: $(PROJECTS)/$(zlib_DIR)/configure
@@ -2326,8 +2326,9 @@ $(BUILD)/$(zlib_DIR)/Makefile: $(PROJECTS)/$(zlib_DIR)/configure
 
 # zlib 1.3.2's configure adds -fPIC unconditionally and test-compiles with
 # it; the hunk linker has no GOT and gcc rejects -fPIC, so drop it before
-# configure runs. gzdopen() calls fcntl() to set O_NONBLOCK and O_CLOEXEC,
-# which mean nothing on AmigaOS and which newlib has no fcntl() for.
+# configure runs.
+# gzdopen() calls fcntl() to set O_NONBLOCK and O_CLOEXEC, which mean nothing
+# on AmigaOS and which newlib has no fcntl() for.
 $(PROJECTS)/$(zlib_DIR)/configure: $(DOWNLOAD)/$(zlib_DIR).tar.gz
 	tar -C $(PROJECTS) -xf $(DOWNLOAD)/$(zlib_DIR).tar.gz
 	$(SED) -i 's/ -fPIC"/"/' $@
