@@ -6,17 +6,15 @@ on:
       - 'v*'
 
 jobs:
-  # Bootstrap the toolchain and run the gcc testsuite as a release gate.
-  # This invocation also creates the AmigaOS and Windows hosted packages.
+  # Bootstrap the toolchain and the AmigaOS and Windows hosted packages.
   # Every module is built at the tag release-tag made in it, so the release
   # is what was tagged even if a module's branch has moved since.
   build-linux:
     uses: ./.github/workflows/toolchain.yml
     with:
-      run_testsuite: true
       tag: ${{ github.ref_name }}
 
-  # the testsuite only runs on Linux; the macOS build gates on compiling
+  # the testsuites only run on Linux; the macOS build gates on compiling
   build-macos:
     uses: ./.github/workflows/toolchain.yml
     with:
@@ -24,8 +22,19 @@ jobs:
       build_hosted: false
       tag: ${{ github.ref_name }}
 
+  # make check, the pre-release test, in a build of its own: on arm64, which
+  # tests faster, and apart from the Linux build that goes on to the hosted
+  # toolchains and the installer
+  check:
+    uses: ./.github/workflows/toolchain.yml
+    with:
+      runner: ubuntu-24.04-arm
+      build_hosted: false
+      make_args: check
+      tag: ${{ github.ref_name }}
+
   release:
-    needs: [build-linux, build-macos]
+    needs: [build-linux, build-macos, check]
     runs-on: ubuntu-24.04
     permissions:
       contents: write

@@ -149,7 +149,8 @@ also uploads the toolchain tarball.
 
 Pushing a `v*` tag runs `release.yml`. It builds every module at the
 `m68k-amigaos-gcc-<tag>` tag that `make release-tag` made in it, and fails
-if a module lacks that tag. It runs the C testsuite on Linux as a release
-gate, builds the macOS, AmigaOS and Windows packages, and publishes them as
-a GitHub release, with the tag message as the release notes. Making a
+if a module lacks that tag. It runs `make check` on arm64 Linux as a release
+gate, in a build of its own, builds the Linux, macOS, AmigaOS and Windows
+packages, and publishes them as a GitHub release, with the tag message as the
+release notes. Making a
 release is in [releng.md](releng.md).
