@@ -1,6 +1,6 @@
-# Building the toolchain
-
 Part of the [Amiga GCC Development Manual](devel.md).
+
+# Building the toolchain
 
 ## Prerequisites
 

@@ -1,6 +1,6 @@
-# Continuous integration
-
 Part of the [Amiga GCC Development Manual](devel.md).
+
+# Continuous integration
 
 The toolchain is built and tested by GitHub Actions in this repository:
 `.github/workflows/toolchain.yml` does the work, `ci-command.yml` handles

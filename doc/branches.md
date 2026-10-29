@@ -1,6 +1,6 @@
-# Version management
-
 Part of the [Amiga GCC Development Manual](devel.md).
+
+# Version management
 
 ## Notable branches
 

@@ -1,6 +1,6 @@
-# Compiler and linker options
-
 Part of the [Amiga GCC User's Manual](manual.md).
+
+# Compiler and linker options
 
 The options that m68k-amigaos-gcc adds to GCC's own. `m68k-amigaos-gcc --help=target`
 lists them with one line each.

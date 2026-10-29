@@ -1,6 +1,6 @@
-# Packaging the toolchain
-
 Part of the [Amiga GCC Development Manual](devel.md).
+
+# Packaging the toolchain
 
 This packages the PREFIX folder into a redistributable archive:
 

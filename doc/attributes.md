@@ -1,6 +1,6 @@
-# Keywords and attributes
-
 Part of the [Amiga GCC User's Manual](manual.md).
+
+# Keywords and attributes
 
 ## Keywords
 
