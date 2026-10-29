@@ -1,6 +1,6 @@
-# Calling conventions
-
 Part of the [Amiga GCC User's Manual](manual.md).
+
+# Calling conventions
 
 How functions pass their arguments and return values: on the stack, in
 registers the compiler picks, or in registers the function names. The

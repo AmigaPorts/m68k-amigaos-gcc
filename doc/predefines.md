@@ -1,6 +1,6 @@
-# Predefined macros
-
 Part of the [Amiga GCC User's Manual](manual.md).
+
+# Predefined macros
 
 Always defined:
 

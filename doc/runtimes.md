@@ -1,6 +1,6 @@
-# C runtimes
-
 Part of the [Amiga GCC User's Manual](manual.md).
+
+# C runtimes
 
 A program links one C runtime, chosen with `-mcrt=`:
 
