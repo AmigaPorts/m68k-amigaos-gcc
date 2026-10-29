@@ -2107,19 +2107,16 @@ check-newlib: $(NEWLIB_CHECKS)
 # The full C++ testsuite is large and slow, so it is not part of `check`;
 # run it on demand with `make check-c++`.
 #
-# This suite still has standing failures (AmigaPorts/m68k-amigaos-gcc#57),
-# so only an ERROR fails it.
-#
 # SANITIZE=0 keeps the volamos boards' --sanitize off: the -fstrub tests
 # read the scrubbed stack below the stack pointer on purpose.
 .PHONY: check-c++
 check-c++: $(MIN_IF_MISSING) $(BOARD_PREREQ)
-	@ln -sfn $(PREFIX)/$(TARGET)/libnix $(BUILD)/gcc/$(TARGET)/libnix
+	ln -sfn $(PREFIX)/$(TARGET)/libnix $(BUILD)/gcc/$(TARGET)/libnix
 	$(L0)"check c++"$(L1)$(MAKE) -C $(BUILD)/gcc check-gcc-c++ "RUNTESTFLAGS=--target_board=$(board)$(RUNTEST_SIM) SANITIZE=0"$(L2)
 	@{ echo '----- c++ -----'; grep '^# of' $(CXXTESTSUITE)/g++.sum || echo '(no tests run)'; grep -E '^(FAIL|ERROR|XPASS)' $(CXXTESTSUITE)/g++.sum || true; } | tee $@.summary.txt
 	@echo "results: $(CXXTESTSUITE)/g++.{sum,log}"
-	@grep -q '^# of expected passes' $(CXXTESTSUITE)/g++.sum
-	@! grep -q '^ERROR' $(CXXTESTSUITE)/g++.sum
+	grep -q '^# of expected passes' $(CXXTESTSUITE)/g++.sum
+	! grep -qE '^(FAIL|ERROR|XPASS)' $(CXXTESTSUITE)/g++.sum
 
 # shellcheck the build's own shell scripts
 .PHONY: check-shell

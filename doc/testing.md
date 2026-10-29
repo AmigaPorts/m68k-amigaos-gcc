@@ -28,23 +28,22 @@ the first build. In a fresh tree a check target first builds what it tests
 as it is, even an old one: rebuild with `make min` (or `make all`) first
 after changing sources.
 
-| target | what | fails on |
-|---|---|---|
-| `check-c` | gcc's `execute.exp` under the simulator | any FAIL, ERROR or XPASS, or no PASS at all |
-| `check-gcc-amigaos` | gcc's AmigaOS target tests (`amigaos.exp`) | the same |
-| `check-c++` | the whole g++ testsuite (slow) | ERROR lines, or no PASS at all: it has standing failures |
-| `check-newlib` | newlib's own testsuite, on both newlib boards | any FAIL, ERROR or XPASS, or a board without results |
-| `check-libc-test` | one group of [libc-test](https://wiki.musl-libc.org/libc-test.html), musl's testsuite, on one runtime: `libc-test-group=math` (the default) or `functional` (printf, scanf, `strto*`, `fnmatch`, `qsort` and the string functions), `libc-test-crt=nix20`, and `libc-test-cflags=` for the CPU and FPU; not part of `check`, it has known failures | a test that fails or doesn't build |
-| `check-libnix` | libnix's target tests | any failure |
-| `check-libpthread` | builds libpthread's test programs (the simulator cannot run them) | a build failure |
-| `check-binutils` | the gas and ld tests for the Amiga hunk format | a failing Amiga test, or none run |
-| `check-multilib` | the multilib list against the driver's | any difference |
-| `check-shell` | shellcheck on `scripts/` and `.github/scripts/` | any finding |
-| `check` | `check-multilib` to `check-c` in turn, then `check-c` on `volamos/-mcrt=ixemul` and `volamos/-mcrt=nix20/-m68020-60/-m68881/-fbaserel32`: what a release must pass | any of them |
+| target | what |
+|---|---|
+| `check-c` | gcc's `execute.exp` under the simulator |
+| `check-gcc-amigaos` | gcc's AmigaOS target tests (`amigaos.exp`) |
+| `check-c++` | the whole g++ testsuite (slow) |
+| `check-newlib` | newlib's own testsuite, on both newlib boards |
+| `check-libc-test` | one group of [libc-test](https://wiki.musl-libc.org/libc-test.html), musl's testsuite, on one runtime: `libc-test-group=math` (the default) or `functional` (printf, scanf, `strto*`, `fnmatch`, `qsort` and the string functions), `libc-test-crt=nix20`, and `libc-test-cflags=` for the CPU and FPU. It has known failures (#239) |
+| `check-libnix` | libnix's target tests |
+| `check-libpthread` | builds libpthread's test programs; the simulator cannot run them |
+| `check-binutils` | the gas and ld tests for the Amiga hunk format |
+| `check-multilib` | the multilib list against the driver's |
+| `check-shell` | shellcheck on `scripts/` and `.github/scripts/` |
+| `check` | the pre-release test: all of the above except `check-c++`, `check-newlib`, `check-libc-test` and `check-shell`, then `check-c` again on `volamos/-mcrt=ixemul` and `volamos/-mcrt=nix20/-m68020-60/-m68881/-fbaserel32` |
 
-"No PASS at all" catches a misspelled `board=`, which runtest reports only
-in its log. Run the gcc testsuite targets one at a time, not together in
-one `make -j` or in two shells on the same build tree: they share `gcc.sum`.
+Run the gcc testsuite targets one at a time, not together in one `make -j`
+or in two shells on the same build tree: they share `gcc.sum`.
 
 ## Boards
 
