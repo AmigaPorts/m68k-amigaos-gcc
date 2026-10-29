@@ -90,6 +90,8 @@ on one C runtime, chosen with three variables:
 - `libc-test-crt=nix20`, the default, or `newlib` picks the C runtime.
 - `libc-test-cflags=` adds compiler flags, such as `-m68020-60 -m68881`;
   volamos then emulates that CPU and FPU.
+- `libc-test-timeout=120` is the seconds a test may run before it is killed
+  and counted as failed; the summary names the tests that timed out.
 
 ```shell
 make check-libc-test libc-test-group=functional libc-test-crt=newlib libc-test-cflags="-m68020-60 -m68881"

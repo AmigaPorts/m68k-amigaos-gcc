@@ -19,7 +19,9 @@
 #   scripts/libc-test --run <volamos> [volamos options...] <test.exe>
 #
 # runs one test, and prints its output and, if it fails or crashes, a FAIL line
-# as runtest.exe does: libc-test's REPORT keeps only the standard output.
+# as runtest.exe does: libc-test's REPORT keeps only the standard output.  A
+# test still running after LIBC_TEST_TIMEOUT seconds (120) is killed and
+# fails, and the summary names it.
 
 functional_tests="snprintf swprintf sscanf fscanf fwscanf strtod strtod_simple strtod_long strtof
 	strtol strtold fnmatch qsort string string_memcpy string_memmem string_memset string_strchr
@@ -36,9 +38,13 @@ if [ "${1-}" = --run ]; then
 	volamos=$2
 	shift 2
 	exe=${!#}
-	timeout 300 "$volamos" --stack 4096K "${@:1:$#-1}" "$exe" 2>&1
+	timeout -k 5 "${LIBC_TEST_TIMEOUT:-120}" "$volamos" --stack 4096K "${@:1:$#-1}" "$exe" 2>&1
 	status=$?
-	[ $status -eq 0 ] || echo "FAIL $exe [status $status]"
+	if [ $status -eq 124 ]; then
+		echo "FAIL $exe [timed out after ${LIBC_TEST_TIMEOUT:-120} s]"
+	elif [ $status -ne 0 ]; then
+		echo "FAIL $exe [status $status]"
+	fi
 	exit 0
 fi
 
@@ -90,8 +96,10 @@ make -k -C "$src" B="$out" \
 [ -s "$report" ] || { echo "libc-test: no results in $report, see $out.$group.log" >&2; exit 1; }
 
 failed=$(sed -n "s|^FAIL .*/$group/\([^ ]*\)\.exe .*|\1|p" "$report")
+timed_out=$(sed -n "s|^FAIL .*/$group/\([^ ]*\)\.exe \[timed out.*|\1|p" "$report")
 echo "----- libc-test $group $crt $cflags -----"
 echo "$tests tests, $(echo -n "$failed" | grep -c '') failed:"
 echo "$failed" | paste -sd' '
+[ -z "$timed_out" ] || echo "timed out after ${LIBC_TEST_TIMEOUT:-120} s: $(echo "$timed_out" | paste -sd' ')"
 echo "results: $report, and <test>.err for each test"
 [ -z "$failed" ]
