@@ -1,22 +1,32 @@
 #!/bin/bash
-# Run libc-test's math tests on one C runtime under volamos, for make check-libc-test.
+# Run one group of libc-test's tests on one C runtime under volamos, for make
+# check-libc-test.
 #
-#   scripts/libc-test <libc-test> <outdir> <prefix> <crt> [cflags...]
+#   scripts/libc-test [--group math|functional] <libc-test> <outdir> <prefix> <crt> [cflags...]
+#
+# The math group is all of src/math.  The functional group is the part of
+# src/functional that needs no POSIX process or resource calls: the printf,
+# scanf, strto*, fnmatch, qsort and string tests.  Both groups keep their
+# results in <outdir>, under their own name.
 #
 # libc-test's own Makefile builds and runs the tests, in parallel under the
 # jobserver of the make that calls this script, with three changes: a config.mak
 # for the flags; RUN_TEST runs each test with this script's --run mode, in place
-# of runtest.exe, which needs fork(); and libtest.a has only the math tests'
-# helpers, as the others need POSIX headers.  Prints the failures, a test that
-# does not build among them, and exits with status 1 if there are any.
+# of runtest.exe, which needs fork(); and libtest.a has only the helpers these
+# groups need, as the others need POSIX headers.  Prints the failures, a test
+# that does not build among them, and exits with status 1 if there are any.
 #
 #   scripts/libc-test --run <volamos> [volamos options...] <test.exe>
 #
 # runs one test, and prints its output and, if it fails or crashes, a FAIL line
 # as runtest.exe does: libc-test's REPORT keeps only the standard output.
 
+functional_tests="snprintf swprintf sscanf fscanf fwscanf strtod strtod_simple strtod_long strtof
+	strtol strtold fnmatch qsort string string_memcpy string_memmem string_memset string_strchr
+	string_strcspn string_strstr"
+
 usage() {
-	echo "usage: $0 <libc-test> <outdir> <prefix> <crt> [cflags...]" >&2
+	echo "usage: $0 [--group math|functional] <libc-test> <outdir> <prefix> <crt> [cflags...]" >&2
 	echo "       $0 --run <volamos> [volamos options...] <test.exe>" >&2
 	exit 2
 }
@@ -32,8 +42,15 @@ if [ "${1-}" = --run ]; then
 	exit 0
 fi
 
+group=math
+if [ "${1-}" = --group ]; then
+	group=${2-}
+	shift 2
+fi
+case $group in math | functional) ;; *) usage ;; esac
 [ $# -ge 4 ] || usage
-src=$1 out=$2 bin=$3/bin crt=$4
+# absolute: make runs in the libc-test tree
+src=$(realpath "$1") out=$(realpath -m "$2") bin=$(realpath "$3")/bin crt=$4
 shift 4
 cflags="$*"
 
@@ -43,7 +60,8 @@ case " $cflags " in
 *" -m6802"* | *" -m6803"* | *" -m6804"* | *" -m6806"*) sim=(--cpu 68020) ;;
 esac
 
-rm -rf "$out"
+# The other group's results stay; the helpers are rebuilt, as the flags may differ.
+rm -rf "${out:?}/$group" "$out/common"
 mkdir -p "$out"
 cat >"$src/config.mak" <<EOF
 CFLAGS += -pipe -std=c99 -D_POSIX_C_SOURCE=200809L -w -fno-builtin -frounding-math $cflags
@@ -51,16 +69,29 @@ LDFLAGS += $cflags
 LDLIBS += -lm
 EOF
 
+# libc-test's own REPORT of a directory wants every test in it; the functional
+# group asks for its tests' .err files and gathers them itself.
+report=$out/$group/REPORT
+if [ "$group" = math ]; then
+	targets=("$report")
+	tests=$(find "$src/src/math" -maxdepth 1 -name '*.c' | wc -l)
+else
+	targets=()
+	for t in $functional_tests; do targets+=("$out/functional/$t.err"); done
+	tests=$(echo "$functional_tests" | wc -w)
+fi
+
 make -k -C "$src" B="$out" \
 	CC="$bin/m68k-amigaos-gcc -mcrt=$crt" AR="$bin/m68k-amigaos-ar" RANLIB="$bin/m68k-amigaos-ranlib" \
 	RUN_TEST="$(realpath "$0") --run $bin/volamos ${sim[*]}" \
-	common.OBJS="$out/common/mtest.o $out/common/print.o" \
-	"$out/math/REPORT" >"$out.log" 2>&1
+	common.OBJS="$out/common/mtest.o $out/common/print.o $out/common/rand.o" \
+	"${targets[@]}" >"$out.$group.log" 2>&1
+[ "$group" = math ] || cat "${targets[@]}" >"$report" 2>/dev/null
+[ -s "$report" ] || { echo "libc-test: no results in $report, see $out.$group.log" >&2; exit 1; }
 
-report=$out/math/REPORT
-failed=$(sed -n 's|^FAIL .*/math/\([^ ]*\)\.exe .*|\1|p' "$report")
-echo "----- libc-test math $crt $cflags -----"
-echo "$(find "$src/src/math" -maxdepth 1 -name '*.c' | wc -l) tests, $(echo -n "$failed" | grep -c '') failed:"
+failed=$(sed -n "s|^FAIL .*/$group/\([^ ]*\)\.exe .*|\1|p" "$report")
+echo "----- libc-test $group $crt $cflags -----"
+echo "$tests tests, $(echo -n "$failed" | grep -c '') failed:"
 echo "$failed" | paste -sd' '
 echo "results: $report, and <test>.err for each test"
 [ -z "$failed" ]
