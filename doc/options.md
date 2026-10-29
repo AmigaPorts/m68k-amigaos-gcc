@@ -98,6 +98,7 @@ a later CPU, and the result no longer runs on a lesser one:
 | option | the same as | code for |
 |---|---|---|
 | `-m68020-60` | | the 68020, tuned for the 68020 to 68060: fast on the A1200, A3000 and A4000, accelerated Amigas and emulators |
+| `-m68020-40` | | the 68020, tuned for the 68020 to 68040 |
 | `-m68020` | `-march=68020`, `-mcpu=68020` | the 68020 |
 | `-m68030` | `-march=68030`, `-mcpu=68030` | the 68030 |
 | `-m68040` | `-march=68040`, `-mcpu=68040` | the 68040 |
@@ -106,6 +107,36 @@ a later CPU, and the result no longer runs on a lesser one:
 Floating point code uses the FPU only with `-m68881` (or `-mhard-float`),
 also on the 68040 and 68060, whose FPU is built in. Without it, floating
 point is done in software.
+
+### -m68020-40 and -m68020-60
+
+The 68040 and 68060 leave out some instructions of the 68020 and the 68881,
+which `68040.library` and `68060.library` emulate in software, far more
+slowly. `-m68020-40` and `-m68020-60` generate 68020 code that avoids them,
+and schedule instructions for the later CPUs:
+
+| instruction | emulated on | avoided by | instead |
+|---|---|---|---|
+| `fintrz`, rounding a floating point value toward zero | 68040, 68060 | both | a call to `trunc()`; a conversion to an integer changes the FPU rounding mode |
+| `fscale`, multiplying by a power of 2 | 68040, 68060 | both | `fmul` |
+| `mulu.l` and `muls.l` with a 64-bit result | 68060 | `-m68020-60` | four 16-bit multiplies |
+| `fscc`, setting a byte from an FPU comparison | 68060 | `-m68020-60` | a branch |
+
+Limits of these options:
+
+- `-m68020-40` code runs on a 68060 too, but traps on each 64-bit multiply.
+- With `-ffast-math -m68881`, the compiler emits `fsin` and `fcos` for
+  `sin()` and `cos()` whatever the CPU, and both the 68040 and the 68060
+  emulate them.
+- Without `-ffast-math`, `sin()` and `cos()` are library calls.
+- Neither option uses the 68040's instructions that round to single or
+  double precision, so the code still runs on a 68881.
+
+On an emulated 68040, `-m68020-60 -m68881` code is as fast as `-m68040
+-m68881` code except where it multiplies 64-bit values, and on a 68060
+`-m68060` generates practically the same code as `-m68020-60`:
+[Benchwork](https://github.com/codewiz/benchwork/blob/main/results/cpus.md)
+has the numbers.
 
 The driver links the runtime libraries built for the options:
 
