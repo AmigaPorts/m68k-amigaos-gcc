@@ -2150,6 +2150,8 @@ LIBC_TEST_URL = https://repo.or.cz/libc-test.git
 libc-test-group ?= math
 libc-test-crt ?= nix20
 libc-test-cflags ?=
+# seconds a test may run before it is killed and counted as failed
+libc-test-timeout ?= 120
 
 $(PROJECTS)/libc-test/Makefile:
 	cd $(PROJECTS) && git clone --depth 1 $(LIBC_TEST_URL)
@@ -2157,7 +2159,7 @@ $(PROJECTS)/libc-test/Makefile:
 # + for the jobserver: libc-test's make, which the script runs, shares this one's -j
 .PHONY: check-libc-test
 check-libc-test: $(PROJECTS)/libc-test/Makefile $(MIN_IF_MISSING) $(PREFIX)/bin/volamos
-	+set -o pipefail; scripts/libc-test --group $(libc-test-group) $(PROJECTS)/libc-test \
+	+set -o pipefail; LIBC_TEST_TIMEOUT=$(libc-test-timeout) scripts/libc-test --group $(libc-test-group) $(PROJECTS)/libc-test \
 	  $(BUILD)/libc-test/$(libc-test-crt)$(subst $() ,,$(libc-test-cflags)) \
 	  $(PREFIX) $(libc-test-crt) $(libc-test-cflags) | tee $@.summary.txt
 
