@@ -9,8 +9,12 @@ so a failure in CI can be reproduced with the same command here.
 
 ## Setup
 
-Install dejagnu: `sudo apt install dejagnu` on Debian and Ubuntu,
-`sudo dnf install dejagnu` on Fedora, `brew install dejagnu` on macOS.
+Install dejagnu and shellcheck:
+
+- Debian and Ubuntu: `sudo apt install dejagnu shellcheck`
+- Fedora: `sudo dnf install dejagnu ShellCheck`
+- macOS: `brew install dejagnu shellcheck`
+
 volamos itself needs nothing: a target that needs it downloads its release
 binary into `$PREFIX/bin` first (`make volamos` does just that).
 
@@ -22,11 +26,10 @@ make -j$(nproc) check-c board=volamos/-mcrt=newlib     # one testsuite on one bo
 make -j$(nproc) check-c++                              # the g++ testsuite (slow)
 ```
 
-The build tree remembers its `PREFIX`, so no `PREFIX=` is needed after
-the first build. In a fresh tree a check target first builds what it tests
-(`min`, or just `binutils` or `gcc`). In an existing tree it tests the build
-as it is, even an old one: rebuild with `make min` (or `make all`) first
-after changing sources.
+In a fresh tree a check target first builds what it tests (`min`, or just
+`binutils` or `gcc`). In an existing tree it tests the build as it is, even
+an old one: rebuild with `make min` (or `make all`) first after changing
+sources.
 
 | target | what |
 |---|---|
@@ -34,13 +37,13 @@ after changing sources.
 | `check-gcc-amigaos` | gcc's AmigaOS target tests (`amigaos.exp`) |
 | `check-c++` | the whole g++ testsuite (slow) |
 | `check-newlib` | newlib's own testsuite, on both newlib boards |
-| `check-libc-test` | one group of [libc-test](https://wiki.musl-libc.org/libc-test.html), musl's testsuite, on one runtime: `libc-test-group=math` (the default) or `functional` (printf, scanf, `strto*`, `fnmatch`, `qsort` and the string functions), `libc-test-crt=nix20`, and `libc-test-cflags=` for the CPU and FPU. It has known failures (#239) |
+| `check-libc-test` | musl's testsuite, [libc-test](https://wiki.musl-libc.org/libc-test.html), see below. It has known failures ([#239](https://github.com/AmigaPorts/m68k-amigaos-gcc/issues/239)) |
 | `check-libnix` | libnix's target tests |
 | `check-libpthread` | builds libpthread's test programs; the simulator cannot run them |
 | `check-binutils` | the gas and ld tests for the Amiga hunk format |
 | `check-multilib` | the multilib list against the driver's |
 | `check-shell` | shellcheck on `scripts/` and `.github/scripts/` |
-| `check` | the pre-release test: all of the above except `check-c++`, `check-newlib`, `check-libc-test` and `check-shell`, then `check-c` again on `volamos/-mcrt=ixemul` and `volamos/-mcrt=nix20/-m68020-60/-m68881/-fbaserel32` |
+| `check` | the pre-release test: all of the above except `check-libc-test`, on the boards marked in [Tested configurations](#tested-configurations) |
 
 Run the gcc testsuite targets one at a time, not together in one `make -j`
 or in two shells on the same build tree: they share `gcc.sum`.
@@ -72,6 +75,28 @@ programs, rather than `-m68020` alone.
 
 `SIM=/path/to/volamos` runs a volamos other than the one in `$PREFIX/bin`,
 such as a local build.
+
+## libc-test
+
+[libc-test](https://wiki.musl-libc.org/libc-test.html) is musl's testsuite:
+plain C tests of the C library against the standards, which build for
+m68k-amigaos and run under volamos. `check-libc-test` runs one group of them
+on one C runtime, chosen with three variables:
+
+- `libc-test-group=math`, the default, runs all of libc-test's `src/math`;
+  `libc-test-group=functional` runs the part of its `src/functional` that
+  needs no POSIX process or resource calls: the printf, scanf, `strto*`,
+  `fnmatch`, `qsort` and string tests.
+- `libc-test-crt=nix20`, the default, or `newlib` picks the C runtime.
+- `libc-test-cflags=` adds compiler flags, such as `-m68020-60 -m68881`;
+  volamos then emulates that CPU and FPU.
+
+```shell
+make check-libc-test libc-test-group=functional libc-test-crt=newlib libc-test-cflags="-m68020-60 -m68881"
+```
+
+The failures it finds are tracked in
+[#239](https://github.com/AmigaPorts/m68k-amigaos-gcc/issues/239).
 
 ## Tested configurations
 
