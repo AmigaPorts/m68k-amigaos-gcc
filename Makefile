@@ -1959,14 +1959,17 @@ MIN_IF_MISSING = $(call if-missing,$(BUILD)/gcc/_libgcc_done $(BUILD)/ixemul/_do
 # a4-relative data in one run.
 .PHONY: check
 check:
+	$(MAKE) --no-print-directory check-shell
 	$(MAKE) --no-print-directory check-multilib
 	$(MAKE) --no-print-directory check-binutils
 	$(MAKE) --no-print-directory check-gcc-amigaos
 	$(MAKE) --no-print-directory check-libnix
 	$(MAKE) --no-print-directory check-libpthread
+	$(MAKE) --no-print-directory check-newlib
 	$(MAKE) --no-print-directory check-c
 	$(MAKE) --no-print-directory check-c board=volamos/-mcrt=ixemul
 	$(MAKE) --no-print-directory check-c board=volamos/-mcrt=nix20/-m68020-60/-m68881/-fbaserel32
+	$(MAKE) --no-print-directory check-c++
 
 # The gas and ld dump tests for the hunk target run on the build machine under DejaGnu.
 # The gas m68k tests written for ELF expect % register syntax and fail on this target,
@@ -2104,8 +2107,7 @@ check-newlib: $(NEWLIB_CHECKS)
 	@for b in $(NEWLIB_BOARD_DIRS); do grep -q '^# of expected passes' $(NEWLIBTESTSUITE)/$$b/newlib.sum || exit 1; done
 	@! grep -qE '^(FAIL|ERROR|XPASS)' $(foreach b,$(NEWLIB_BOARD_DIRS),$(NEWLIBTESTSUITE)/$(b)/newlib.sum)
 
-# The full C++ testsuite is large and slow, so it is not part of `check`;
-# run it on demand with `make check-c++`.
+# The full C++ testsuite, slow: about as long as the rest of `check` together.
 #
 # SANITIZE=0 keeps the volamos boards' --sanitize off: the -fstrub tests
 # read the scrubbed stack below the stack pointer on purpose.
