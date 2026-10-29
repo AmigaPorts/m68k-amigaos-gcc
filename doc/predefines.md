@@ -26,6 +26,13 @@ By option:
 | `-m68881`, `-mhard-float` | `__HAVE_68881__` |
 | `-fbaserel` | `__baserel__` |
 | `-fbaserel32` | `__baserel__`, `__baserel32__` |
+| `-pthread` | `_REENTRANT` |
+
+`_REENTRANT` is what `-pthread` defines on other targets too. libnix has a
+thread-safe variant, with a per-thread `errno` and locked stdio, which its
+headers select with `__posix_threads__`; the compiler doesn't define it, so
+programs and libnix itself use the plain variant
+([#224](https://github.com/AmigaPorts/m68k-amigaos-gcc/issues/224)).
 
 `__HAVE_68881__` tells whether the code uses FPU instructions: it follows
 `-m68881`, not the CPU, so `-m68040` and `-m68060` alone don't define it.
