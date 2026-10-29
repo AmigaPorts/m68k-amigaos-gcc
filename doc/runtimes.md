@@ -150,17 +150,7 @@ the g++ testsuite runs on libnix. Kickstart 2.0 and later, or 1.3 with
 testsuites, so every compiler change is tested on it; its own tests run with
 `make check-libnix`.
 
-**Issues:**
-- C++ `thread_local` variables are not per thread ([#224](https://github.com/AmigaPorts/m68k-amigaos-gcc/issues/224)).
-- Some math functions give wrong results on special cases, such as
-  `ceil(-0.5)` and `hypot()` ([#239](https://github.com/AmigaPorts/m68k-amigaos-gcc/issues/239)).
-- `printf()` doesn't know `%F`: it prints `%F` and takes the next argument
-  for the following conversion.
-- `strtod()` and `scanf()` don't parse hexadecimal floating point, and
-  don't set `ERANGE` on overflow.
-- `fork()` always returns 0, as if the caller were the child.
-- `memcpy()` calls `CopyMem()`, and the other string functions copy a byte
-  at a time.
+**Known bugs:** [the open libnix issues](https://github.com/AmigaPorts/m68k-amigaos-gcc/issues?q=is%3Aissue%20is%3Aopen%20label%3Alibnix).
 
 **Runtime settings:** a program changes these by defining the variable:
 
@@ -198,17 +188,10 @@ needs `workbench.library`.
 `long double` math. newlib's own testsuite runs with `make check-newlib`, and
 the gcc testsuites have newlib boards.
 
-**Issues:**
-- Larger executables: the startup code pulls in stdio, `malloc()` and
-  `strstr()` even for an empty program.
-- `aligned_alloc()`, `memalign()`, `posix_memalign()` and the other
-  `malloc()` extras don't link.
-- `printf("%Lf")` converts through `double`, and `strtold()` returns wrong
-  values, such as 2 for "2.5".
-- `rename()` fails if the destination exists.
-- `lstat()` follows soft links ([#215](https://github.com/AmigaPorts/m68k-amigaos-gcc/issues/215)).
-- `malloc()` isn't thread safe.
-- `fma()` with a zero addend rounds twice with `-m68881` ([newlib-cygwin#24](https://github.com/AmigaPorts/newlib-cygwin/pull/24)).
+**Weaknesses:** larger executables: the startup code pulls in stdio,
+`malloc()` and `strstr()` even for an empty program.
+
+**Known bugs:** [the open newlib issues](https://github.com/AmigaPorts/m68k-amigaos-gcc/issues?q=is%3Aissue%20is%3Aopen%20label%3Anewlib).
 
 **Runtime settings:** a program changes these by defining the variable:
 
@@ -244,16 +227,14 @@ and later.
 **Strengths:** ports of Unix programs need few changes. The gcc C testsuite
 runs on it in `make check`.
 
-**Issues:** programs need `ixemul.library` 80 or later at run time.
+**Requirements:** programs need `ixemul.library` 80 or later at run time.
 `ixemul.library` comes in builds for each CPU, with and without FPU: code
 compiled with `-m68881` needs one of the FPU builds, because it expects
 floating point results in an FPU register. In `-m68881` code, floating point
 rounds toward zero at double precision, so results differ from the other
-runtimes. Also:
-- `<sys/signal.h>` declares the signal handler without a prototype, which
-  C23, the default, reads as taking no arguments: assigning a handler to
-  `sa_handler` needs `-std=gnu17`.
-- A non-zero Membuf in `ixemul.prefs` crashes `ixemul.library` 80.1.
+runtimes.
+
+**Known bugs:** [the open ixemul issues](https://github.com/AmigaPorts/m68k-amigaos-gcc/issues?q=is%3Aissue%20is%3Aopen%20label%3Aixemul).
 
 **Runtime settings:** a program changes these by defining the variable:
 
@@ -295,14 +276,9 @@ constructors, but the standard library headers such as `<iostream>`,
 **Strengths:** the most startup settings, listed below, Unix path semantics
 with `-lunix`, and sockets with `-lnet`.
 
-**Issues:** unmaintained, and no testsuite runs on it.
-- `va_start` breaks variadic functions that GCC inlines ([#188](https://github.com/AmigaPorts/m68k-amigaos-gcc/issues/188)).
-- `-mhard-float -lm` links the soft-float `libm.a` ([#189](https://github.com/AmigaPorts/m68k-amigaos-gcc/issues/189)).
-- `struct timeval` has no `tv_usec` ([#190](https://github.com/AmigaPorts/m68k-amigaos-gcc/issues/190)).
-- `tgamma()` returns `lgamma()` ([#225](https://github.com/AmigaPorts/m68k-amigaos-gcc/issues/225)).
-- clib2's `wchar_t` is `unsigned int`, the compiler's is `long`, so
-  `L"..."` strings don't match the wide character functions.
-- `<float.h>` describes `long double` as `double`.
+**Weaknesses:** unmaintained, and no testsuite runs on it.
+
+**Known bugs:** [the open clib2 issues](https://github.com/AmigaPorts/m68k-amigaos-gcc/issues?q=is%3Aissue%20is%3Aopen%20label%3Aclib2).
 
 **Runtime settings:** a program changes these by defining the variable:
 
