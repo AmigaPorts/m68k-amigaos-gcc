@@ -14,7 +14,7 @@ SAS/C has them:
 | `__far` | variable | addressed absolutely, also in [base-relative code](options.md#addressing-data), so it doesn't count against the 64 KB a4 reaches |
 | `__near` | variable | in the ordinary data section: a4-relative in base-relative code |
 | `__saveds` | function | loads its own a4 on entry, for a function called with someone else's, such as a hook or a callback: see [options.md](options.md#addressing-data) |
-| `__regargs` | function | arguments in registers: `__attribute__((regparm(2)))`, see below |
+| `__regargs` | function | arguments in registers: `__attribute__((regparm(2)))`, see [abi.md](abi.md#register-arguments) |
 | `__stdargs` | function | arguments on the stack, also with `-mregparm`: `__attribute__((stkparm))` |
 | `__saveallregs` | function | saves and restores every register, d0 included, so the function can't return a value: use it only on `void` functions |
 | `__entrypoint` | function | saves no registers, not even those a caller expects to keep |
@@ -27,23 +27,6 @@ any memory type, outside the data that a4 reaches.
 
 ## Arguments in registers
 
-`__regargs`, or `__attribute__((regparm(N)))`, passes up to N integers in d0,
-d1, ... and up to N pointers in a0, a1, ...; with an FPU, also up to N floating
-point values in fp0, fp1, ... An integer or pointer with no register of its kind
-left takes a free one of the other kind. With `-msasregparm`, it goes on the
-stack instead, as SAS/C's `__regargs` does. The [options](options.md#register-arguments)
-`-mregparm` and `-msasregparm` do the same for every function.
-
-A parameter can also name its register, as AmigaOS library functions take
-their arguments:
-
-```c
-LONG MyFunc(LONG value __asm("d2"), struct Node *node __asm("a2"));
-```
-
-The caller puts each argument in its register; the function saves the
-registers that the ABI says it must keep, d2 here and a2, as usual.
-
-Every caller has to see the same prototype as the function: a call through a
-prototype without the attribute passes the arguments on the stack, where the
-function doesn't look for them.
+`__regargs`, `__stdargs`, `__attribute__((regparm(N)))` and parameters that
+name their register, such as `LONG value __asm("d2")`, are explained with
+the other calling conventions in [abi.md](abi.md).
