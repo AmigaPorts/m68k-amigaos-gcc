@@ -15,7 +15,7 @@ and compares them.
 | d0, d1, a0, a1, fp0, fp1 | scratch, arguments in registers, return values | no |
 | d2-d7, a2, a3, fp2-fp7 | the function's own | yes |
 | a4 | the data base in [base-relative](options.md#addressing-data) code | yes |
-| a5 | the frame pointer, unless `-fomit-frame-pointer` | yes |
+| a5 | the frame pointer at `-O0` or with `-fno-omit-frame-pointer`; otherwise free | yes |
 | a6 | the library base when calling AmigaOS libraries | yes |
 | a7 | the stack pointer | |
 
@@ -69,6 +69,9 @@ LONG MyFunc(LONG value __asm("d2"), struct Node *node __asm("a2"));
 The caller puts each argument in its register; the function saves the
 registers that it must keep, d2 and a2 here, as usual.
 
+a5 can't be named: `__asm("a5")` on a parameter fails with "register 'a5'
+is reserved for the frame or stack pointer", at every optimization level.
+
 A hook, for example, is called with the hook in a0, the object in a2 and
 the message in a1:
 
@@ -87,6 +90,12 @@ registers its `.fd` or `.sfd` file names. The NDK's `proto/` headers do this:
 those registers and call through the library base, with no stubs to link.
 A library function may change d0, d1, a0 and a1, and returns its result in
 d0.
+
+The few library functions that take an argument in a5, such as exec's
+`Supervisor()` and graphics' `LockLayerRom()`, can't be declared that way,
+because a5 can't be named (see above). Their macros in the NDK's `inline/`
+headers pass the argument in d7 instead, and swap d7 and a5 around the call
+with `exg`.
 
 ## Mixing conventions
 
