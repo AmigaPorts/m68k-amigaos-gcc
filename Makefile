@@ -2141,11 +2141,14 @@ check-rust: $(BOARD_PREREQ)
 	@{ echo '----- rust -----'; grep '^# of' $(RUSTTESTSUITE)/rust.sum || echo '(no tests run)'; grep -E '^(FAIL|ERROR|XPASS)' $(RUSTTESTSUITE)/rust.sum || true; } | tee $@.summary.txt
 	@echo "results: $(RUSTTESTSUITE)/rust.{sum,log}"
 
-# libc-test, musl's testsuite: its math tests on one C runtime, built with
-# libc-test-cflags and run under volamos, see scripts/libc-test.  Not part of
-# make check: they still have failures to sort out.
+# libc-test, musl's testsuite: one group of its tests (math, or functional for
+# printf, scanf, strto*, fnmatch, qsort and the string functions) on one C
+# runtime, built with libc-test-cflags and run under volamos, see
+# scripts/libc-test.  Not part of make check: they still have failures to sort out.
 #   make check-libc-test libc-test-crt=newlib libc-test-cflags="-m68020-60 -m68881"
+#   make check-libc-test libc-test-group=functional
 LIBC_TEST_URL = https://repo.or.cz/libc-test.git
+libc-test-group ?= math
 libc-test-crt ?= nix20
 libc-test-cflags ?=
 
@@ -2155,7 +2158,7 @@ $(PROJECTS)/libc-test/Makefile:
 # + for the jobserver: libc-test's make, which the script runs, shares this one's -j
 .PHONY: check-libc-test
 check-libc-test: $(PROJECTS)/libc-test/Makefile $(MIN_IF_MISSING) $(PREFIX)/bin/volamos
-	+set -o pipefail; scripts/libc-test $(PROJECTS)/libc-test \
+	+set -o pipefail; scripts/libc-test --group $(libc-test-group) $(PROJECTS)/libc-test \
 	  $(BUILD)/libc-test/$(libc-test-crt)$(subst $() ,,$(libc-test-cflags)) \
 	  $(PREFIX) $(libc-test-crt) $(libc-test-cflags) | tee $@.summary.txt
 
