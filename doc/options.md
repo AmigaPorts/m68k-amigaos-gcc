@@ -76,7 +76,8 @@ them in registers instead:
 | `-mmangle-regparm` | names functions taking register arguments after their registers, as SAS/C does, so that SAS/C objects link with them |
 
 Code compiled with and without these options can't call each other's
-functions unless their prototypes say how they take their arguments.
+functions unless their prototypes say how they take their arguments:
+[abi.md](abi.md) explains the conventions and how to mix them.
 
 ## Libraries, devices and threads
 
