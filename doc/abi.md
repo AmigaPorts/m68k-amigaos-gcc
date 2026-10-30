@@ -89,7 +89,7 @@ registers its `.fd` or `.sfd` file names. The NDK's `proto/` headers do this:
 `#include <proto/exec.h>` declares exec's functions as macros that load
 those registers and call through the library base, with no stubs to link.
 A library function may change d0, d1, a0 and a1, and returns its result in
-d0.
+d0. [libraries.md](libraries.md) covers opening libraries and building them.
 
 The few library functions that take an argument in a5, such as exec's
 `Supervisor()` and graphics' `LockLayerRom()`, can't be declared that way,
