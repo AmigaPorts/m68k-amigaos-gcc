@@ -7,9 +7,9 @@ lists them with one line each.
 
 ## Choosing a C runtime
 
-`-mcrt=` picks the C runtime: newlib without it, and `-mcrt=nix20` (libnix)
-is the recommended choice for native Amiga programs.
-[runtimes.md](runtimes.md) lists all of them and compares them.
+`-mcrt=` picks the C runtime. When not specified, it defaults to newlib. The
+recommended choice for native Amiga programs is libnix (`-mcrt=nix20`). The
+[runtimes.md](runtimes.md) page lists and compares all possible values.
 
 **Important:** pass the same `-mcrt=` when compiling and when linking. It
 picks the headers when compiling, and the startup code and libraries when
