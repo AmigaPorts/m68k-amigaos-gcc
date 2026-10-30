@@ -6,7 +6,7 @@ Calling AmigaOS libraries, and building your own.
 
 ## Calling a library
 
-`#include <proto/intuition.h>` declares intuition's functions as macros that
+`#include <proto/intuition.h>` declares intuition.library's functions as macros that
 load the arguments into their registers and call through `IntuitionBase` in
 a6. [abi.md](abi.md#calling-amigaos-libraries) has the register rules.
 
@@ -23,7 +23,8 @@ library before `main()` and closes it at exit:
 - If a library is missing, the program prints `intuition.library failed to
   load` and exits with 20.
 
-clib2 and ixemul don't do this: the link fails on the undefined base.
+clib2 and ixemul don't support the auto-open mechanism: the link fails on the
+undefined base.
 
 ### Opened by the program
 
@@ -42,7 +43,7 @@ int main()
 	IntuitionBase = (struct IntuitionBase *)OpenLibrary("intuition.library", 39);
 	if (!IntuitionBase)
 		return 20;
-	/* ... */
+	// ...
 	CloseLibrary((struct Library *)IntuitionBase);
 	return 0;
 }
@@ -51,8 +52,10 @@ int main()
 ### Libraries outside the NDK
 
 sfdc, installed with the toolchain, generates a library's headers from its
-`.sfd` file, as [below](#the-interface). `sfdc --mode=autoopen` also writes
-the base for the startup code to open:
+`.sfd` file, as [below](#the-interface); its
+[manual](https://github.com/AmigaPorts/sfdc/blob/master/SFDCompile.pod)
+lists all it can generate. `sfdc --mode=autoopen` also writes the base for
+the startup code to open:
 
 ```c
 __attribute__((section(".dlist___LIB_LIST__")))
@@ -141,9 +144,17 @@ for every opener.
 
 ## Devices
 
-`-ramiga-dev` links libnix's device startup code. Like a library, a device
-defines its `DevName`, `DevIdString`, `DevVersion` and `DevRevision`, and
-`__UserDevInit()`, `__UserDevOpen()`, `__UserDevClose()` and
-`__UserDevCleanup()`, all declared in `<libinit.h>`. `__UserDevOpen()`
-returns 0 on success. Its `BeginIO` and `AbortIO` go into the jump table
-with `ADD2LIST()`, followed by `ADDTABL_END()`.
+`-ramiga-dev` links libnix's device startup code. A device is built like a
+library, with these names instead, also declared in `<libinit.h>`:
+
+| | |
+|---|---|
+| `DevName`, `DevIdString` | the name it is opened by, and its version string |
+| `DevVersion`, `DevRevision` | its version |
+| `__UserDevInit()` | called when the device is loaded; returns non-zero on success, unlike `__UserLibInit()` |
+| `__UserDevOpen()` | called for each `OpenDevice()`; returns 0 on success |
+| `__UserDevClose()` | called for each `CloseDevice()` |
+| `__UserDevCleanup()` | called when it is expunged |
+
+Its jump table continues with `BeginIO` and `AbortIO`, added with
+`ADD2LIST()` and ended with `ADDTABL_END()`, as for a library.

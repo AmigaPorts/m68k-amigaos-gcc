@@ -1,4 +1,4 @@
-/// `hello.library`, built with `-ramiga-lib`: see [libraries.md](../../libraries.md).
+/// `hello.library`, built with `-ramiga-lib`.
 
 #include <exec/types.h>
 #include <libinit.h>
