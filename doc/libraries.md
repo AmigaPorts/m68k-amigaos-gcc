@@ -133,7 +133,7 @@ ADDTABL_END();
 ```
 
 ```shell
-m68k-amigaos-gcc -O2 -mcrt=nix20 -ramiga-lib -o hello.library hello.c
+m68k-amigaos-gcc -O2 -mcrt=nix20 -Wall -Wextra -ramiga-lib -o hello.library hello.c
 ```
 
 The functions run on the caller's task and stack. Global data is one copy
