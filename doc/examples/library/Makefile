@@ -28,10 +28,11 @@ hello_autoopen.c: hello_lib.sfd
 	$(SFDC) -q --mode=autoopen -o $@ $<
 
 # Runs the client under volamos, which loads hello.library from the current
-# directory instead of LIBS:.
+# directory instead of LIBS:, and checks every memory access of the client and
+# the library: out of bounds, after free, and below the stack pointer.
 check: all
-	$(VOLAMOS) --libs-dir . client 2>&1 | tee check.out
-	test "$$(cat check.out)" = "hello.library: 2 + 3 = 5"
+	$(VOLAMOS) --sanitize --libs-dir . client 2>&1 | tee check.out
+	test "$$(cat check.out)" = "Hello, World"
 
 clean:
 	rm -rf include hello_autoopen.c hello.library client check.out

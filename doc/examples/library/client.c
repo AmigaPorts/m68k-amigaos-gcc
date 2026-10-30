@@ -10,7 +10,19 @@
 
 int main()
 {
-	// The macros of inline/hello.h call through HelloBase, in a6.
-	printf("%s: 2 + 3 = %ld\n", HelloName(), HelloAdd(2, 3));
+	// The macros of inline/hello.h call through HelloBase, in a6.  The library
+	// keeps its own copy of the greeting, and copies it back into a buffer of
+	// ours.
+	char greeting[32];
+
+	HelloGetGreeting(greeting, sizeof greeting);
+	printf("%s, ", greeting);
+
+	if (!HelloSetGreeting("World"))
+		return 20;
+
+	HelloGetGreeting(greeting, sizeof greeting);
+	printf("%s\n", greeting);
+
 	return 0;
 }

@@ -5,6 +5,8 @@
 ==bias 30
 ==public
 ==include <exec/types.h>
-LONG HelloAdd(LONG a, LONG b) (d0,d1)
-STRPTR HelloName() ()
+==include <stdbool.h>
+==include <stddef.h>
+bool HelloSetGreeting(const char *greeting) (a0)
+size_t HelloGetGreeting(char *buffer, size_t size) (a0,d0)
 ==end
