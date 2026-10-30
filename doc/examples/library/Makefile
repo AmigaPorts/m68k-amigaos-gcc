@@ -5,7 +5,7 @@
 CC = m68k-amigaos-gcc
 SFDC = sfdc
 VOLAMOS = volamos
-CFLAGS = -O2 -mcrt=nix20
+CFLAGS = -O2 -mcrt=nix20 -Wall -Wextra
 
 all: hello.library client
 
