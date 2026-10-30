@@ -313,9 +313,12 @@ jobs:
         if: inputs.make_args != '' && !startsWith(github.ref, 'refs/tags/')
         run: |
           echo "build=$(make -s print-BUILD)" >> $GITHUB_OUTPUT
-          echo "prefix=toolchain-${{ runner.os }}-${{ runner.arch }}-$GCC_VER-${{ hashFiles('Makefile', 'patches/**', 'default-archives') }}-" >> $GITHUB_OUTPUT
+          echo "prefix=toolchain-${{ runner.os }}-${{ runner.arch }}-$GCC_VER-${{ hashFiles('Makefile', 'patches/**', 'default-archives', '.github/workflows/toolchain.yml', '.github/scripts/toolchain-cache.sh') }}-" >> $GITHUB_OUTPUT
           echo "modules=$(scripts/manifest | sed 1d | sha256sum | cut -c1-16)" >> $GITHUB_OUTPUT
 
+      # with the downloaded archives and the trees unpacked from them, which
+      # would otherwise come back newer than the build and rebuild the NDK's
+      # dependents: newlib, libnix, libgcc
       - name: Restore the toolchain
         id: tc-restore
         if: steps.tc.outputs.prefix
@@ -324,6 +327,11 @@ jobs:
           path: |
             ${{ steps.tc.outputs.build }}
             ${{ env.PREFIX }}
+            download
+            projects/NDK*
+            projects/gmp-*
+            projects/mpc-*
+            projects/mpfr-*
           key: ${{ steps.tc.outputs.prefix }}${{ steps.tc.outputs.modules }}
           restore-keys: ${{ steps.tc.outputs.prefix }}
 
@@ -348,6 +356,11 @@ jobs:
           path: |
             ${{ steps.tc.outputs.build }}
             ${{ env.PREFIX }}
+            download
+            projects/NDK*
+            projects/gmp-*
+            projects/mpc-*
+            projects/mpfr-*
           key: ${{ steps.tc.outputs.prefix }}${{ steps.tc.outputs.modules }}
 
       - name: Install testsuite dependencies (Linux)
