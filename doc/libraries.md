@@ -19,7 +19,8 @@ library before `main()` and closes it at exit:
 
 - `libstubs.a` has the libraries of the NDK, the ReAction classes and some
   resources.
-- It opens version 0, with `OldOpenLibrary()`.
+- It opens the version in `__oslibversion`: 0, unless the program defines
+  it, as `long __oslibversion = 39;`.
 - If a library is missing, the program prints `intuition.library failed to
   load` and exits with 20.
 
@@ -28,9 +29,9 @@ undefined base.
 
 ### Opened by the program
 
-To require a minimum version, or with clib2 and ixemul, the program defines
-the base and opens the library itself. Its definition takes the place of the
-one in `libstubs.a`:
+To require a different version for each library, or with clib2 and ixemul,
+the program defines the base and opens the library itself. Its definition
+takes the place of the one in `libstubs.a`:
 
 ```c
 #include <proto/exec.h>
