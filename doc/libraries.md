@@ -19,10 +19,16 @@ library before `main()` and closes it at exit:
 
 - `libstubs.a` has the libraries of the NDK, the ReAction classes and some
   resources.
-- It opens the version in `__oslibversion`: 0, unless the program defines
-  it, as `long __oslibversion = 39;`.
 - If a library is missing, the program prints `intuition.library failed to
   load` and exits with 20.
+
+The program can require a minimum version for all the auto-opened libraries
+by defining a global variable; the default is 0, no minimum version:
+
+```c
+// Open every library at version 39 (AmigaOS 3.0) or later, or fail at startup
+long __oslibversion = 39;
+```
 
 clib2 and ixemul don't support the auto-open mechanism: the link fails on the
 undefined base.
