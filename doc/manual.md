@@ -12,6 +12,10 @@ specific to the Amiga.
 - [Calling conventions](abi.md): arguments on the stack or in registers, calling AmigaOS libraries, and SAS/C compatibility.
 - [Predefined macros](predefines.md): the macros that tell runtimes and CPUs apart.
 
+### How to
+
+- [Libraries](libraries.md): calling AmigaOS libraries, and creating your own libraries and devices.
+
 <br clear="right" />
 
 ### Quick start

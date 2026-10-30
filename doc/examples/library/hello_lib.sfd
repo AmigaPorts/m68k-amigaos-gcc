@@ -1,0 +1,10 @@
+==id $Id: hello_lib.sfd 1.0 (30.10.2026) $
+==base _HelloBase
+==basetype struct Library *
+==libname hello.library
+==bias 30
+==public
+==include <exec/types.h>
+LONG HelloAdd(LONG a, LONG b) (d0,d1)
+STRPTR HelloName() ()
+==end
