@@ -337,7 +337,7 @@ jobs:
 
       - name: Reuse the restored toolchain
         if: steps.tc-restore.outputs.cache-matched-key != ''
-        run: .github/scripts/toolchain-cache.sh prepare "${{ steps.tc.outputs.build }}" download projects/NDK* projects/gmp-* projects/mpc-* projects/mpfr-*
+        run: .github/scripts/toolchain-cache.sh prepare "${{ steps.tc.outputs.build }}" "$PREFIX" download projects/NDK* projects/gmp-* projects/mpc-* projects/mpfr-*
 
       # the restored stamps hide changes from MIN_IF_MISSING, so build min
       # explicitly: nothing on an exact hit, the changed modules otherwise
