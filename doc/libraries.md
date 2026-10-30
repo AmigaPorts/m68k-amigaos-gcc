@@ -90,8 +90,10 @@ the jump table:
 ==bias 30
 ==public
 ==include <exec/types.h>
-LONG HelloAdd(LONG a, LONG b) (d0,d1)
-STRPTR HelloName() ()
+==include <stdbool.h>
+==include <stddef.h>
+bool HelloSetGreeting(const char *greeting) (a0)
+size_t HelloGetGreeting(char *buffer, size_t size) (a0,d0)
 ==end
 ```
 
@@ -118,7 +120,7 @@ which `<libinit.h>` declares:
 | `LibVersion`, `LibRevision` | its version |
 | `__UserLibInit()` | called when the library is loaded; returns 0 on success |
 | `__UserLibCleanup()` | called when it is expunged |
-| `ADD2LIST(f, __FuncTable__, 22)` | adds `f` to the jump table: one for each function, in the order of the `.sfd` file |
+| `ADD2LIST(f, __FuncTable__, 22)` | adds `f` to the jump table: one for each function, in the order of the `.sfd` file. 22 puts the entry in the code, 24 in the data: `<stabs.h>`'s lists are sections the linker collects, and the jump table is one of them |
 | `ADDTABL_END()` | ends the jump table |
 
 ```c
@@ -130,15 +132,16 @@ const char LibIdString[] = "hello.library 1.0 (30.10.2026)";
 const UWORD LibVersion = 1;
 const UWORD LibRevision = 0;
 
-LONG HelloAdd(REG(d0, LONG a), REG(d1, LONG b))
+// in the registers of the .sfd file
+bool HelloSetGreeting(REG(a0, const char *s))
 {
-	return a + b;
+	// ... keep a copy of s
 }
 
-/* ... __UserLibInit(), __UserLibCleanup() and HelloName() */
+// ... __UserLibInit(), __UserLibCleanup() and HelloGetGreeting()
 
-ADD2LIST(HelloAdd, __FuncTable__, 22);
-ADD2LIST(HelloName, __FuncTable__, 22);
+ADD2LIST(HelloSetGreeting, __FuncTable__, 22);
+ADD2LIST(HelloGetGreeting, __FuncTable__, 22);
 ADDTABL_END();
 ```
 
@@ -146,8 +149,42 @@ ADDTABL_END();
 m68k-amigaos-gcc -O2 -mcrt=nix20 -Wall -Wextra -ramiga-lib -o hello.library hello.c
 ```
 
-The functions run on the caller's task and stack. Global data is one copy
-for every opener.
+The functions run on the caller's task and stack.
+
+### Data
+
+A library's global variables are absolute data: one copy per loaded library,
+shared by every program that opens it, so guard them with a semaphore. The
+example keeps a greeting there:
+
+- `__UserLibInit()` sets `SysBase`, which a library has to define itself, as
+  it has no startup code to do it;
+- `HelloSetGreeting()` stores a copy, in memory allocated with `AllocVec()`:
+  libnix's `malloc()` and `strdup()` need the startup code of a program;
+- `__UserLibCleanup()` frees it when the library is expunged, not when a
+  program closes it: the next opener still expects the greeting there.
+
+```c
+struct ExecBase *SysBase;
+
+static struct SignalSemaphore lock;
+static char *greeting;
+
+LONG __stdargs __UserLibInit(struct Library *lib, REG(a4, APTR dataseg))
+{
+	SysBase = ((__LIB)lib)->SysBase;
+	InitSemaphore(&lock);
+	return 0;
+}
+
+void __stdargs __UserLibCleanup(REG(a4, APTR dataseg))
+{
+	FreeVec(greeting);
+}
+```
+
+libnix's startup allocates the library base itself, of a fixed size, so a
+library can't extend it with fields of its own.
 
 ## Devices
 
