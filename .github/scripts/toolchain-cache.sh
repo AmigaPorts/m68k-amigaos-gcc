@@ -2,14 +2,17 @@
 # Reuse a toolchain restored from the Actions cache.
 #
 #   .github/scripts/toolchain-cache.sh record <build-dir>
-#   .github/scripts/toolchain-cache.sh prepare <build-dir>
+#   .github/scripts/toolchain-cache.sh prepare <build-dir> [<restored-path>...]
 #
 # record saves the module commits next to the build, for a later prepare.
 # prepare runs after make update, on a build tree and prefix the cache just
 # restored: a fresh checkout gives every source a new mtime, so it touches
 # the whole build tree, except the build directories of the modules whose
-# commit changed since the build.  make then rebuilds those modules and what
-# depends on them, and leaves the rest alone.
+# commit changed since the build, and the other restored paths, such as the
+# unpacked NDK, whose rules depend on this repository's patches.  The cache
+# key covers the Makefile and the patches, so those match the restored trees.
+# make then rebuilds the changed modules and what depends on them, and leaves
+# the rest alone.
 set -euo pipefail
 cmd=${1:?usage: $0 record|prepare <build-dir>}
 build=${2:?usage: $0 record|prepare <build-dir>}
@@ -46,8 +49,14 @@ prepare)
 	for d in ${changed[@]+"${changed[@]}"}; do
 		prune+=(-path "$d" -prune -o)
 	done
+	# the other restored paths first: the build depends on them, so it must
+	# come out newer
+	shift 2
+	for p in "$@"; do
+		[ -e "$p" ] && find "$p" -exec touch -h {} +
+	done
 	find "$build" ${prune[@]+"${prune[@]}"} -exec touch -h {} +
-	echo "touched the build tree, except ${#changed[@]} changed module(s)"
+	echo "touched the build tree, except ${#changed[@]} changed module(s), and $# other restored path(s)"
 	;;
 *)
 	echo "usage: $0 record|prepare <build-dir>" >&2
