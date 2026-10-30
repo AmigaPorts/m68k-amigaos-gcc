@@ -236,8 +236,9 @@ jobs:
           sudo rm -f /etc/apt/sources.list.d/google-chrome*.list
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
-            bison build-essential ca-certificates curl flex \
+            bison build-essential ca-certificates ccache curl flex \
             gettext git rsync xz-utils
+          echo /usr/lib/ccache >> $GITHUB_PATH
 
       # Apple ships old or BSD versions of most build tools; put the brew
       # GNU ones first on PATH under their plain names (gnubin) so the
@@ -245,8 +246,9 @@ jobs:
       - name: Install build dependencies (macOS)
         if: runner.os == 'macOS'
         run: |
-          brew install bison coreutils flex gettext \
+          brew install bison ccache coreutils flex gettext \
             gnu-sed gnu-tar grep make xz
+          echo "$(brew --prefix ccache)/libexec" >> $GITHUB_PATH
           echo "$(brew --prefix bison)/bin" >> $GITHUB_PATH
           echo "$(brew --prefix flex)/bin" >> $GITHUB_PATH
           for pkg in coreutils gnu-sed gnu-tar grep make; do
@@ -261,6 +263,26 @@ jobs:
           cpu=$(lscpu 2>/dev/null | sed -n 's/^Model name: *//p' | head -1)
           cpu=${cpu:-$(sysctl -n machdep.cpu.brand_string 2>/dev/null)}
           echo "CPU: $cpu, $nproc vCPUs" | tee -a $GITHUB_STEP_SUMMARY
+
+      # ccache for the host compiles of binutils and gcc, through the
+      # wrappers the install steps put first on PATH.  The key is unique per
+      # run, so every run saves its cache; the prefix restores the newest
+      # one.  Runs on a branch can restore the caches of master's runs.
+      - name: Set up ccache
+        run: |
+          echo "CCACHE_DIR=$HOME/.ccache" >> $GITHUB_ENV
+          # each run saves its own, and a repository keeps 10 GB of caches
+          echo "CCACHE_MAXSIZE=1G" >> $GITHUB_ENV
+          echo "CCACHE_BASEDIR=$GITHUB_WORKSPACE" >> $GITHUB_ENV
+          # by content: each build makes the same compilers afresh
+          echo "CCACHE_COMPILERCHECK=content" >> $GITHUB_ENV
+
+      - name: Restore ccache
+        uses: actions/cache@v6
+        with:
+          path: ~/.ccache
+          key: ccache-${{ runner.os }}-${{ runner.arch }}-${{ env.GCC_VER }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: ccache-${{ runner.os }}-${{ runner.arch }}-${{ env.GCC_VER }}-
 
       - name: Download the module refs
         uses: actions/download-artifact@v7
@@ -281,6 +303,52 @@ jobs:
       # provenance for the whole build, independent of the testsuite
       - name: Record module revisions
         run: scripts/manifest --markdown >> $GITHUB_STEP_SUMMARY
+
+      # /ci make runs reuse the toolchain a run with the same Makefile and
+      # patches built, and rebuild only the modules whose commit changed:
+      # see .github/scripts/toolchain-cache.sh.  Releases and the default
+      # runs always build from scratch.
+      - name: Toolchain cache key
+        id: tc
+        if: inputs.make_args != '' && !startsWith(github.ref, 'refs/tags/')
+        run: |
+          echo "build=$(make -s print-BUILD)" >> $GITHUB_OUTPUT
+          echo "prefix=toolchain-${{ runner.os }}-${{ runner.arch }}-$GCC_VER-${{ hashFiles('Makefile', 'patches/**', 'default-archives') }}-" >> $GITHUB_OUTPUT
+          echo "modules=$(scripts/manifest | sed 1d | sha256sum | cut -c1-16)" >> $GITHUB_OUTPUT
+
+      - name: Restore the toolchain
+        id: tc-restore
+        if: steps.tc.outputs.prefix
+        uses: actions/cache/restore@v6
+        with:
+          path: |
+            ${{ steps.tc.outputs.build }}
+            ${{ env.PREFIX }}
+          key: ${{ steps.tc.outputs.prefix }}${{ steps.tc.outputs.modules }}
+          restore-keys: ${{ steps.tc.outputs.prefix }}
+
+      - name: Reuse the restored toolchain
+        if: steps.tc-restore.outputs.cache-matched-key != ''
+        run: .github/scripts/toolchain-cache.sh prepare "${{ steps.tc.outputs.build }}"
+
+      # the restored stamps hide changes from MIN_IF_MISSING, so build min
+      # explicitly: nothing on an exact hit, the changed modules otherwise
+      - name: make min
+        if: steps.tc.outputs.prefix
+        run: make -j $NPROC min
+
+      - name: Save the toolchain
+        if: steps.tc.outputs.prefix && steps.tc-restore.outputs.cache-hit != 'true'
+        run: .github/scripts/toolchain-cache.sh record "${{ steps.tc.outputs.build }}"
+
+      - name: Upload the toolchain to the cache
+        if: steps.tc.outputs.prefix && steps.tc-restore.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: |
+            ${{ steps.tc.outputs.build }}
+            ${{ env.PREFIX }}
+          key: ${{ steps.tc.outputs.prefix }}${{ steps.tc.outputs.modules }}
 
       - name: Install testsuite dependencies (Linux)
         if: runner.os == 'Linux'
@@ -318,6 +386,11 @@ jobs:
         if: always()
         run: |
           { echo '```'; cat *.summary.txt 2>/dev/null || true; echo '```'; } >> $GITHUB_STEP_SUMMARY
+
+      - name: ccache statistics
+        if: always()
+        run: |
+          { echo '```'; ccache -s || true; echo '```'; } >> $GITHUB_STEP_SUMMARY
 
       # a release must have its tarball; other runs only when they built one
       - name: Upload toolchain tarball
