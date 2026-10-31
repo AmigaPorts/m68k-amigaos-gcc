@@ -405,14 +405,15 @@ jobs:
         run: |
           { echo '```'; ccache -s || true; echo '```'; } >> $GITHUB_STEP_SUMMARY
 
-      # a release must have its tarball; other runs only when they built one
+      # a release build must have its tarball; other runs, such as the
+      # release's make check, only when they built one
       - name: Upload toolchain tarball
         uses: actions/upload-artifact@v7
         with:
           name: m68k-amigaos-gcc-${{ env.GCC_VER }}-${{ runner.os }}-${{ runner.arch }}
           path: m68k-amigaos-gcc-*.tar.xz
           compression-level: 0
-          if-no-files-found: ${{ startsWith(github.ref, 'refs/tags/') && 'error' || 'ignore' }}
+          if-no-files-found: ${{ startsWith(github.ref, 'refs/tags/') && inputs.make_args == '' && 'error' || 'ignore' }}
 
       # the configure logs too: a configure failure only says "see config.log"
       - name: Upload build logs on failure
