@@ -173,6 +173,8 @@ jobs:
     # label, or a PR's checks list keeps only the latest of them
     name: build (${{ needs.refs.outputs.label || github.event_name }}${{ inputs.make_args != '' && format(' make {0}', inputs.make_args) || '' }})
     needs: refs
+    outputs:
+      package_filename: ${{ steps.package.outputs.filename }}
     # every label but ci-mingw, which cross-builds from a container
     if: needs.refs.outputs.label != 'ci-mingw'
     # the testsuites run on arm64, whose 4 vCPUs build and test faster
@@ -285,7 +287,7 @@ jobs:
           restore-keys: ccache-${{ runner.os }}-${{ runner.arch }}-${{ env.GCC_VER }}-
 
       - name: Download the module refs
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: module-refs
 
@@ -405,14 +407,18 @@ jobs:
         run: |
           { echo '```'; ccache -s || true; echo '```'; } >> $GITHUB_STEP_SUMMARY
 
+      - name: Package name
+        id: package
+        run: echo "filename=$(make -s print-PACKAGE_FILENAME)" >> "$GITHUB_OUTPUT"
+
       # a release build must have its tarball; other runs, such as the
-      # release's make check, only when they built one
+      # release's make check, only when they built one.  Not zipped: the
+      # artifact is the tarball itself, named after it
       - name: Upload toolchain tarball
         uses: actions/upload-artifact@v7
         with:
-          name: m68k-amigaos-gcc-${{ env.GCC_VER }}-${{ runner.os }}-${{ runner.arch }}
-          path: m68k-amigaos-gcc-*.tar.xz
-          compression-level: 0
+          path: ${{ steps.package.outputs.filename }}
+          archive: false
           if-no-files-found: ${{ startsWith(github.ref, 'refs/tags/') && inputs.make_args == '' && 'error' || 'ignore' }}
 
       # the configure logs too: a configure failure only says "see config.log"
@@ -482,9 +488,9 @@ jobs:
             gettext git rsync xz-utils
 
       - name: Download the cross toolchain
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
-          name: m68k-amigaos-gcc-${{ env.GCC_VER }}-Linux-X64
+          name: ${{ needs.build.outputs.package_filename }}
 
       # make package archives from the parent of PREFIX, so the tarball's top
       # directory is the prefix basename: unpacking it in $HOME restores the
@@ -508,7 +514,7 @@ jobs:
           echo "PACKAGE_LHA=$boot/bin/lha" >> "$GITHUB_ENV"
 
       - name: Download the module refs
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: module-refs
 
@@ -607,7 +613,7 @@ jobs:
           command -v lha
 
       - name: Download the module refs
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: module-refs
 
@@ -706,7 +712,7 @@ jobs:
 
 
       - name: Download Windows toolchain tree
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: mingw-prefix-staging
           path: incoming

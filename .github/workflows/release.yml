@@ -46,7 +46,7 @@ jobs:
           fetch-depth: 0
 
       - name: Download toolchain packages
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           pattern: m68k-amigaos-gcc-*
           merge-multiple: true
