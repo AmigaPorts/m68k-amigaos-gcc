@@ -5,7 +5,7 @@ gmp                                gmp-6.2.1.tar.bz2                            
 mpc                                mpc-1.2.1.tar.gz                                 17503d2c395dfcf106b622dc142683c1199431d095367c6aacba6eec30340459  https://gcc.gnu.org/pub/gcc/infrastructure/mpc-1.2.1.tar.gz
 mpfr                               mpfr-4.1.0.tar.bz2                               feced2d430dd5a97805fa289fed3fc8ff2b094c02d05287fd6133e7f1f0ec926  https://gcc.gnu.org/pub/gcc/infrastructure/mpfr-4.1.0.tar.bz2
 ndk                                NDK3.2.lha                                       96cabd4ad683dced632e147bf86dee0f50dcb1254386216c25c362916a6409bb  https://aminet.net/dev/misc/NDK3.2.lha
-ixemul-sdk                         ixemul-80.1-m68k.lha                             9bf3d573650ffd7211b399451900345029f2d0cce54ddf6b28754f1ff55308ae  https://aminet.net/dev/lib/ixemul-80.1-m68k.lha
+ixemul-sdk                         ixemul-80.2-m68k.lha                             5a4341e4d75dbfeb4a55167becb052fbe33d6e8cc067c4bca21a35c6623960c3  https://aminet.net/dev/lib/ixemul-80.2-m68k.lha
 vbcc-target-m68k-amigaos           vbcc_target_m68k-amigaos.lha                     ec734d7115359cdb5d1c70349284ecbd5712ef47e8bc28d4150117c6f8c73289  http://aminet.net/dev/c/vbcc_target_m68k-amiga.lha
 vbcc-target-m68k-kick13            vbcc_target_m68k-kick13.lha                      8815948604eb50ec8b82d4fd2c9d673f5ec59a6623778edfcb29a7df608ea711  http://aminet.net/dev/c/vbcc_target_m68k-kick13.lha
 zlib                               zlib-1.3.2.tar.gz                                bb329a0a2cd0274d05519d61c667c062e06990d72e125ee2dfa8de64f0119d16  https://github.com/madler/zlib/releases/download/v1.3.2/zlib-1.3.2.tar.gz
