@@ -571,11 +571,16 @@ jobs:
       HOST: x86_64-w64-mingw32ucrt
       BUILD_TRIPLET: x86_64-linux-gnu
       HOST_RUNNER: wine
-      BUILD_CC: x86_64-linux-gnu-gcc -B/opt/build-binutils/
-      BUILD_CXX: x86_64-linux-gnu-g++ -B/opt/build-binutils/
-      CC_FOR_BUILD: x86_64-linux-gnu-gcc -B/opt/build-binutils/
-      CXX_FOR_BUILD: x86_64-linux-gnu-g++ -B/opt/build-binutils/
+      BUILD_CC: ccache x86_64-linux-gnu-gcc -B/opt/build-binutils/
+      BUILD_CXX: ccache x86_64-linux-gnu-g++ -B/opt/build-binutils/
+      CC_FOR_BUILD: ccache x86_64-linux-gnu-gcc -B/opt/build-binutils/
+      CXX_FOR_BUILD: ccache x86_64-linux-gnu-g++ -B/opt/build-binutils/
       GCC_VER: ${{ inputs.gcc_version || '16.2' }}
+      # as in the build job; the target libraries are compiled by the m68k
+      # gcc this job builds and runs under wine, new each run, so uncached
+      CCACHE_DIR: ${{ github.workspace }}/.ccache
+      CCACHE_MAXSIZE: 1G
+      CCACHE_BASEDIR: ${{ github.workspace }}
 
     steps:
       - uses: actions/checkout@v7
@@ -595,7 +600,7 @@ jobs:
         run: |
           export DEBIAN_FRONTEND=noninteractive
           apt-get update
-          apt-get install -y --no-install-recommends wine wine64
+          apt-get install -y --no-install-recommends ccache wine wine64
           rm -rf /var/lib/apt/lists/*
 
       - name: Prepare native build tools
@@ -611,6 +616,16 @@ jobs:
           test "$(x86_64-linux-gnu-gcc -dumpmachine)" = "$BUILD_TRIPLET"
           command -v wine
           command -v lha
+          # the image's mingw compilers, through ccache from here on
+          echo "CC=ccache $CC" >> "$GITHUB_ENV"
+          echo "CXX=ccache $CXX" >> "$GITHUB_ENV"
+
+      - name: Restore ccache
+        uses: actions/cache@v6
+        with:
+          path: .ccache
+          key: ccache-mingw-${{ env.GCC_VER }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: ccache-mingw-${{ env.GCC_VER }}-
 
       - name: Download the module refs
         uses: actions/download-artifact@v8
@@ -628,6 +643,11 @@ jobs:
           make -j 4 all-sdk
           echo "package_version=$(make -s print-PACKAGE_VERSION)" >> "$GITHUB_OUTPUT"
           echo "package_basename=$(make -s print-PACKAGE_BASENAME)" >> "$GITHUB_OUTPUT"
+
+      - name: ccache statistics
+        if: always()
+        run: |
+          { echo '```'; ccache -s || true; echo '```'; } >> $GITHUB_STEP_SUMMARY
 
       - name: Test MinGW hosted compiler
         run: |
