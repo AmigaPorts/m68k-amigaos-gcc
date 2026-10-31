@@ -194,7 +194,7 @@ jobs:
         ${{ inputs.make_args
             || needs.refs.outputs.label == 'ci-check-c' && 'check-c'
             || needs.refs.outputs.label == 'ci-check-c-fpu' && 'check-c board=volamos/-mcrt=nix20/-m68020-60/-m68881'
-            || needs.refs.outputs.label == 'ci-check-c-ixemul' && 'check-c board=volamos/-mcrt=ixemul'
+            || needs.refs.outputs.label == 'ci-check-c-ixemul' && 'check-c board=volamos/-mcrt=ixemul/-m68020-60/-m68881'
             || needs.refs.outputs.label == 'ci-check-c-newlib' && 'check-c board=volamos/-mcrt=newlib'
             || needs.refs.outputs.label == 'ci-check-c++' && 'check-c++'
             || needs.refs.outputs.label == 'ci-check-c++-baserel32' && 'check-c++ board=volamos/-mcrt=nix20/-m68020-60/-fbaserel32'

@@ -1970,7 +1970,7 @@ check:
 	$(MAKE) --no-print-directory check-libpthread
 	$(MAKE) --no-print-directory check-newlib
 	$(MAKE) --no-print-directory check-c
-	$(MAKE) --no-print-directory check-c board=volamos/-mcrt=ixemul
+	$(MAKE) --no-print-directory check-c board=volamos/-mcrt=ixemul/-m68020-60/-m68881
 	$(MAKE) --no-print-directory check-c board=volamos/-mcrt=nix20/-m68020-60/-m68881/-fbaserel32
 	$(MAKE) --no-print-directory check-c++
 

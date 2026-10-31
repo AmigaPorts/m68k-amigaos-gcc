@@ -96,7 +96,7 @@ label runs one testsuite on `linux-arm`:
 |---|---|
 | `ci-check-c` | `/ci linux-arm make check-c` |
 | `ci-check-c-fpu` | `/ci linux-arm make check-c board=volamos/-mcrt=nix20/-m68020-60/-m68881` |
-| `ci-check-c-ixemul` | `/ci linux-arm make check-c board=volamos/-mcrt=ixemul` |
+| `ci-check-c-ixemul` | `/ci linux-arm make check-c board=volamos/-mcrt=ixemul/-m68020-60/-m68881` |
 | `ci-check-c-newlib` | `/ci linux-arm make check-c board=volamos/-mcrt=newlib` |
 | `ci-check-c++` | `/ci linux-arm make check-c++` |
 | `ci-check-c++-baserel32` | `/ci linux-arm make check-c++ board=volamos/-mcrt=nix20/-m68020-60/-fbaserel32` |

@@ -114,15 +114,13 @@ The board combinations worth running, and their latest results:
 | `volamos/-mcrt=newlib/-m68020-60` | ✅ | ? | |
 | `volamos/-mcrt=newlib/-m68020-60/-m68881` | ✅ | [❌ 2](https://github.com/AmigaPorts/m68k-amigaos-gcc/issues/254) | |
 | `volamos/-mcrt=newlib/-m68020-60/-m68881/-fbaserel32` | ✅ | ? | |
-| `volamos/-mcrt=ixemul` | ✅ | ? | yes |
+| `volamos/-mcrt=ixemul` | ✅ | ? | |
 | `volamos/-mcrt=ixemul/-m68020-60` | ✅ | ? | |
-| `volamos/-mcrt=ixemul/-m68020-60/-m68881` | [❌ 24](https://github.com/AmigaPorts/m68k-amigaos-gcc/issues/208)[^ixemul] | ? | |
-| `volamos/-mcrt=ixemul/-m68020-60/-m68881/-fbaserel32` | [❌ 24](https://github.com/AmigaPorts/m68k-amigaos-gcc/issues/208)[^ixemul] | ? | |
+| `volamos/-mcrt=ixemul/-m68020-60/-m68881` | ✅ | ? | yes |
+| `volamos/-mcrt=ixemul/-m68020-60/-m68881/-fbaserel32` | ? | ? | |
 | `volamos/-mcrt=clib2` | [❌ 6](https://github.com/AmigaPorts/m68k-amigaos-gcc/issues/255) | ? | |
 
 [^check]: `make check` runs `check-c` on these, and gates releases.
-[^ixemul]: `-m68881` needs the FPU build of ixemul.library, which rounds wrongly until ixemul 80.2.
-
 ## Results
 
 Each target prints a summary, saves it as `<target>.summary.txt` in the
