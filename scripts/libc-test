@@ -87,6 +87,13 @@ else
 	tests=$(echo "$functional_tests" | wc -w)
 fi
 
+# libc-test reads the exponent of a long double with the layout of the x87.  On
+# the 68k that gives nonsense, so a result one unit in the last place off counts
+# as infinitely wrong.  The 68881 has the exponent first, and no adjustment for
+# denormal numbers.
+sed -i.orig -e 's/struct {uint64_t m; uint16_t e; uint16_t pad;} i;/struct {uint16_t e; uint16_t pad; uint64_t m;} i;/' \
+	-e '/^int eulpl/,/^}/{/if (!e)/,/e++;/d;}' "$src/src/common/mtest.c"
+
 make -k -C "$src" B="$out" \
 	CC="$bin/m68k-amigaos-gcc -mcrt=$crt" AR="$bin/m68k-amigaos-ar" RANLIB="$bin/m68k-amigaos-ranlib" \
 	RUN_TEST="$(realpath "$0") --run $bin/volamos ${sim[*]}" \
