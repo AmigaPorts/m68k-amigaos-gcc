@@ -1757,12 +1757,14 @@ $(BUILD)/newlib/newlib/libc.a: $(BUILD)/newlib/newlib/Makefile $(BUILD)/newlib/_
 # preprocessor by including <limits.h> with the installed cross compiler,
 # and the amigaos limits.h and assert.h include newlib.h and _ansi.h from
 # libc/include (on Linux a host /lib/cpp masked the failure; macOS has none).
+# --update: libc/include's newlib.h is a placeholder that must not replace the
+# generated one newlib's install put there later.
 NEWLIB_HEADERS = $(shell find 2>/dev/null $(PROJECTS)/newlib-cygwin/newlib/libc/include $(PROJECTS)/newlib-cygwin/newlib/libc/sys/amigaos/include -type f)
 $(BUILD)/newlib/_headers: $(NEWLIB_HEADERS) $(BUILD)/gcc/_done | $(PREFIX_STAMP)
-	@mkdir -p $(BUILD)/newlib
-	@rsync -a --no-group $(PROJECTS)/newlib-cygwin/newlib/libc/include/ $(PREFIX)/$(TARGET)/sys-include
-	@rsync -a --no-group $(PROJECTS)/newlib-cygwin/newlib/libc/sys/amigaos/include/ $(PREFIX)/$(TARGET)/sys-include
-	@touch $@
+	mkdir -p $(BUILD)/newlib
+	rsync -a --update --no-group $(PROJECTS)/newlib-cygwin/newlib/libc/include/ $(PREFIX)/$(TARGET)/sys-include
+	rsync -a --no-group $(PROJECTS)/newlib-cygwin/newlib/libc/sys/amigaos/include/ $(PREFIX)/$(TARGET)/sys-include
+	touch $@
 
 # --disable-newlib-reent-check-verify: with reent-small, newlib otherwise
 # asserts on every lazily allocated reent field, so rand(), strtok() or
@@ -1770,9 +1772,12 @@ $(BUILD)/newlib/_headers: $(NEWLIB_HEADERS) $(BUILD)/gcc/_done | $(PREFIX_STAMP)
 # --disable-newlib-mb: AmigaOS is ISO-8859-1 throughout, and the multibyte
 # support made scanf() and the isw*() functions link 29 KB of Unicode and
 # Japanese tables.
-$(BUILD)/newlib/newlib/Makefile: $(PROJECTS)/newlib-cygwin/newlib/configure $(BUILD)/ndk-include_ndk $(BUILD)/gcc/_done $(BUILD)/newlib/_headers | $(PREFIX_STAMP)
-	@mkdir -p $(BUILD)/newlib/newlib
-	@if [ ! -f "$(BUILD)/newlib/newlib/Makefile" ]; then \
+# A newer configure or Makefile.in starts over: newlib regenerating its own
+# Makefiles loses config-ml, and the multilib install fails.
+$(BUILD)/newlib/newlib/Makefile: $(PROJECTS)/newlib-cygwin/newlib/configure $(wildcard $(PROJECTS)/newlib-cygwin/newlib/Makefile.in) $(BUILD)/ndk-include_ndk $(BUILD)/gcc/_done $(BUILD)/newlib/_headers | $(PREFIX_STAMP)
+	$(if $(filter %/configure %/Makefile.in,$?),rm -rf $(BUILD)/newlib/*/)
+	mkdir -p $(BUILD)/newlib/newlib
+	if [ ! -f "$(BUILD)/newlib/newlib/Makefile" ]; then \
 	$(L00)"configure newlib"$(L1) cd $(BUILD)/newlib/newlib && $(NEWLIB_CONFIG) CFLAGS="$(NEWLIB_CFLAGS)" CC_FOR_BUILD="$(CC)" CXXFLAGS="$(NEWLIB_CXXFLAGS)" $(PROJECTS)/newlib-cygwin/newlib/configure --host=$(TARGET) --prefix=$(PREFIX) --enable-newlib-io-long-long --enable-newlib-io-c99-formats --enable-newlib-reent-small --disable-newlib-mb --enable-newlib-long-time_t --disable-newlib-reent-check-verify $(L2) \
 	; else touch "$(BUILD)/newlib/newlib/Makefile"; fi
 
