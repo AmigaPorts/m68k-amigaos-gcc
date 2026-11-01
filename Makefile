@@ -2047,13 +2047,14 @@ check-gcc-amigaos: $(MIN_IF_MISSING) $(BOARD_PREREQ)
 
 # libnix's own target tests (test/Makefile check-target): built from the
 # libnix sources with the installed cross compiler and run under volamos
-# with its memory sanitizer.  The objects are left in projects/libnix/test
-# and rebuilt on every run (-B), since they do not depend on the compiler.
+# with its memory sanitizer and a dirty heap, as the volamos board.  The objects
+# are left in projects/libnix/test and rebuilt on every run (-B), since they do
+# not depend on the compiler.
 .PHONY: check-libnix
 check-libnix: $(MIN_IF_MISSING) $(PREFIX)/bin/volamos
-	@set -o pipefail; $(MAKE) --no-print-directory -B -C $(PROJECTS)/libnix/test check-target \
+	set -o pipefail; $(MAKE) --no-print-directory -B -C $(PROJECTS)/libnix/test check-target \
 	  CROSS_CC=$(PREFIX)/bin/$(TARGET)-gcc SIM=$(PREFIX)/bin/volamos \
-	  SIMFLAGS="--stack 4K --sanitize" 2>&1 | tee $@.summary.txt
+	  SIMFLAGS="--stack 4K --sanitize --dirty-heap" 2>&1 | tee $@.summary.txt
 
 # Build libpthread's regression programs for each multilib.  They cannot run
 # under the single-tasking simulator because it lacks CreateNewProc().

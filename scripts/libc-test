@@ -66,10 +66,11 @@ src=$(realpath "$1") out=$(realpath -m "$2") bin=$(realpath "$3")/bin crt=$4
 shift 4
 cflags="$*"
 
-sim=()
+# as the volamos board: memory checks, and new memory filled with garbage
+sim=(--sanitize --dirty-heap)
 case " $cflags " in
-*" -m68881 "*) sim=(--cpu 68020 --fpu) ;;
-*" -m6802"* | *" -m6803"* | *" -m6804"* | *" -m6806"*) sim=(--cpu 68020) ;;
+*" -m68881 "*) sim+=(--cpu 68020 --fpu) ;;
+*" -m6802"* | *" -m6803"* | *" -m6804"* | *" -m6806"*) sim+=(--cpu 68020) ;;
 esac
 
 # The other group's results stay; the helpers are rebuilt, as the flags may differ.
