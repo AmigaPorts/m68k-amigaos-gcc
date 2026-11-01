@@ -1757,12 +1757,13 @@ $(BUILD)/newlib/newlib/libc.a: $(BUILD)/newlib/newlib/Makefile $(BUILD)/newlib/_
 # preprocessor by including <limits.h> with the installed cross compiler,
 # and the amigaos limits.h and assert.h include newlib.h and _ansi.h from
 # libc/include (on Linux a host /lib/cpp masked the failure; macOS has none).
-# --update: libc/include's newlib.h is a placeholder that must not replace the
-# generated one newlib's install put there later.
+# libc/include's newlib.h and _newlib_version.h are placeholders for the ones
+# newlib's install generates: they only go where there are none yet.
 NEWLIB_HEADERS = $(shell find 2>/dev/null $(PROJECTS)/newlib-cygwin/newlib/libc/include $(PROJECTS)/newlib-cygwin/newlib/libc/sys/amigaos/include -type f)
 $(BUILD)/newlib/_headers: $(NEWLIB_HEADERS) $(BUILD)/gcc/_done | $(PREFIX_STAMP)
 	mkdir -p $(BUILD)/newlib
-	rsync -a --update --no-group $(PROJECTS)/newlib-cygwin/newlib/libc/include/ $(PREFIX)/$(TARGET)/sys-include
+	rsync -a --no-group --exclude=/newlib.h --exclude=/_newlib_version.h $(PROJECTS)/newlib-cygwin/newlib/libc/include/ $(PREFIX)/$(TARGET)/sys-include
+	rsync -a --no-group --ignore-existing $(PROJECTS)/newlib-cygwin/newlib/libc/include/newlib.h $(PROJECTS)/newlib-cygwin/newlib/libc/include/_newlib_version.h $(PREFIX)/$(TARGET)/sys-include/
 	rsync -a --no-group $(PROJECTS)/newlib-cygwin/newlib/libc/sys/amigaos/include/ $(PREFIX)/$(TARGET)/sys-include
 	touch $@
 
