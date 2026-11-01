@@ -119,8 +119,16 @@ gh workflow run toolchain.yml --ref my-branch \
 The inputs include `gcc_version` (the gcc branch `amiga<version>`),
 `make_args`, `runner`, `repos` (module overrides, below), `tag`,
 `build_hosted` and `simulator` (`volamos`, or `vamos` for comparison).
-Dispatched runs are not attached to a pull request: find them in the
-Actions tab, filtered by branch.
+Dispatched runs are not attached to a pull request of this repository:
+find them in the Actions tab, filtered by branch.
+
+A dispatch whose `repos` builds a module's pull request
+(`module=https://github.com/AmigaPorts/<module>.git#refs/pull/N/merge`)
+shows on that pull request as a check named after its make arguments,
+`toolchain (make check-newlib)` for example: pending while it runs, then
+passed or failed, linked to the run. This needs the `PR_STATUS_TOKEN`
+secret, a token allowed to write commit statuses in the module
+repositories; without it the run only says so.
 
 ## Module repositories
 
