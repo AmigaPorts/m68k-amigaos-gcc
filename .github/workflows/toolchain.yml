@@ -152,6 +152,17 @@ jobs:
       - name: Record what is built
         run: echo "Building $(git log -1 --format='%h %s')" >> "$GITHUB_STEP_SUMMARY"
 
+      # a dispatch building module pull requests shows on them as a check;
+      # pr_status, the last job, reports how it ended
+      - name: Report the run on the module pull requests
+        if: github.event_name == 'workflow_dispatch' && contains(inputs.repos, 'refs/pull/')
+        env:
+          REPOS: ${{ inputs.repos }}
+          MAKE_ARGS: ${{ inputs.make_args }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          GH_TOKEN: ${{ secrets.PR_STATUS_TOKEN }}
+        run: .github/scripts/pr-status.sh pending
+
 
       - name: Pin the module refs
         run: |
@@ -784,3 +795,27 @@ jobs:
           path: packages/*
           compression-level: 0
           if-no-files-found: error
+
+  # how the run ended, on the module pull requests the refs job marked as
+  # pending; the MinGW jobs are best effort and do not count
+  pr_status:
+    name: Report the result on the module pull requests
+    needs: [refs, build, build_amigaos]
+    if: always() && github.event_name == 'workflow_dispatch' && contains(inputs.repos, 'refs/pull/')
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: .github/scripts
+
+      - name: Report the result
+        env:
+          REPOS: ${{ inputs.repos }}
+          MAKE_ARGS: ${{ inputs.make_args }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          GH_TOKEN: ${{ secrets.PR_STATUS_TOKEN }}
+          STATE: >-
+            ${{ contains(needs.*.result, 'failure') && 'failure'
+                || contains(needs.*.result, 'cancelled') && 'error'
+                || 'success' }}
+        run: .github/scripts/pr-status.sh "$STATE"
