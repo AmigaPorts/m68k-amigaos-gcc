@@ -139,6 +139,8 @@ jobs:
     outputs:
       label: ${{ inputs.ci_label || github.event.label.name }}
       checkout_ref: ${{ inputs.checkout_ref || github.ref }}
+      # the module pull request heads the pending status went to
+      pr_heads: ${{ steps.pr-status.outputs.heads }}
     env:
       # the label first: gcc_version defaults to 16.2 for a module repo's call
       GCC_VER: ${{ ((inputs.ci_label || github.event.label.name) == 'ci-linux-gcc6' && '6') || inputs.gcc_version || '16.2' }}
@@ -155,7 +157,8 @@ jobs:
       # a dispatch building module pull requests shows on them as a check;
       # pr_status, the last job, reports how it ended
       - name: Report the run on the module pull requests
-        if: github.event_name == 'workflow_dispatch' && contains(inputs.repos, 'refs/pull/')
+        id: pr-status
+        if: github.event_name == 'workflow_dispatch' && contains(inputs.repos, 'refs/pull/') && github.repository == 'AmigaPorts/m68k-amigaos-gcc'
         env:
           REPOS: ${{ inputs.repos }}
           MAKE_ARGS: ${{ inputs.make_args }}
@@ -821,7 +824,7 @@ jobs:
   pr_status:
     name: Report the result on the module pull requests
     needs: [refs, build, build_amigaos]
-    if: always() && github.event_name == 'workflow_dispatch' && contains(inputs.repos, 'refs/pull/')
+    if: always() && github.event_name == 'workflow_dispatch' && contains(inputs.repos, 'refs/pull/') && github.repository == 'AmigaPorts/m68k-amigaos-gcc'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
@@ -830,7 +833,7 @@ jobs:
 
       - name: Report the result
         env:
-          REPOS: ${{ inputs.repos }}
+          HEADS: ${{ needs.refs.outputs.pr_heads }}
           MAKE_ARGS: ${{ inputs.make_args }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           GH_TOKEN: ${{ secrets.PR_STATUS_TOKEN }}
