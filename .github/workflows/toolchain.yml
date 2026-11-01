@@ -730,7 +730,8 @@ jobs:
 
   package_windows:
     name: Create Windows installer
-    continue-on-error: true
+    # best effort like build_mingw, except with ci-mingw
+    continue-on-error: ${{ needs.refs.outputs.label != 'ci-mingw' }}
     needs: [refs, build_mingw]
     runs-on: windows-2025
     timeout-minutes: 30
@@ -824,7 +825,7 @@ jobs:
   # pending; MinGW counts only when ci-mingw asked for it
   pr_status:
     name: Report the result on the module pull requests
-    needs: [refs, build, build_amigaos, build_mingw]
+    needs: [refs, build, build_amigaos, build_mingw, package_windows]
     if: always() && github.event_name == 'workflow_dispatch' && contains(inputs.repos, 'refs/pull/') && github.repository == 'AmigaPorts/m68k-amigaos-gcc'
     runs-on: ubuntu-24.04
     steps:
