@@ -346,6 +346,11 @@ $(shell  [ ! -f .repos ] && cp default-repos .repos)
 # .repos is copied once and then is the user's to edit, so a later change to default-repos
 # never reaches it: name the modules whose line differs. Touching .repos silences this.
 ifeq ($(MAKELEVEL),0)
+  # A module missing altogether would leave its URL and branch empty.
+  repos_missing := $(shell awk '!NF || substr($$1, 1, 1) == "\043" { next } NR == FNR { d[$$1]; next } { r[$$1] } END { for (m in d) if (!(m in r)) print m }' default-repos .repos)
+  ifneq ($(repos_missing),)
+    $(error .repos lacks $(repos_missing) from default-repos: copy their lines from default-repos, or delete .repos to start over)
+  endif
   ifneq ($(shell [ default-repos -nt .repos ] && echo y),)
     repos_drift := $(shell awk '!NF || substr($$1, 1, 1) == "\043" { next } NR == FNR { d[$$1] = $$2 " " $$3; next } { r[$$1] = $$2 " " $$3 } END { for (m in d) if (r[m] != d[m]) print m }' default-repos .repos)
     ifneq ($(repos_drift),)
@@ -707,7 +712,7 @@ package:
 # =================================================
 
 .PHONY: update
-update: update-gcc update-binutils update-fd2sfd update-lha update-fd2pragma update-ira update-sfdc update-vasm update-vbcc update-vlink update-libnix update-clib2 update-libc-test update-libdebug update-libpthread update-ndk update-newlib update-netinclude
+update: update-gcc update-binutils update-fd2sfd update-lha update-fd2pragma update-ira update-sfdc update-vasm update-vbcc update-vlink update-libnix update-clib2 update-libdebug update-libpthread update-ndk update-newlib update-netinclude
 
 # Each pulls a module checkout forward; see scripts/update-module.
 .PHONY: update-gcc
@@ -758,6 +763,7 @@ update-libnix: $(PROJECTS)/libnix/Makefile.gcc6
 update-clib2: $(PROJECTS)/clib2/LICENSE
 	@scripts/update-module $(PROJECTS)/clib2
 
+# not in update: only check-libc-test needs libc-test, and it clones it
 .PHONY: update-libc-test
 update-libc-test: $(PROJECTS)/libc-test/Makefile
 	scripts/update-module $(PROJECTS)/libc-test
