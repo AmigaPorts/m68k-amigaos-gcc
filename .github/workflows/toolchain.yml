@@ -564,8 +564,9 @@ jobs:
   build_mingw:
     name: Build MinGW hosted toolchain
     # best effort until the Canadian-cross path issues are fixed: a failure
-    # here must not block the release of the other platforms
-    continue-on-error: true
+    # here must not block the release of the other platforms, but with
+    # ci-mingw it is the build that was asked for, so it fails the run
+    continue-on-error: ${{ needs.refs.outputs.label != 'ci-mingw' }}
     needs: refs
     if: >-
       needs.refs.outputs.label == 'ci-mingw' ||
@@ -820,10 +821,10 @@ jobs:
           if-no-files-found: error
 
   # how the run ended, on the module pull requests the refs job marked as
-  # pending; the MinGW jobs are best effort and do not count
+  # pending; MinGW counts only when ci-mingw asked for it
   pr_status:
     name: Report the result on the module pull requests
-    needs: [refs, build, build_amigaos]
+    needs: [refs, build, build_amigaos, build_mingw]
     if: always() && github.event_name == 'workflow_dispatch' && contains(inputs.repos, 'refs/pull/') && github.repository == 'AmigaPorts/m68k-amigaos-gcc'
     runs-on: ubuntu-24.04
     steps:
