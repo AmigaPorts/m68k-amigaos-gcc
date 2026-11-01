@@ -707,7 +707,7 @@ package:
 # =================================================
 
 .PHONY: update
-update: update-gcc update-binutils update-fd2sfd update-lha update-fd2pragma update-ira update-sfdc update-vasm update-vbcc update-vlink update-libnix update-clib2 update-libdebug update-libpthread update-ndk update-newlib update-netinclude
+update: update-gcc update-binutils update-fd2sfd update-lha update-fd2pragma update-ira update-sfdc update-vasm update-vbcc update-vlink update-libnix update-clib2 update-libc-test update-libdebug update-libpthread update-ndk update-newlib update-netinclude
 
 # Each pulls a module checkout forward; see scripts/update-module.
 .PHONY: update-gcc
@@ -757,6 +757,10 @@ update-libnix: $(PROJECTS)/libnix/Makefile.gcc6
 .PHONY: update-clib2
 update-clib2: $(PROJECTS)/clib2/LICENSE
 	@scripts/update-module $(PROJECTS)/clib2
+
+.PHONY: update-libc-test
+update-libc-test: $(PROJECTS)/libc-test/Makefile
+	scripts/update-module $(PROJECTS)/libc-test
 
 .PHONY: update-libdebug
 update-libdebug: $(PROJECTS)/libdebug/configure
@@ -2149,7 +2153,6 @@ check-rust: $(BOARD_PREREQ)
 # scripts/libc-test.  Not part of make check: they still have failures to sort out.
 #   make check-libc-test libc-test-crt=newlib libc-test-cflags="-m68020-60 -m68881"
 #   make check-libc-test libc-test-group=functional
-LIBC_TEST_URL = https://repo.or.cz/libc-test.git
 libc-test-group ?= math
 libc-test-crt ?= nix20
 libc-test-cflags ?=
@@ -2157,7 +2160,7 @@ libc-test-cflags ?=
 libc-test-timeout ?= 120
 
 $(PROJECTS)/libc-test/Makefile:
-	cd $(PROJECTS) && git clone --depth 1 $(LIBC_TEST_URL)
+	cd $(PROJECTS) && git clone -b $(libc-test_BRANCH) --depth 4 $(libc-test_URL)
 
 # + for the jobserver: libc-test's make, which the script runs, shares this one's -j
 .PHONY: check-libc-test
