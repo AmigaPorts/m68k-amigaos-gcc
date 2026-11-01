@@ -155,8 +155,16 @@ make -C build-*/gcc check-gcc-c \
 ```
 
 They write `gcc.sum` and `gcc.log` in `build-*/gcc/gcc/testsuite/gcc/`.
-`SANITIZE=0` in `RUNTESTFLAGS` turns off volamos's memory sanitizer, which
-`check-c++` always does.
+
+The volamos board, `check-libnix` and `check-libc-test` run every program
+with two volamos options:
+
+- `--sanitize`, the memory sanitizer: a bad access fails the run.
+  `SANITIZE=0` in `RUNTESTFLAGS` turns it off. `check-c++` always does,
+  because its `-fstrub` tests read the scrubbed stack below the stack pointer
+  on purpose.
+- `--dirty-heap`: memory allocated without `MEMF_CLEAR` is filled with `0xA5`
+  rather than zeros, as on real hardware, where it holds whatever was there.
 
 ## vamos
 

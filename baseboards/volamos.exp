@@ -22,7 +22,9 @@ setup_sim amigaos
 # scrubbed stack below the stack pointer on purpose.
 # --cpu 68000: this board builds 68000 code, so run it on one, which traps
 # the misaligned word and long accesses a 68020 tolerates.
-set volamos_options "--cpu 68000 --stack 4096K --ram 11264K"
+# --dirty-heap: memory allocated without MEMF_CLEAR is filled with 0xA5, as
+# real hardware leaves it with garbage, so code that expects zeros fails.
+set volamos_options "--cpu 68000 --stack 4096K --ram 11264K --dirty-heap"
 if {![info exists SANITIZE] || $SANITIZE} {
     append volamos_options " --sanitize"
 }
