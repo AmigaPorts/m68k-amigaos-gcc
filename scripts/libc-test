@@ -110,7 +110,7 @@ failed=$(sed -n "s|^FAIL .*/$group/\([^ ]*\)\.exe .*|\1|p" "$report")
 timed_out=$(sed -n "s|^FAIL .*/$group/\([^ ]*\)\.exe \[timed out.*|\1|p" "$report")
 echo "----- libc-test $group $crt $cflags -----"
 echo "$tests tests, $(echo -n "$failed" | grep -c '') failed:"
-echo "$failed" | paste -sd' '
-[ -z "$timed_out" ] || echo "timed out after ${LIBC_TEST_TIMEOUT:-120} s: $(echo "$timed_out" | paste -sd' ')"
+echo "$failed" | paste -sd' ' -
+[ -z "$timed_out" ] || echo "timed out after ${LIBC_TEST_TIMEOUT:-120} s: $(echo "$timed_out" | paste -sd' ' -)"
 echo "results: $report, and <test>.err for each test"
 [ -z "$failed" ]
