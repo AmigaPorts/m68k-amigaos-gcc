@@ -117,7 +117,7 @@ and schedule instructions for the later CPUs:
 
 | instruction | emulated on | avoided by | instead |
 |---|---|---|---|
-| `fintrz`, rounding a floating point value toward zero | 68040, 68060 | both | a call to `trunc()`; a conversion to an integer changes the FPU rounding mode |
+| `fintrz`, rounding a floating point value toward zero | 68040 | both | a call to `trunc()`; a conversion to an integer changes the FPU rounding mode |
 | `fscale`, multiplying by a power of 2 | 68040, 68060 | both | `fmul` |
 | `mulu.l` and `muls.l` with a 64-bit result | 68060 | `-m68020-60` | four 16-bit multiplies |
 | `fscc`, setting a byte from an FPU comparison | 68060 | `-m68020-60` | a branch |
