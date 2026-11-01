@@ -40,7 +40,9 @@ if [ "${1-}" = --run ]; then
 	exe=${!#}
 	# tmpnam() counts from the same number in every test, in the current
 	# directory, so tests that run at the same time each need their own.
-	tmp=$(mktemp -d)
+	# Next to the test, not in /tmp: if the run is interrupted, it stays in
+	# the build tree.
+	tmp=$(mktemp -d "$exe.XXXXXX")
 	timeout -k 5 "${LIBC_TEST_TIMEOUT:-120}" "$volamos" --stack 4096K -V "LIBCTEST:$tmp" --cwd LIBCTEST: "${@:1:$#-1}" "$exe" 2>&1
 	status=$?
 	rm -rf "$tmp"
