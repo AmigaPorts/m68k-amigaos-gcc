@@ -91,12 +91,6 @@ else
 	tests=$(echo "$functional_tests" | wc -w)
 fi
 
-# libc-test assumes the x87's long double in a few places, see the patch.
-if [ ! -e "$src/.m68k-patched" ]; then
-	patch -p1 -d "$src" <"$(dirname "$(realpath "$0")")/../patches/libc-test/m68k.diff" || exit 1
-	touch "$src/.m68k-patched"
-fi
-
 make -k -C "$src" B="$out" \
 	CC="$bin/m68k-amigaos-gcc -mcrt=$crt" AR="$bin/m68k-amigaos-ar" RANLIB="$bin/m68k-amigaos-ranlib" \
 	RUN_TEST="$(realpath "$0") --run $bin/volamos ${sim[*]}" \
