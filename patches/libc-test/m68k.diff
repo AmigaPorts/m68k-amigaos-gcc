@@ -1,0 +1,232 @@
+diff --git a/src/common/mtest.c b/src/common/mtest.c
+index 54c4772..4f7cb0d 100644
+--- a/src/common/mtest.c
++++ b/src/common/mtest.c
+@@ -27,11 +27,16 @@ int eulpl(long double x)
+ #if LDBL_MANT_DIG == 53
+ 	return eulp(x);
+ #elif LDBL_MANT_DIG == 64
++#ifdef __m68k__
++	union { long double f; struct {uint16_t e; uint16_t pad; uint64_t m;} i; } u = { x };
++	int e = u.i.e & 0x7fff;
++#else
+ 	union { long double f; struct {uint64_t m; uint16_t e; uint16_t pad;} i; } u = { x };
+ 	int e = u.i.e & 0x7fff;
+ 
+ 	if (!e)
+ 		e++;
++#endif
+ 	return e - 0x3fff - 63;
+ #else
+ 	// TODO
+diff --git a/src/functional/strtold.c b/src/functional/strtold.c
+index 713bb50..89f5bfc 100644
+--- a/src/functional/strtold.c
++++ b/src/functional/strtold.c
+@@ -63,14 +63,14 @@ static struct {
+ 	{"0x1.111111111111281", 0x1.1111111111113p0},
+ 	{"0x1.11111111111111",  0x1.1111111111111p0},
+ #elif LDBL_MANT_DIG == 64
+-	// 2^-16445 * 0.5 - eps
+-	{".1822599765941237301264202966809709908199525407846781671860490243514185844316698e-4950", 0},
+-	// 2^-16445 * 0.5 + eps
+-	{".1822599765941237301264202966809709908199525407846781671860490243514185844316699e-4950", 0x1p-16445L},
++	// 2^-16445 * 0.5 - eps, and the smallest 68881 number
++	{".1822599765941237301264202966809709908199525407846781671860490243514185844316698e-4950", 0x1p-16446L},
++	// 2^-16445 * 0.5 + eps, and the same
++	{".1822599765941237301264202966809709908199525407846781671860490243514185844316699e-4950", 0x1p-16446L},
+ 	// 2^-16445 * 1.5 - eps
+-	{".5467799297823711903792608900429129724598576223540345015581470730542557532950096e-4950", 0x1p-16445L},
++	{".5467799297823711903792608900429129724598576223540345015581470730542557532950096e-4950", 0x1.8p-16445L},
+ 	// 2^-16445 * 1.5 + eps
+-	{".5467799297823711903792608900429129724598576223540345015581470730542557532950097e-4950", 0x1p-16444L},
++	{".5467799297823711903792608900429129724598576223540345015581470730542557532950097e-4950", 0x1.8p-16445L},
+ 	// 2^-16382 + 2^-16446 - eps
+ 	{".3362103143112093506444937793915876332724499641527442230928779770593420866576777e-4931", 0x1p-16382L},
+ 	// 2^-16382 + 2^-16446 + eps
+diff --git a/src/math/special/atan2l.h b/src/math/special/atan2l.h
+index 74113be..4eab485 100644
+--- a/src/math/special/atan2l.h
++++ b/src/math/special/atan2l.h
+@@ -24,5 +24,5 @@ T(RN,                            inf,                            inf,       0x1.
+ T(RN,                            inf,                           -inf,        0x1.2d97c7f3321d235p+1L,   0x1.b1acd8p-2, INEXACT)
+ T(RN,                           -inf,                            inf,      -0x1.921fb54442d1846ap-1L,  -0x1.d9ccecp-3, INEXACT)
+ T(RN,                           -inf,                           -inf,       -0x1.2d97c7f3321d235p+1L,  -0x1.b1acd8p-2, INEXACT)
+-T(RN,                    0x1p-16383L,                        0x1p+0L,                    0x1p-16383L,          0x0p+0, INEXACT|UNDERFLOW)
+-T(RN,                        0x1p+0L,                    0x1p+16383L,                    0x1p-16383L,          0x0p+0, INEXACT|UNDERFLOW)
++T(RN,                    0x1p-16383L,                        0x1p+0L,                    0x1p-16383L,          0x0p+0,         INEXACT)
++T(RN,                        0x1p+0L,                    0x1p+16383L,                    0x1p-16383L,          0x0p+0,         INEXACT)
+diff --git a/src/math/special/exp2l.h b/src/math/special/exp2l.h
+index bed2937..3519fa4 100644
+--- a/src/math/special/exp2l.h
++++ b/src/math/special/exp2l.h
+@@ -5,22 +5,22 @@ T(RN,                       -0x1p+0L,                        0x1p-1L,          0
+ T(RN,                            inf,                            inf,          0x0p+0, 0)
+ T(RN,                           -inf,                        0x0p+0L,          0x0p+0, 0)
+ T(RN,                            nan,                            nan,          0x0p+0, 0)
+-T(RN,     -0x1.00f799999999999ap+14L,                    0x1p-16445L,   0x1.db4082p-2, INEXACT|UNDERFLOW)
+-T(RN,                 -0x1.00f8p+14L,                        0x0p+0L,         -0x1p-1, INEXACT|UNDERFLOW)
+-T(RN,     -0x1.00f8666666666666p+14L,                        0x0p+0L,   -0x1.ddb68p-2, INEXACT|UNDERFLOW)
++T(RN,     -0x1.00f799999999999ap+14L,                    0x1p-16446L, -0x1.25fbee250662fp-4, INEXACT|UNDERFLOW)
++T(RN,                 -0x1.00f8p+14L,                    0x1p-16446L,          0x0p+0,               0)
++T(RN,     -0x1.00f8666666666666p+14L,                    0x1p-16446L, 0x1.124bff742a75fp-4, INEXACT|UNDERFLOW)
+ T(RN,      0x1.ffff333333333334p+13L,   0x1.ddb680117ab141f6p+16383L,  -0x1.b531eep-2, INEXACT)
+ T(RN,                       0x1p+14L,                            inf,          0x0p+0, INEXACT|OVERFLOW)
+ T(RN,      0x1.0000666666666666p+14L,                            inf,          0x0p+0, INEXACT|OVERFLOW)
+ T(RN,       0x1.91eb851eb851eb86p+1L,        0x1.1a167423fc31b2ep+3L,   0x1.6b7e14p-2, INEXACT)
+ T(RN,                  -0x1.fffp+13L,                    0x1p-16382L,          0x0p+0, 0)
+-T(RN,                 -0x1.fff4p+13L,   0x1.6a09e667f3bcc908p-16383L,  -0x1.65f626p-3, INEXACT|UNDERFLOW)
++T(RN,                 -0x1.fff4p+13L,   0x1.6a09e667f3bcc908p-16383L, -0x1.65f626cdd52b0p-2,         INEXACT)
+ T(RN,                 -0x1.fff8p+13L,                    0x1p-16383L,          0x0p+0, 0)
+-T(RN,                 -0x1.fffcp+13L,   0x1.6a09e667f3bcc908p-16384L,  -0x1.65f626p-4, INEXACT|UNDERFLOW)
++T(RN,                 -0x1.fffcp+13L,   0x1.6a09e667f3bcc908p-16384L, -0x1.65f626cdd52b0p-3, INEXACT|UNDERFLOW)
+ T(RN,                      -0x1p+14L,                    0x1p-16384L,          0x0p+0, 0)
+-T(RN,                 -0x1.0002p+14L,    0x1.6a09e667f3bcc91p-16385L,   0x1.d3413cp-2, INEXACT|UNDERFLOW)
++T(RN,                 -0x1.0002p+14L,   0x1.6a09e667f3bcc908p-16385L, -0x1.65f626cdd52b0p-4, INEXACT|UNDERFLOW)
+ T(RN,                 -0x1.0004p+14L,                    0x1p-16385L,          0x0p+0, 0)
+ T(RN,                 -0x1.00f4p+14L,                    0x1p-16445L,          0x0p+0, 0)
+-T(RN,                 -0x1.00f6p+14L,                    0x1p-16445L,   0x1.2bec34p-2, INEXACT|UNDERFLOW)
++T(RN,                 -0x1.00f6p+14L,                    0x1p-16446L, -0x1.a827999fcef32p-2, INEXACT|UNDERFLOW)
+ T(RN,       0x1.999999999999999ap-4L,       0x1.125fbee250664262p+0L,  -0x1.5e1baap-2, INEXACT)
+ T(RN,      -0x1.999999999999999ap-4L,       0x1.ddb680117ab120dap-1L,  -0x1.a1ef26p-8, INEXACT)
+ T(RN,                    0x1p-16384L,                        0x1p+0L,          0x0p+0, INEXACT)
+diff --git a/src/math/special/fmal.h b/src/math/special/fmal.h
+index 161b791..07cdcbf 100644
+--- a/src/math/special/fmal.h
++++ b/src/math/special/fmal.h
+@@ -35,23 +35,23 @@ T(RN,                            inf,                        0x0p+0L,
+ T(RN,                        0x0p+0L,                            inf,                            nan,                            nan,          0x0p+0, INVALID)
+ T(RN,                           -inf,                        0x0p+0L,                            nan,                            nan,          0x0p+0, INVALID)
+ T(RN,                        0x0p+0L,                           -inf,                            nan,                            nan,          0x0p+0, INVALID)
+-T(RN,         0x1.0000000001p-16000L,           0x1.0000000001p-400L,                   -0x1p-16440L,         0x1.0000000001p-16400L,        -0x1p-35, INEXACT|UNDERFLOW)
+-T(RN,        -0x1.0000000001p-16000L,           0x1.0000000001p-400L,                   -0x1p-16440L,        -0x1.0000000003p-16400L,         0x1p-35, INEXACT|UNDERFLOW)
+-T(RD,         0x1.0000000001p-16000L,           0x1.0000000001p-400L,                   -0x1p-16440L,         0x1.0000000001p-16400L,        -0x1p-35, INEXACT|UNDERFLOW)
+-T(RD,        -0x1.0000000001p-16000L,           0x1.0000000001p-400L,                   -0x1p-16440L,      -0x1.000000000308p-16400L,         -0x1p+0, INEXACT|UNDERFLOW)
+-T(RU,         0x1.0000000001p-16000L,           0x1.0000000001p-400L,                   -0x1p-16440L,       0x1.000000000108p-16400L,          0x1p+0, INEXACT|UNDERFLOW)
+-T(RU,        -0x1.0000000001p-16000L,           0x1.0000000001p-400L,                   -0x1p-16440L,        -0x1.0000000003p-16400L,         0x1p-35, INEXACT|UNDERFLOW)
+-T(RZ,         0x1.0000000001p-16000L,           0x1.0000000001p-400L,                   -0x1p-16440L,         0x1.0000000001p-16400L,        -0x1p-35, INEXACT|UNDERFLOW)
+-T(RZ,        -0x1.0000000001p-16000L,           0x1.0000000001p-400L,                   -0x1p-16440L,        -0x1.0000000003p-16400L,         0x1p-35, INEXACT|UNDERFLOW)
+-T(RN,                   -0x1p-10000L,       0x1.0000000000001p-6445L,                    0x1p-16382L,   0x1.fffffffffffffffcp-16383L,         0x1p-52, INEXACT|UNDERFLOW)
+-T(RU,                   -0x1p-10000L,       0x1.0000000000001p-6445L,                    0x1p-16382L,   0x1.fffffffffffffffcp-16383L,         0x1p-52, INEXACT|UNDERFLOW)
+-T(RD,                   -0x1p-10000L,       0x1.0000000000001p-6445L,                    0x1p-16382L,   0x1.fffffffffffffff8p-16383L,         -0x1p+0, INEXACT|UNDERFLOW)
+-T(RZ,                   -0x1p-10000L,       0x1.0000000000001p-6445L,                    0x1p-16382L,   0x1.fffffffffffffff8p-16383L,         -0x1p+0, INEXACT|UNDERFLOW)
+-T(RN,                   -0x1p-10000L,                     0x1p-6500L,                        0x0p+0L,                       -0x0p+0L,         0x1p-55, INEXACT|UNDERFLOW)
+-T(RN,                   -0x1p-10000L,                     0x1p-6500L,                       -0x0p+0L,                       -0x0p+0L,         0x1p-55, INEXACT|UNDERFLOW)
+-T(RZ,                   -0x1p-10000L,                     0x1p-6500L,                        0x0p+0L,                       -0x0p+0L,         0x1p-55, INEXACT|UNDERFLOW)
+-T(RZ,                   -0x1p-10000L,                     0x1p-6500L,                       -0x0p+0L,                       -0x0p+0L,         0x1p-55, INEXACT|UNDERFLOW)
+-T(RD,                   -0x1p-10000L,                     0x1p-6500L,                        0x0p+0L,                   -0x1p-16445L,         -0x1p+0, INEXACT|UNDERFLOW)
+-T(RD,                   -0x1p-10000L,                     0x1p-6500L,                       -0x0p+0L,                   -0x1p-16445L,         -0x1p+0, INEXACT|UNDERFLOW)
+-T(RU,                   -0x1p-10000L,                     0x1p-6500L,                        0x0p+0L,                       -0x0p+0L,         0x1p-55, INEXACT|UNDERFLOW)
+-T(RU,                   -0x1p-10000L,                     0x1p-6500L,                       -0x0p+0L,                       -0x0p+0L,         0x1p-55, INEXACT|UNDERFLOW)
++T(RN,         0x1.0000000001p-16000L,           0x1.0000000001p-400L,                   -0x1p-16440L,         0x1.0000000001p-16400L,        -0x1p-34, INEXACT|UNDERFLOW)
++T(RN,        -0x1.0000000001p-16000L,           0x1.0000000001p-400L,                   -0x1p-16440L,        -0x1.0000000003p-16400L,         0x1p-34, INEXACT|UNDERFLOW)
++T(RD,         0x1.0000000001p-16000L,           0x1.0000000001p-400L,                   -0x1p-16440L,         0x1.0000000001p-16400L,        -0x1p-34, INEXACT|UNDERFLOW)
++T(RD,        -0x1.0000000001p-16000L,           0x1.0000000001p-400L,                   -0x1p-16440L,      -0x1.000000000304p-16400L, -0x1.ffffffff80000p-1, INEXACT|UNDERFLOW)
++T(RU,         0x1.0000000001p-16000L,           0x1.0000000001p-400L,                   -0x1p-16440L,       0x1.000000000104p-16400L, 0x1.ffffffff80000p-1, INEXACT|UNDERFLOW)
++T(RU,        -0x1.0000000001p-16000L,           0x1.0000000001p-400L,                   -0x1p-16440L,        -0x1.0000000003p-16400L,         0x1p-34, INEXACT|UNDERFLOW)
++T(RZ,         0x1.0000000001p-16000L,           0x1.0000000001p-400L,                   -0x1p-16440L,         0x1.0000000001p-16400L,        -0x1p-34, INEXACT|UNDERFLOW)
++T(RZ,        -0x1.0000000001p-16000L,           0x1.0000000001p-400L,                   -0x1p-16440L,        -0x1.0000000003p-16400L,         0x1p-34, INEXACT|UNDERFLOW)
++T(RN,                   -0x1p-10000L,       0x1.0000000000001p-6445L,                    0x1p-16382L,   0x1.fffffffffffffffcp-16383L,         0x1p-51,         INEXACT)
++T(RU,                   -0x1p-10000L,       0x1.0000000000001p-6445L,                    0x1p-16382L,   0x1.fffffffffffffffcp-16383L,         0x1p-51,         INEXACT)
++T(RD,                   -0x1p-10000L,       0x1.0000000000001p-6445L,                    0x1p-16382L,   0x1.fffffffffffffffap-16383L, -0x1.ffffffffffffcp-1,         INEXACT)
++T(RZ,                   -0x1p-10000L,       0x1.0000000000001p-6445L,                    0x1p-16382L,   0x1.fffffffffffffffap-16383L, -0x1.ffffffffffffcp-1,         INEXACT)
++T(RN,                   -0x1p-10000L,                     0x1p-6500L,                        0x0p+0L,                       -0x0p+0L,         0x1p-54, INEXACT|UNDERFLOW)
++T(RN,                   -0x1p-10000L,                     0x1p-6500L,                       -0x0p+0L,                       -0x0p+0L,         0x1p-54, INEXACT|UNDERFLOW)
++T(RZ,                   -0x1p-10000L,                     0x1p-6500L,                        0x0p+0L,                       -0x0p+0L,         0x1p-54, INEXACT|UNDERFLOW)
++T(RZ,                   -0x1p-10000L,                     0x1p-6500L,                       -0x0p+0L,                       -0x0p+0L,         0x1p-54, INEXACT|UNDERFLOW)
++T(RD,                   -0x1p-10000L,                     0x1p-6500L,                        0x0p+0L,                   -0x1p-16446L,         -0x1p+0, INEXACT|UNDERFLOW)
++T(RD,                   -0x1p-10000L,                     0x1p-6500L,                       -0x0p+0L,                   -0x1p-16446L,         -0x1p+0, INEXACT|UNDERFLOW)
++T(RU,                   -0x1p-10000L,                     0x1p-6500L,                        0x0p+0L,                       -0x0p+0L,         0x1p-54, INEXACT|UNDERFLOW)
++T(RU,                   -0x1p-10000L,                     0x1p-6500L,                       -0x0p+0L,                       -0x0p+0L,         0x1p-54, INEXACT|UNDERFLOW)
+diff --git a/src/math/special/nextafterl.h b/src/math/special/nextafterl.h
+index 111ad30..7809558 100644
+--- a/src/math/special/nextafterl.h
++++ b/src/math/special/nextafterl.h
+@@ -1,11 +1,11 @@
+ T(RN,   0x1.fffffffffffffffep+16383L,                            inf,                            inf,          0x0p+0, INEXACT|OVERFLOW)
+ T(RN,   0x1.fffffffffffffffep+16383L,                        0x0p+0L,   0x1.fffffffffffffffcp+16383L,          0x0p+0, 0)
+-T(RN,                    0x1p-16445L,                           -inf,                        0x0p+0L,          0x0p+0, INEXACT|UNDERFLOW)
+-T(RN,                    0x1p-16445L,                            inf,                    0x1p-16444L,          0x0p+0, INEXACT|UNDERFLOW)
+-T(RN,   0x1.fffffffffffffff8p-16383L,                        0x1p+0L,   0x1.fffffffffffffffcp-16383L,          0x0p+0, INEXACT|UNDERFLOW)
+-T(RN,   0x1.fffffffffffffffcp-16383L,                        0x1p+0L,                    0x1p-16382L,          0x0p+0, 0)
++T(RN,                    0x1p-16445L,                           -inf,                    0x1p-16446L,          0x0p+0, INEXACT|UNDERFLOW)
++T(RN,                    0x1p-16445L,                            inf,                  0x1.8p-16445L,          0x0p+0, INEXACT|UNDERFLOW)
++T(RN,   0x1.fffffffffffffff8p-16383L,                        0x1p+0L,   0x1.fffffffffffffffap-16383L,          0x0p+0,               0)
++T(RN,   0x1.fffffffffffffffcp-16383L,                        0x1p+0L,   0x1.fffffffffffffffep-16383L,          0x0p+0,               0)
+ T(RN,   0x1.0000000000000002p-16382L,                        0x0p+0L,                    0x1p-16382L,          0x0p+0, 0)
+-T(RN,                    0x1p-16382L,                        0x0p+0L,   0x1.fffffffffffffffcp-16383L,          0x0p+0, INEXACT|UNDERFLOW)
++T(RN,                    0x1p-16382L,                        0x0p+0L,   0x1.fffffffffffffffep-16383L,          0x0p+0,               0)
+ T(RN,                        0x1p+0L,       0x1.0000000000000002p+0L,       0x1.0000000000000002p+0L,          0x0p+0, 0)
+ T(RN,                        0x1p+0L,       0x1.fffffffffffffffep-1L,       0x1.fffffffffffffffep-1L,          0x0p+0, 0)
+ T(RN,                        0x1p+0L,                        0x1p+0L,                        0x1p+0L,          0x0p+0, 0)
+@@ -16,13 +16,13 @@ T(RN,                        0x1p+0L,                            nan,
+ T(RN,                            nan,                        0x1p+0L,                            nan,          0x0p+0, 0)
+ T(RN,                            nan,                            nan,                            nan,          0x0p+0, 0)
+ T(RN,                        0x0p+0L,                            nan,                            nan,          0x0p+0, 0)
+-T(RN,                        0x0p+0L,                            inf,                    0x1p-16445L,          0x0p+0, INEXACT|UNDERFLOW)
+-T(RN,                        0x0p+0L,                           -inf,                   -0x1p-16445L,          0x0p+0, INEXACT|UNDERFLOW)
++T(RN,                        0x0p+0L,                            inf,                    0x1p-16446L,          0x0p+0, INEXACT|UNDERFLOW)
++T(RN,                        0x0p+0L,                           -inf,                   -0x1p-16446L,          0x0p+0, INEXACT|UNDERFLOW)
+ T(RN,                        0x0p+0L,                        0x0p+0L,                        0x0p+0L,          0x0p+0, 0)
+ T(RN,                        0x0p+0L,                       -0x0p+0L,                       -0x0p+0L,          0x0p+0, 0)
+ T(RN,                       -0x0p+0L,                            nan,                            nan,          0x0p+0, 0)
+-T(RN,                       -0x0p+0L,                            inf,                    0x1p-16445L,          0x0p+0, INEXACT|UNDERFLOW)
+-T(RN,                       -0x0p+0L,                           -inf,                   -0x1p-16445L,          0x0p+0, INEXACT|UNDERFLOW)
++T(RN,                       -0x0p+0L,                            inf,                    0x1p-16446L,          0x0p+0, INEXACT|UNDERFLOW)
++T(RN,                       -0x0p+0L,                           -inf,                   -0x1p-16446L,          0x0p+0, INEXACT|UNDERFLOW)
+ T(RN,                       -0x0p+0L,                        0x0p+0L,                        0x0p+0L,          0x0p+0, 0)
+ T(RN,                       -0x0p+0L,                       -0x0p+0L,                       -0x0p+0L,          0x0p+0, 0)
+ T(RN,                            inf,                            inf,                            inf,          0x0p+0, 0)
+diff --git a/src/math/special/nexttowardl.h b/src/math/special/nexttowardl.h
+index 111ad30..7809558 100644
+--- a/src/math/special/nexttowardl.h
++++ b/src/math/special/nexttowardl.h
+@@ -1,11 +1,11 @@
+ T(RN,   0x1.fffffffffffffffep+16383L,                            inf,                            inf,          0x0p+0, INEXACT|OVERFLOW)
+ T(RN,   0x1.fffffffffffffffep+16383L,                        0x0p+0L,   0x1.fffffffffffffffcp+16383L,          0x0p+0, 0)
+-T(RN,                    0x1p-16445L,                           -inf,                        0x0p+0L,          0x0p+0, INEXACT|UNDERFLOW)
+-T(RN,                    0x1p-16445L,                            inf,                    0x1p-16444L,          0x0p+0, INEXACT|UNDERFLOW)
+-T(RN,   0x1.fffffffffffffff8p-16383L,                        0x1p+0L,   0x1.fffffffffffffffcp-16383L,          0x0p+0, INEXACT|UNDERFLOW)
+-T(RN,   0x1.fffffffffffffffcp-16383L,                        0x1p+0L,                    0x1p-16382L,          0x0p+0, 0)
++T(RN,                    0x1p-16445L,                           -inf,                    0x1p-16446L,          0x0p+0, INEXACT|UNDERFLOW)
++T(RN,                    0x1p-16445L,                            inf,                  0x1.8p-16445L,          0x0p+0, INEXACT|UNDERFLOW)
++T(RN,   0x1.fffffffffffffff8p-16383L,                        0x1p+0L,   0x1.fffffffffffffffap-16383L,          0x0p+0,               0)
++T(RN,   0x1.fffffffffffffffcp-16383L,                        0x1p+0L,   0x1.fffffffffffffffep-16383L,          0x0p+0,               0)
+ T(RN,   0x1.0000000000000002p-16382L,                        0x0p+0L,                    0x1p-16382L,          0x0p+0, 0)
+-T(RN,                    0x1p-16382L,                        0x0p+0L,   0x1.fffffffffffffffcp-16383L,          0x0p+0, INEXACT|UNDERFLOW)
++T(RN,                    0x1p-16382L,                        0x0p+0L,   0x1.fffffffffffffffep-16383L,          0x0p+0,               0)
+ T(RN,                        0x1p+0L,       0x1.0000000000000002p+0L,       0x1.0000000000000002p+0L,          0x0p+0, 0)
+ T(RN,                        0x1p+0L,       0x1.fffffffffffffffep-1L,       0x1.fffffffffffffffep-1L,          0x0p+0, 0)
+ T(RN,                        0x1p+0L,                        0x1p+0L,                        0x1p+0L,          0x0p+0, 0)
+@@ -16,13 +16,13 @@ T(RN,                        0x1p+0L,                            nan,
+ T(RN,                            nan,                        0x1p+0L,                            nan,          0x0p+0, 0)
+ T(RN,                            nan,                            nan,                            nan,          0x0p+0, 0)
+ T(RN,                        0x0p+0L,                            nan,                            nan,          0x0p+0, 0)
+-T(RN,                        0x0p+0L,                            inf,                    0x1p-16445L,          0x0p+0, INEXACT|UNDERFLOW)
+-T(RN,                        0x0p+0L,                           -inf,                   -0x1p-16445L,          0x0p+0, INEXACT|UNDERFLOW)
++T(RN,                        0x0p+0L,                            inf,                    0x1p-16446L,          0x0p+0, INEXACT|UNDERFLOW)
++T(RN,                        0x0p+0L,                           -inf,                   -0x1p-16446L,          0x0p+0, INEXACT|UNDERFLOW)
+ T(RN,                        0x0p+0L,                        0x0p+0L,                        0x0p+0L,          0x0p+0, 0)
+ T(RN,                        0x0p+0L,                       -0x0p+0L,                       -0x0p+0L,          0x0p+0, 0)
+ T(RN,                       -0x0p+0L,                            nan,                            nan,          0x0p+0, 0)
+-T(RN,                       -0x0p+0L,                            inf,                    0x1p-16445L,          0x0p+0, INEXACT|UNDERFLOW)
+-T(RN,                       -0x0p+0L,                           -inf,                   -0x1p-16445L,          0x0p+0, INEXACT|UNDERFLOW)
++T(RN,                       -0x0p+0L,                            inf,                    0x1p-16446L,          0x0p+0, INEXACT|UNDERFLOW)
++T(RN,                       -0x0p+0L,                           -inf,                   -0x1p-16446L,          0x0p+0, INEXACT|UNDERFLOW)
+ T(RN,                       -0x0p+0L,                        0x0p+0L,                        0x0p+0L,          0x0p+0, 0)
+ T(RN,                       -0x0p+0L,                       -0x0p+0L,                       -0x0p+0L,          0x0p+0, 0)
+ T(RN,                            inf,                            inf,                            inf,          0x0p+0, 0)
+diff --git a/src/math/special/scalbnl.h b/src/math/special/scalbnl.h
+index 7a67295..592ebb0 100644
+--- a/src/math/special/scalbnl.h
++++ b/src/math/special/scalbnl.h
+@@ -14,6 +14,6 @@ T(RN,                            inf, -2147483647,                            in
+ T(RN,                           -inf,  2147483647,                           -inf,          0x0p+0, 0)
+ T(RN,                    0x1p+16383L,      -32828,                    0x1p-16445L,          0x0p+0, 0)
+ T(RN,                    0x1p-16445L,       32828,                    0x1p+16383L,          0x0p+0, 0)
+-T(RN,            0x1.00000000001p+0L,      -16445,                    0x1p-16445L,          0x0p+0, INEXACT|UNDERFLOW)
+-T(RN,       0x1.7ffffffffffffffep-1L,      -16444,                    0x1p-16445L,          0x0p+0, INEXACT|UNDERFLOW)
+-T(RN,       0x1.0000000000000016p-1L,      -16384,    0x1.000000000000001p-16385L,          0x0p+0, INEXACT|UNDERFLOW)
++T(RN,            0x1.00000000001p+0L,                         -16445,                    0x1p-16445L,        -0x1p-43, INEXACT|UNDERFLOW)
++T(RN,       0x1.7ffffffffffffffep-1L,                         -16444,                  0x1.8p-16445L,         0x1p-62, INEXACT|UNDERFLOW)
++T(RN,       0x1.0000000000000016p-1L,                         -16384,   0x1.0000000000000018p-16385L,          0x1p-2, INEXACT|UNDERFLOW)

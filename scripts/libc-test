@@ -38,8 +38,12 @@ if [ "${1-}" = --run ]; then
 	volamos=$2
 	shift 2
 	exe=${!#}
-	timeout -k 5 "${LIBC_TEST_TIMEOUT:-120}" "$volamos" --stack 4096K "${@:1:$#-1}" "$exe" 2>&1
+	# tmpnam() counts from the same number in every test, in the current
+	# directory, so tests that run at the same time each need their own.
+	tmp=$(mktemp -d)
+	timeout -k 5 "${LIBC_TEST_TIMEOUT:-120}" "$volamos" --stack 4096K -V "LIBCTEST:$tmp" --cwd LIBCTEST: "${@:1:$#-1}" "$exe" 2>&1
 	status=$?
+	rm -rf "$tmp"
 	if [ $status -eq 124 ]; then
 		echo "FAIL $exe [timed out after ${LIBC_TEST_TIMEOUT:-120} s]"
 	elif [ $status -ne 0 ]; then
@@ -87,12 +91,11 @@ else
 	tests=$(echo "$functional_tests" | wc -w)
 fi
 
-# libc-test reads the exponent of a long double with the layout of the x87.  On
-# the 68k that gives nonsense, so a result one unit in the last place off counts
-# as infinitely wrong.  The 68881 has the exponent first, and no adjustment for
-# denormal numbers.
-sed -i.orig -e 's/struct {uint64_t m; uint16_t e; uint16_t pad;} i;/struct {uint16_t e; uint16_t pad; uint64_t m;} i;/' \
-	-e '/^int eulpl/,/^}/{/if (!e)/,/e++;/d;}' "$src/src/common/mtest.c"
+# libc-test assumes the x87's long double in a few places, see the patch.
+if [ ! -e "$src/.m68k-patched" ]; then
+	patch -p1 -d "$src" <"$(dirname "$(realpath "$0")")/../patches/libc-test/m68k.diff" || exit 1
+	touch "$src/.m68k-patched"
+fi
 
 make -k -C "$src" B="$out" \
 	CC="$bin/m68k-amigaos-gcc -mcrt=$crt" AR="$bin/m68k-amigaos-ar" RANLIB="$bin/m68k-amigaos-ranlib" \
@@ -100,7 +103,14 @@ make -k -C "$src" B="$out" \
 	common.OBJS="$out/common/mtest.o $out/common/print.o $out/common/rand.o" \
 	"${targets[@]}" >"$out.$group.log" 2>&1
 [ "$group" = math ] || cat "${targets[@]}" >"$report" 2>/dev/null
-[ -s "$report" ] || { echo "libc-test: no results in $report, see $out.$group.log" >&2; exit 1; }
+# An empty report is fine: no test printed anything. A missing .err is not.
+if [ "$group" = math ]; then
+	[ -e "$report" ] || { echo "libc-test: no results in $report, see $out.$group.log" >&2; exit 1; }
+else
+	for t in $functional_tests; do
+		[ -e "$out/functional/$t.err" ] || { echo "libc-test: no results for $t, see $out.$group.log" >&2; exit 1; }
+	done
+fi
 
 failed=$(sed -n "s|^FAIL .*/$group/\([^ ]*\)\.exe .*|\1|p" "$report")
 timed_out=$(sed -n "s|^FAIL .*/$group/\([^ ]*\)\.exe \[timed out.*|\1|p" "$report")
