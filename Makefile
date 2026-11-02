@@ -1968,8 +1968,8 @@ MIN_IF_MISSING = $(call if-missing,$(BUILD)/gcc/_libgcc_done $(BUILD)/ixemul/_do
 # volamos/-mcrt=nix20/-m68020-60/-m68881/-fbaserel32 covers 68020 code with FPU instructions on
 # a4-relative data in one run, and volamos/-mcrt=newlib/-m68060 newlib, the
 # soft-float 68020 multilib and code for the 68060, which lacks some 68020
-# instructions.  libc-test passes on clib2: both groups, and the functional one
-# with an FPU too.
+# instructions.  libc-test passes on clib2: both groups, and the math one with
+# an FPU too.
 .PHONY: check
 check:
 	$(MAKE) --no-print-directory check-shell
@@ -1985,7 +1985,7 @@ check:
 	$(MAKE) --no-print-directory check-c board=volamos/-mcrt=newlib/-m68060
 	$(MAKE) --no-print-directory check-c++
 	$(MAKE) --no-print-directory check-libc-test libc-test-crt=clib2 libc-test-cflags="-O2"
-	$(MAKE) --no-print-directory check-libc-test libc-test-group=functional libc-test-crt=clib2 libc-test-cflags="-O2 -m68040 -m68881"
+	$(MAKE) --no-print-directory check-libc-test libc-test-crt=clib2 libc-test-group=math libc-test-cflags="-O2 -m68020-60 -m68881"
 
 # The gas and ld dump tests for the hunk target run on the build machine under DejaGnu.
 # The gas m68k tests written for ELF expect % register syntax and fail on this target,

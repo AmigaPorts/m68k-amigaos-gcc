@@ -43,7 +43,7 @@ sources.
 | `check-binutils` | the gas and ld tests for the Amiga hunk format |
 | `check-multilib` | the multilib list against the driver's |
 | `check-shell` | shellcheck on `scripts/` and `.github/scripts/` |
-| `check` | the pre-release test: all of the above on the boards marked in [Tested configurations](#tested-configurations), with `check-libc-test` only on clib2 at `-O2`: both groups, and the functional one with `-m68040 -m68881` too |
+| `check` | the pre-release test: all of the above on the boards marked in [Tested configurations](#tested-configurations), with `check-libc-test` only on clib2 at `-O2`: both groups, and the math one with `-m68020-60 -m68881` too |
 
 Run the gcc testsuite targets one at a time, not together in one `make -j`
 or in two shells on the same build tree: they share `gcc.sum`.
