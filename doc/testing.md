@@ -162,9 +162,9 @@ The volamos board, `check-libnix` and `check-libc-test` run every program
 with two volamos options:
 
 - `--sanitize`, the memory sanitizer: a bad access fails the run.
-  `SANITIZE=0` in `RUNTESTFLAGS` turns it off. `check-c++` always does,
-  because its `-fstrub` tests read the scrubbed stack below the stack pointer
-  on purpose.
+  On the board, `SANITIZE=0` in `RUNTESTFLAGS` turns it off. `check-c++`
+  always does, because its `-fstrub` tests read the scrubbed stack below the
+  stack pointer on purpose.
 - `--dirty-heap`: memory allocated without `MEMF_CLEAR` is filled with `0xA5`
   rather than zeros, as on real hardware, where it holds whatever was there.
 
