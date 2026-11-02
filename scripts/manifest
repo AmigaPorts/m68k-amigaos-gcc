@@ -2,9 +2,11 @@
 # Print what this tree is built from, in the format of .repos: a line per
 # module with the commit of its checkout, suffixed with "-dirty" when the
 # checkout has uncommitted changes or untracked files that git does not
-# ignore, like git describe --dirty.  The first line, a comment, is this
-# repository.  --markdown prints the same as a table, with each commit
-# linked and its subject, for a CI run summary.
+# ignore, like git describe --dirty.  A fourth column, which .repos readers
+# ignore, gives git describe --all: the tag or branch the commit is on, for
+# people to read.  The first line, a comment, is this repository.
+# --markdown prints the same as a table, with each commit linked and its
+# subject, for a CI run summary.
 #
 #   PROJECTS=... scripts/manifest [--markdown] > .manifest
 
@@ -20,8 +22,11 @@ projects=${PROJECTS:-$here/projects}
 dirty() { [ -z "$(git -C "$1" status --porcelain)" ] || echo "-dirty"; }
 
 # Collect the lines first, to align the commits in a column.
-names=() urls=() commits=() dirs=()
-add() { names+=("$1"); urls+=("$2"); commits+=("$3$(dirty "$4")"); dirs+=("$4"); }
+names=() urls=() commits=() dirs=() refs=()
+add() {
+	names+=("$1"); urls+=("$2"); commits+=("$3$(dirty "$4")"); dirs+=("$4")
+	refs+=("$(git -C "$4" describe --all --always)")
+}
 
 # This repository's URL: the remote of the branch's upstream, else origin.
 up=$(git -C "$here" rev-parse --abbrev-ref --symbolic-full-name '@{u}' 2>/dev/null |
@@ -38,25 +43,26 @@ done < "$here/.repos"
 
 if [ "$format" = --markdown ]; then
 	echo "### Module revisions"
-	echo "| module | commit | subject |"
-	echo "|---|---|---|"
+	echo "| module | commit | ref | subject |"
+	echo "|---|---|---|---|"
 	for i in "${!names[@]}"; do
 		# a browsable https URL, also for ssh remotes
 		web=$(printf '%s' "${urls[i]}" | sed 's|^git@\([^:]*\):|https://\1/|; s|\.git$||')
 		sha=${commits[i]%-dirty}
 		subject=$(git -C "${dirs[i]}" log -1 --format=%s | tr '|' '/')
 		# shellcheck disable=SC2016 # the backticks are markdown
-		printf '| %s | [`%s`](%s/commit/%s)%s | %s |\n' "${names[i]#\# }" \
-			"${sha:0:12}" "$web" "$sha" "${commits[i]#"$sha"}" "$subject"
+		printf '| %s | [`%s`](%s/commit/%s)%s | `%s` | %s |\n' "${names[i]#\# }" \
+			"${sha:0:12}" "$web" "$sha" "${commits[i]#"$sha"}" "${refs[i]}" "$subject"
 	done
 	exit 0
 fi
 
-nw=0 uw=0
+nw=0 uw=0 cw=0
 for i in "${!names[@]}"; do
 	(( ${#names[i]} > nw )) && nw=${#names[i]}
 	(( ${#urls[i]} > uw )) && uw=${#urls[i]}
+	(( ${#commits[i]} > cw )) && cw=${#commits[i]}
 done
 for i in "${!names[@]}"; do
-	printf '%-*s %-*s %s\n' "$nw" "${names[i]}" "$uw" "${urls[i]}" "${commits[i]}"
+	printf '%-*s %-*s %-*s %s\n' "$nw" "${names[i]}" "$uw" "${urls[i]}" "$cw" "${commits[i]}" "${refs[i]}"
 done

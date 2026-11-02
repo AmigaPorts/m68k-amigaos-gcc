@@ -36,7 +36,7 @@ prepare)
 		exit 0
 	fi
 	changed=()
-	while read -r name _ commit; do
+	while read -r name _ commit _; do
 		case $name in "#"*) continue ;; esac
 		was=$(awk -v n="$name" '$1 == n { print $3 }' "$manifest")
 		if [ "$was" != "$commit" ]; then
