@@ -125,22 +125,13 @@ The board combinations worth running, and their latest results:
 | `volamos/-mcrt=clib2/-m68020-60/-m68881` | ✅ | ? | |
 
 [^check]: `make check` runs `check-c` on these, and gates releases.
+
 ## Results
 
 Each target prints a summary, saves it as `<target>.summary.txt` in the
-top directory, and names its `.sum` and `.log` files on a `results:` line:
-
-| target | results |
-|---|---|
-| `check-c` | `build-*/gcc/gcc/testsuite/gcc/gcc-execute.{sum,log}`, or `gcc-execute-<board>.{sum,log}` on another board |
-| `check-gcc-amigaos` | `build-*/gcc/gcc/testsuite/gcc/gcc-amigaos.{sum,log}` |
-| `check-c++` | `build-*/gcc/gcc/testsuite/g++/g++.{sum,log}` |
-| `check-newlib` | `build-*/newlib/newlib/testsuite/<board>/newlib.{sum,log}` |
-| `check-libc-test` | `build-*/libc-test/<runtime><cflags>/<group>/REPORT`, and a `<test>.err` per test |
-| `check-binutils` | `build-*/binutils/gas/testsuite/gas.{sum,log}`, `build-*/binutils/ld/ld.{sum,log}` |
-
-The `.log` has each test's command line and output. Search it for the
-test's name to see why it failed.
+top directory, and ends with a `results:` line naming its result files. A
+`.log` has each test's command line and output: search it for the test's
+name to see why it failed.
 
 ## Running a few tests
 
