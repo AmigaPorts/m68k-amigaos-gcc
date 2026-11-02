@@ -704,7 +704,7 @@ repos-current:
 	fi
 
 .PHONY: update
-update: repos-current update-gcc update-binutils update-fd2sfd update-lha update-fd2pragma update-ira update-sfdc update-vasm update-vbcc update-vlink update-libnix update-clib2 update-libdebug update-libpthread update-ndk update-newlib update-netinclude
+update: repos-current update-gcc update-binutils update-fd2sfd update-lha update-fd2pragma update-ira update-sfdc update-vasm update-vbcc update-vlink update-libnix update-clib2 update-libc-test update-libdebug update-libpthread update-ndk update-newlib update-netinclude
 
 # Each pulls a module checkout forward; see scripts/update-module.
 .PHONY: update-gcc
@@ -755,7 +755,6 @@ update-libnix: $(PROJECTS)/libnix/Makefile.gcc6
 update-clib2: $(PROJECTS)/clib2/LICENSE
 	@scripts/update-module $(PROJECTS)/clib2
 
-# not in update: only check-libc-test needs libc-test, and it clones it
 .PHONY: update-libc-test
 update-libc-test: $(PROJECTS)/libc-test/Makefile
 	scripts/update-module $(PROJECTS)/libc-test
