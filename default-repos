@@ -6,6 +6,7 @@ fd2sfd             https://github.com/AmigaPorts/fd2sfd             master
 gcc                https://github.com/AmigaPorts/gcc                amiga16.2
 ira                https://github.com/AmigaPorts/ira                master
 lha                https://github.com/AmigaPorts/lha                master
+libc-test          https://github.com/AmigaPorts/libc-test          amiga
 libdebug           https://github.com/AmigaPorts/libdebug           master
 libnix             https://github.com/AmigaPorts/libnix             master
 newlib-cygwin      https://github.com/AmigaPorts/newlib-cygwin      amiga

@@ -80,8 +80,10 @@ such as a local build.
 
 [libc-test](https://wiki.musl-libc.org/libc-test.html) is musl's testsuite:
 plain C tests of the C library against the standards, which build for
-m68k-amigaos and run under volamos. `check-libc-test` runs one group of them
-on one C runtime, chosen with three variables:
+m68k-amigaos and run under volamos. It's built from
+[AmigaPorts/libc-test](https://github.com/AmigaPorts/libc-test), whose
+`amiga` branch adds the fixes not yet merged upstream. `check-libc-test`
+runs one group of them on one C runtime, chosen with three variables:
 
 - `libc-test-group=math`, the default, runs all of libc-test's `src/math`;
   `libc-test-group=functional` runs the part of its `src/functional` that

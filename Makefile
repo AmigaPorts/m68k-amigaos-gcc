@@ -343,19 +343,6 @@ endif
 # get git urls and branches from .repos file
 $(shell  [ ! -f .repos ] && cp default-repos .repos)
 
-# .repos is copied once and then is the user's to edit, so a later change to default-repos
-# never reaches it: name the modules whose line differs. Touching .repos silences this.
-ifeq ($(MAKELEVEL),0)
-  ifneq ($(shell [ default-repos -nt .repos ] && echo y),)
-    repos_drift := $(shell awk '!NF || substr($$1, 1, 1) == "\043" { next } NR == FNR { d[$$1] = $$2 " " $$3; next } { r[$$1] = $$2 " " $$3 } END { for (m in d) if (r[m] != d[m]) print m }' default-repos .repos)
-    ifneq ($(repos_drift),)
-      $(info )
-      $(info WARNING: default-repos changed after .repos was made from it, and differs for: $(repos_drift).)
-      $(info WARNING: Update .repos to match, or delete it to start over.)
-      $(info )
-    endif
-  endif
-endif
 
 # Blank lines and comments are skipped (a .manifest records this repository
 # in its first line, as a comment).
@@ -706,8 +693,18 @@ package:
 # update all projects
 # =================================================
 
+# .repos is copied once and then is the user's to edit, so a later change to default-repos
+# never reaches it: name the modules whose line differs. Touching .repos keeps it as it is.
+.PHONY: repos-current
+repos-current:
+	if [ default-repos -nt .repos ]; then \
+	  drift=$$(awk '!NF || substr($$1, 1, 1) == "\043" { next } NR == FNR { d[$$1] = $$2 " " $$3; next } { r[$$1] = $$2 " " $$3 } END { for (m in d) if (r[m] != d[m]) print m }' default-repos .repos); \
+	  [ -z "$$drift" ] || { echo "default-repos changed after .repos was made from it, and differs for: $$drift." >&2; \
+	    echo "Update .repos to match, touch it to keep it as it is, or delete it to start over." >&2; exit 1; }; \
+	fi
+
 .PHONY: update
-update: update-gcc update-binutils update-fd2sfd update-lha update-fd2pragma update-ira update-sfdc update-vasm update-vbcc update-vlink update-libnix update-clib2 update-libdebug update-libpthread update-ndk update-newlib update-netinclude
+update: repos-current update-gcc update-binutils update-fd2sfd update-lha update-fd2pragma update-ira update-sfdc update-vasm update-vbcc update-vlink update-libnix update-clib2 update-libc-test update-libdebug update-libpthread update-ndk update-newlib update-netinclude
 
 # Each pulls a module checkout forward; see scripts/update-module.
 .PHONY: update-gcc
@@ -757,6 +754,10 @@ update-libnix: $(PROJECTS)/libnix/Makefile.gcc6
 .PHONY: update-clib2
 update-clib2: $(PROJECTS)/clib2/LICENSE
 	@scripts/update-module $(PROJECTS)/clib2
+
+.PHONY: update-libc-test
+update-libc-test: $(PROJECTS)/libc-test/Makefile
+	scripts/update-module $(PROJECTS)/libc-test
 
 .PHONY: update-libdebug
 update-libdebug: $(PROJECTS)/libdebug/configure
@@ -2155,7 +2156,6 @@ check-rust: $(BOARD_PREREQ)
 # scripts/libc-test.  Not part of make check: they still have failures to sort out.
 #   make check-libc-test libc-test-crt=newlib libc-test-cflags="-m68020-60 -m68881"
 #   make check-libc-test libc-test-group=functional
-LIBC_TEST_URL = https://repo.or.cz/libc-test.git
 libc-test-group ?= math
 libc-test-crt ?= nix20
 libc-test-cflags ?=
@@ -2164,8 +2164,9 @@ libc-test-timeout ?= 120
 # min doesn't build clib2
 LIBC_TEST_PREREQ = $(if $(filter clib2,$(libc-test-crt)),$(call if-missing,$(BUILD)/clib2/_done $(BUILD)/libdebug/_done,clib2 libdebug))
 
-$(PROJECTS)/libc-test/Makefile:
-	cd $(PROJECTS) && git clone --depth 1 $(LIBC_TEST_URL)
+# repos-current: a .repos from before libc-test was a module has no line for it
+$(PROJECTS)/libc-test/Makefile: | repos-current
+	cd $(PROJECTS) && git clone -b $(libc-test_BRANCH) --depth 4 $(libc-test_URL)
 
 # + for the jobserver: libc-test's make, which the script runs, shares this one's -j
 .PHONY: check-libc-test
@@ -2173,7 +2174,6 @@ check-libc-test: $(PROJECTS)/libc-test/Makefile $(MIN_IF_MISSING) $(LIBC_TEST_PR
 	+set -o pipefail; LIBC_TEST_TIMEOUT=$(libc-test-timeout) scripts/libc-test --group $(libc-test-group) $(PROJECTS)/libc-test \
 	  $(BUILD)/libc-test/$(libc-test-crt)$(subst $() ,,$(libc-test-cflags)) \
 	  $(PREFIX) $(libc-test-crt) $(libc-test-cflags) | tee $@.summary.txt
-
 
 # =================================================
 # info

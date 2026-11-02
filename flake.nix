@@ -1,7 +1,8 @@
 {
   description = "m68k-amigaos-gcc: GCC, binutils and tools for cross compiling to AmigaOS";
 
-  # The modules of default-repos, pinned in flake.lock; `nix flake update`
+  # The modules of default-repos but libc-test, which only make check-libc-test
+  # uses, pinned in flake.lock; `nix flake update`
   # moves them to the heads of their branches.
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
