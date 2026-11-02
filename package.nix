@@ -2,8 +2,8 @@
 #
 # The Makefile clones a module or downloads an archive only when it is
 # missing, so the sources are put in place up front and the build itself
-# needs no network.  `sources` maps each module name of default-repos to its
-# source tree, `archives` each archive name of default-archives to its file,
+# needs no network.  `sources` maps each module name of default-repos but
+# libc-test to its source tree, `archives` each archive name of default-archives to its file,
 # sha256 and URLs; `manifest` is the .manifest recording their revisions.
 {
   lib,

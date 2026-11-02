@@ -2157,7 +2157,8 @@ libc-test-cflags ?=
 # seconds a test may run before it is killed and counted as failed
 libc-test-timeout ?= 120
 
-$(PROJECTS)/libc-test/Makefile:
+# repos-current: a .repos from before libc-test was a module has no line for it
+$(PROJECTS)/libc-test/Makefile: | repos-current
 	cd $(PROJECTS) && git clone -b $(libc-test_BRANCH) --depth 4 $(libc-test_URL)
 
 # + for the jobserver: libc-test's make, which the script runs, shares this one's -j
@@ -2166,7 +2167,6 @@ check-libc-test: $(PROJECTS)/libc-test/Makefile $(MIN_IF_MISSING) $(PREFIX)/bin/
 	+set -o pipefail; LIBC_TEST_TIMEOUT=$(libc-test-timeout) scripts/libc-test --group $(libc-test-group) $(PROJECTS)/libc-test \
 	  $(BUILD)/libc-test/$(libc-test-crt)$(subst $() ,,$(libc-test-cflags)) \
 	  $(PREFIX) $(libc-test-crt) $(libc-test-cflags) | tee $@.summary.txt
-
 
 # =================================================
 # info
