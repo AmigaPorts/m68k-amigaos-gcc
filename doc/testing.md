@@ -113,14 +113,15 @@ The board combinations worth running, and their latest results:
 | `volamos/-mcrt=nix20/-m68020-60/-m68881` | ✅ | ? | |
 | `volamos/-mcrt=nix20/-m68020-60/-m68881/-fbaserel32` | ✅ | [❌ 376](https://github.com/AmigaPorts/m68k-amigaos-gcc/issues/253) | yes |
 | `volamos/-mcrt=newlib` | ✅ | ✅ | |
-| `volamos/-mcrt=newlib/-m68020-60` | ✅ | ? | |
+| `volamos/-mcrt=newlib/-m68020-60` | ✅ | ? | yes |
 | `volamos/-mcrt=newlib/-m68020-60/-m68881` | ✅ | [❌ 2](https://github.com/AmigaPorts/m68k-amigaos-gcc/issues/254) | |
 | `volamos/-mcrt=newlib/-m68020-60/-m68881/-fbaserel32` | ✅ | ? | |
 | `volamos/-mcrt=ixemul` | ✅ | ? | |
 | `volamos/-mcrt=ixemul/-m68020-60` | ✅ | ? | |
 | `volamos/-mcrt=ixemul/-m68020-60/-m68881` | ✅ | ? | yes |
 | `volamos/-mcrt=ixemul/-m68020-60/-m68881/-fbaserel32` | ? | ? | |
-| `volamos/-mcrt=clib2` | [❌ 6](https://github.com/AmigaPorts/m68k-amigaos-gcc/issues/255) | ? | |
+| `volamos/-mcrt=clib2` | ✅ | ❌ 38 | |
+| `volamos/-mcrt=clib2/-m68020-60/-m68881` | ✅ | ? | |
 
 [^check]: `make check` runs `check-c` on these, and gates releases.
 ## Results
