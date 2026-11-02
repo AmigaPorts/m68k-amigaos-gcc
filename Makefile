@@ -1984,8 +1984,7 @@ check:
 	$(MAKE) --no-print-directory check-c board=volamos/-mcrt=nix20/-m68020-60/-m68881/-fbaserel32
 	$(MAKE) --no-print-directory check-c board=volamos/-mcrt=newlib/-m68060
 	$(MAKE) --no-print-directory check-c++
-	$(MAKE) --no-print-directory check-libc-test libc-test-group=math libc-test-crt=clib2 libc-test-cflags="-O2"
-	$(MAKE) --no-print-directory check-libc-test libc-test-group=functional libc-test-crt=clib2 libc-test-cflags="-O2"
+	$(MAKE) --no-print-directory check-libc-test libc-test-crt=clib2 libc-test-cflags="-O2"
 	$(MAKE) --no-print-directory check-libc-test libc-test-group=functional libc-test-crt=clib2 libc-test-cflags="-O2 -m68040 -m68881"
 
 # The gas and ld dump tests for the hunk target run on the build machine under DejaGnu.
@@ -2158,13 +2157,14 @@ check-rust: $(BOARD_PREREQ)
 	@{ echo '----- rust -----'; grep '^# of' $(RUSTTESTSUITE)/rust.sum || echo '(no tests run)'; grep -E '^(FAIL|ERROR|XPASS)' $(RUSTTESTSUITE)/rust.sum || true; } | tee $@.summary.txt
 	@echo "results: $(RUSTTESTSUITE)/rust.{sum,log}"
 
-# libc-test, musl's testsuite: one group of its tests (math, or functional for
+# libc-test, musl's testsuite: its groups of tests (math, and functional for
 # printf, scanf, strto*, fnmatch, qsort and the string functions) on one C
 # runtime, built with libc-test-cflags and run under volamos, see
-# scripts/libc-test.  Not part of make check: they still have failures to sort out.
+# scripts/libc-test.  make check runs it on clib2 only: the other runtimes
+# still have failures to sort out.
 #   make check-libc-test libc-test-crt=newlib libc-test-cflags="-m68020-60 -m68881"
 #   make check-libc-test libc-test-group=functional
-libc-test-group ?= math
+libc-test-group ?= math functional
 libc-test-crt ?= nix20
 libc-test-cflags ?=
 # seconds a test may run before it is killed and counted as failed
@@ -2179,9 +2179,11 @@ $(PROJECTS)/libc-test/Makefile: | repos-current
 # + for the jobserver: libc-test's make, which the script runs, shares this one's -j
 .PHONY: check-libc-test
 check-libc-test: $(PROJECTS)/libc-test/Makefile $(MIN_IF_MISSING) $(LIBC_TEST_PREREQ) $(PREFIX)/bin/volamos
-	+set -o pipefail; LIBC_TEST_TIMEOUT=$(libc-test-timeout) scripts/libc-test --group $(libc-test-group) $(PROJECTS)/libc-test \
-	  $(BUILD)/libc-test/$(libc-test-crt)$(subst $() ,,$(libc-test-cflags)) \
-	  $(PREFIX) $(libc-test-crt) $(libc-test-cflags) | tee $@.summary.txt
+	+set -o pipefail; rm -f $@.summary.txt; rc=0; for group in $(libc-test-group); do \
+	  LIBC_TEST_TIMEOUT=$(libc-test-timeout) scripts/libc-test --group $$group $(PROJECTS)/libc-test \
+	    $(BUILD)/libc-test/$(libc-test-crt)$(subst $() ,,$(libc-test-cflags)) \
+	    $(PREFIX) $(libc-test-crt) $(libc-test-cflags) | tee -a $@.summary.txt || rc=1; \
+	done; exit $$rc
 
 # =================================================
 # info

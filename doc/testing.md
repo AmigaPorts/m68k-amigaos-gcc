@@ -83,13 +83,14 @@ plain C tests of the C library against the standards, which build for
 m68k-amigaos and run under volamos. It's built from
 [AmigaPorts/libc-test](https://github.com/AmigaPorts/libc-test), whose
 `amiga` branch adds the fixes not yet merged upstream. `check-libc-test`
-runs one group of them on one C runtime, chosen with three variables:
+runs them on one C runtime, chosen with these variables:
 
-- `libc-test-group=math`, the default, runs all of libc-test's `src/math`;
-  `libc-test-group=functional` runs the part of its `src/functional` that
-  needs no POSIX process or resource calls: the printf, scanf, `strto*`,
-  `fnmatch`, `qsort` and string tests.
-- `libc-test-crt=nix20`, the default, or `newlib` picks the C runtime.
+- `libc-test-group` picks the groups, both by default:
+  - `math` runs all of libc-test's `src/math`;
+  - `functional` runs the part of its `src/functional` that needs no POSIX
+    process or resource calls: the printf, scanf, `strto*`, `fnmatch`,
+    `qsort` and string tests.
+- `libc-test-crt=nix20`, the default, `newlib` or `clib2` picks the C runtime.
 - `libc-test-cflags=` adds compiler flags, such as `-m68020-60 -m68881`;
   volamos then emulates that CPU and FPU.
 - `libc-test-timeout=120` is the seconds a test may run before it is killed
