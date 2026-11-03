@@ -103,7 +103,7 @@ ls -l *-nix20 *-nix13 *-library *-newlib *-clib2 *-ixemul
 | C99 math | all functions | all functions, with `-lm` | only the C89 functions | all functions, with `-lm` |
 | `long double` math | computed in `double` | full precision[^ldio] | none | full precision |
 | `long long` | yes | yes | yes | yes |
-| C11 library | none | `quick_exit()` | none | `<uchar.h>` |
+| C11 library | none | `quick_exit()` | none | none |
 | C23 library | `strdup()`, `strndup()` | `strdup()`, `strndup()`, `memccpy()`, `<stdbit.h>` | `strdup()`, `strndup()`, `memccpy()` | `strdup()`, `strndup()`, `memccpy()` |
 | POSIX files and directories | most | most | most | most |
 | `popen()`, `system()` | yes | no | yes | yes |
@@ -260,9 +260,10 @@ the timezone.
 ## clib2
 
 **Standards:** C99, with `<fenv.h>` and all of the math functions, the
-`long double` ones in full 80-bit precision; of C11, `<uchar.h>`; of C23,
-`strdup()`, `strndup()` and `memccpy()`. Not `aligned_alloc()`,
-`quick_exit()`, `timespec_get()` or `<threads.h>`. The math functions are in
+`long double` ones in full 80-bit precision; of C23, `strdup()`,
+`strndup()` and `memccpy()`. None of the C11 library: not
+`aligned_alloc()`, `quick_exit()`, `timespec_get()` or `<threads.h>`, and
+the `<uchar.h>` functions are stubs that return 0. The math functions are in
 `libm.a`: link with `-lm`, without which `printf()` and `scanf()` don't
 support floating point either.
 
