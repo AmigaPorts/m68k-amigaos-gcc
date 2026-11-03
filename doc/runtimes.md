@@ -11,7 +11,7 @@ A program links one C runtime, chosen with `-mcrt=`:
 | `-mcrt=library` | libnix | the same as `nix20`, in the shared `libnix4.library` |
 | `-mcrt=newlib` | newlib | the default without `-mcrt=`: portable code, with good POSIX and C99 compatibility and some C11 and C23 features, but larger executables |
 | `-mcrt=ixemul` | ixemul | Unix programs: `ixemul.library` emulates much of a Unix system |
-| `-mcrt=clib2` | clib2 | unmaintained, with gaps and some known bugs; it will be removed in a later release unless someone takes it over |
+| `-mcrt=clib2` | clib2 | portable code that needs correct math: it passes musl's libc-test, with full precision `long double` and UTF-8 |
 | `-noixemul` | libnix | the same as `-mcrt=nix20`, under an older name: prefer `-mcrt=nix20` |
 
 **Important:** pass the same `-mcrt=` when compiling and when linking. It
@@ -25,12 +25,12 @@ The executables built with `-Os` for the 68000, stripped, in bytes:
 
 | runtime | empty | hello | `%f` | date | minigzip |
 |---|---:|---:|---:|---:|---:|
-| `-mcrt=nix20` | 2032 | 5832 | 23800 | 13472 | 69600 |
-| `-mcrt=nix13` | 2368 | 6176 | 24196 | 13588 | 70076 |
-| `-mcrt=library` | 2032 | 2448 | 20324 | 2616 | 54228 |
-| `-mcrt=newlib` | 13572 | 17140 | 64984 | 89092 | 136700 |
-| `-mcrt=clib2` | 15340 | 15780 | 32952 | 21708 | 78504 |
-| `-mcrt=ixemul` | 4340 | 4388 | 4460 | 11764 | 55384 |
+| `-mcrt=nix20` | 1924 | 5412 | 14684 | 8164 | 66628 |
+| `-mcrt=nix13` | 2128 | 5620 | 14920 | 8168 | 66992 |
+| `-mcrt=library` | 2044 | 2460 | 11672 | 2628 | 54180 |
+| `-mcrt=newlib` | 13644 | 17212 | 53696 | 50004 | 124680 |
+| `-mcrt=clib2` | 15340 | 15780 | 30968 | 21708 | 80784 |
+| `-mcrt=ixemul` | 4340 | 4388 | 4460 | 12368 | 55344 |
 
 - empty: `int main(void) { return 0; }`, the startup code alone
 - hello: `puts("hello, world")`, which adds stdio
@@ -99,23 +99,29 @@ ls -l *-nix20 *-nix13 *-library *-newlib *-clib2 *-ixemul
 
 | | libnix | newlib | ixemul | clib2 |
 |---|---|---|---|---|
-| minimum Kickstart | 2.0 (V36); 1.3 (V34) with `-mcrt=nix13` | 2.0 (V36) | 2.04 (V37) | 2.04 (V37) |
-| C99 math | all functions | all functions, with `-lm` | only the C89 functions | `double` and `float` functions |
-| `long double` math | computed in `double` | full precision | none | none |
-| `long long` | yes | yes | yes | 68020 and up only |
-| C11 library | none | `quick_exit()` | none | none |
-| C23 library | `strdup()`, `strndup()` | `strdup()`, `strndup()`, `memccpy()`, `<stdbit.h>` | `strdup()`, `strndup()`, `memccpy()` | `strdup()` |
+| minimum Kickstart | 2.0 (V36)[^nix13] | 2.0 (V36) | 2.04 (V37) | 2.04 (V37) |
+| C99 math | all functions | all functions, with `-lm` | only the C89 functions | all functions, with `-lm` |
+| `long double` math | computed in `double` | full precision[^ldio] | none | full precision |
+| `long long` | yes | yes | yes | yes |
+| C11 library | none | `quick_exit()` | none | `<uchar.h>` |
+| C23 library | `strdup()`, `strndup()` | `strdup()`, `strndup()`, `memccpy()`, `<stdbit.h>` | `strdup()`, `strndup()`, `memccpy()` | `strdup()`, `strndup()`, `memccpy()` |
 | POSIX files and directories | most | most | most | most |
 | `popen()`, `system()` | yes | no | yes | yes |
 | `fork()` | no | no | `vfork()` only | no |
-| sockets | `-lsocket` | no | yes, with `ixnet.library` | `-lnet` |
-| locale | `locale.library` | "C" and "C.UTF-8" | "C" | `locale.library` |
-| wide characters and UTF-8 | no | yes, in "C.UTF-8" | no | no |
+| sockets | `-lsocket` | no | `ixnet.library` | `-lnet` |
+| locale | `locale.library` | "C" | "C" | `locale.library` |
+| wide characters | no | yes | no | yes |
+| UTF-8 | no | no | no | yes[^utf8] |
 | threads | `-pthread` | `-pthread` | no | no |
 | stack overflow check | no | no | no | no |
-| minimum stack | `__stack`, with `__stkinit` | no | `__stack` | `__stack_size` |
-| C++ | yes | yes | mostly broken | without the standard library |
+| minimum stack | `__stack`[^stkinit] | no | `__stack` | `__stack_size` |
+| C++ | yes | yes | mostly broken | yes |
 | Workbench startup | yes | yes | yes | yes |
+
+[^nix13]: 1.3 (V34) with `-mcrt=nix13`.
+[^ldio]: `printf()` and `scanf()` convert `long double` through `double`, so `%Lf` has only 17 significant digits.
+[^utf8]: when the locale name given to `setlocale()` contains `UTF-8`.
+[^stkinit]: only if the program also references `__stkinit`: see [libnix](#libnix).
 
 The minimum stack is checked at startup: if the program gets less than the
 variable says, it moves to a larger stack. Nothing checks or extends the
@@ -166,7 +172,9 @@ testsuites, so every compiler change is tested on it; its own tests run with
 `quick_exit()`, `strdup()`, `memccpy()`, `<stdbit.h>` and `<stdckdint.h>`;
 not `aligned_alloc()`, `timespec_get()`, `strfromd()`, `<threads.h>` or
 `<uchar.h>`. The math functions are in `libm.a`: link with `-lm`. The
-`long double` math functions compute in full 80-bit precision.
+`long double` math functions compute in full 80-bit precision, but
+`printf()` and `scanf()` convert `long double` through `double`, so `%Lf`
+prints and reads only 17 significant digits.
 
 Of POSIX, most of the file, directory and time functions: `open()`,
 `stat()`, `lstat()`, `fstat()`, `opendir()`, `mkdir()`, `getcwd()`,
@@ -177,8 +185,8 @@ process, pipe and file descriptor functions: `fork()`, `exec*()`, `pipe()`,
 `clock_gettime()` are missing, and `system()` fails with `ENOSYS`.
 `getenv()` doesn't see AmigaDOS variables.
 
-`setlocale()` accepts any name; in the "C.UTF-8" locale the multibyte and
-wide character functions use UTF-8.
+newlib is built without multibyte support: `setlocale()` accepts only "C",
+and a byte is a character, as in the ISO 8859-1 text of AmigaOS.
 
 **C++ and OS support:** C++ works, with exceptions and the standard library;
 the g++ testsuite runs on newlib too. Kickstart 2.0 and later. `uname()`
@@ -251,32 +259,35 @@ the timezone.
 
 ## clib2
 
-**Standards:** C99 except `long double` math, with `<fenv.h>`; none of C11
-and C23. On a 68000, there is no 64-bit integer support: `printf("%lld")`
-doesn't work and `strtoll()` is missing; the 68020 builds have them.
-`printf()` and `scanf()` support floating point only when linked with `-lm`.
+**Standards:** C99, with `<fenv.h>` and all of the math functions, the
+`long double` ones in full 80-bit precision; of C11, `<uchar.h>`; of C23,
+`strdup()`, `strndup()` and `memccpy()`. Not `aligned_alloc()`,
+`quick_exit()`, `timespec_get()` or `<threads.h>`. The math functions are in
+`libm.a`: link with `-lm`, without which `printf()` and `scanf()` don't
+support floating point either.
 
 Most of the POSIX file and directory functions: `open()`, `stat()`,
 `fstat()`, `opendir()`, `getcwd()`, `chdir()`, `mkdir()`, `rename()`,
-`realpath()`, `fcntl()`, `dup2()`, `mkstemp()`, `gettimeofday()`,
+`realpath()`, `fcntl()`, `dup2()`, `pipe()`, `mkstemp()`, `gettimeofday()`,
 `usleep()`, `popen()` and `system()`. Signals are `signal()`, `raise()` and
-`kill()`, with `SIGINT` from Ctrl-C. No `fork()`, `pipe()`, `sigaction()`,
+`kill()`, with `SIGINT` from Ctrl-C. No `fork()`, `sigaction()`,
 `clock_gettime()` or threads. `-lunix` adds Unix path semantics, wildcard
 expansion of the arguments, `execvp()`, `getopt_long()` and `termios`.
 `-lnet` adds sockets through `bsdsocket.library`.
 
-`setlocale()` opens `locale.library` locales. The wide character functions
-are stubs.
+`setlocale()` opens `locale.library` locales. A byte is a character, as in
+ISO 8859-1, unless the locale name given to `setlocale()` for `LC_CTYPE`
+contains `UTF-8`: then the multibyte and wide character functions use UTF-8.
 
-**C++ and OS support:** C++ compiles and runs, with exceptions and global
-constructors, but the standard library headers such as `<iostream>`,
-`<string>` and `<vector>` don't compile, because clib2 doesn't define
-`max_align_t`. Kickstart 2.04 and later.
+**C++ and OS support:** C++ works, with exceptions and the standard library;
+the g++ testsuite runs on clib2 too. Kickstart 2.04 and later.
 
-**Strengths:** the most startup settings, listed below, Unix path semantics
+**Strengths:** correct math: musl's libc-test passes, and runs in
+`make check`. The most startup settings, listed below, Unix path semantics
 with `-lunix`, and sockets with `-lnet`.
 
-**Weaknesses:** unmaintained, and no testsuite runs on it.
+**Weaknesses:** larger executables than libnix: the startup code alone is
+about 15 KB.
 
 **Known bugs:** [the open clib2 issues](https://github.com/AmigaPorts/m68k-amigaos-gcc/issues?q=is%3Aissue%20is%3Aopen%20label%3Aclib2).
 
