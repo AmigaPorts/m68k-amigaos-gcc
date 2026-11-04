@@ -410,6 +410,19 @@ endif
 # program then links; no is the single-task model.
 THREADS ?= amigaos
 
+# A configured gcc tree keeps its thread model: reconfiguring it doesn't
+# reach the target libraries already configured in it, so another THREADS
+# needs a fresh one.  gcc's config.status records the model it was given.
+GCC_THREADS := $(shell sed -n 's/.*--enable-threads=\([a-z]*\).*/\1/p' \
+	$(BUILD)/gcc/config.status 2>/dev/null | head -1)
+ifeq ($(filter $(NO_PREFIX_GOALS),$(MAKECMDGOALS)),)
+ifneq ($(GCC_THREADS),)
+ifneq ($(GCC_THREADS),$(THREADS))
+$(error $(BUILD)/gcc was configured for THREADS=$(GCC_THREADS); use that THREADS, another BUILD, or make clean-gcc)
+endif
+endif
+endif
+
 # =================================================
 # determine exe extension for cygwin
 $(eval MYMAKE = $(shell which $(MAKE) 2>/dev/null) )
@@ -502,7 +515,7 @@ help:
 	@echo ""
 	@echo "Parameters:"
 	@echo "PREFIX=<path>            install directory; required once, the build tree remembers it"
-	@echo "THREADS=posix|no         gcc's thread model (default: amigaos)"
+	@echo "THREADS=posix|no         gcc's thread model (default: amigaos); another one needs make clean-gcc"
 	@echo "ADDLANG=lang,lang...     configure additional language frontends"
 
 # =================================================
