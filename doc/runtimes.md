@@ -128,6 +128,13 @@ variable says, it moves to a larger stack. Nothing checks or extends the
 stack while the program runs: the compiler has no `-mstackcheck` or
 `-mstackextend`.
 
+Threads are AmigaOS processes that share the program's console and current
+directory, and need OS 2.0. C++'s `std::thread`, `std::mutex` and
+`thread_local` need no option; `-pthread` adds the POSIX threads library.
+newlib is the runtime whose `malloc()` and stdio are safe to call from several
+threads. [examples/cxx_thread](../examples/cxx_thread/) and
+[examples/pthreads](../examples/pthreads/) say hello from four threads.
+
 The details are in each runtime's section below.
 
 ## libnix
