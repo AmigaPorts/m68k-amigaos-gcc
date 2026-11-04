@@ -1454,6 +1454,7 @@ ndk: $(BUILD)/ndk-include_ndk
 
 $(BUILD)/ndk-include_ndk: $(BUILD)/ndk-include_ndk0 $(NDK_INCLUDE_INLINE) $(NDK_INCLUDE_INLINE_VBCC) $(NDK_INCLUDE_LVO) $(NDK_INCLUDE_PROTO) $(PROJECTS)/fd2sfd/configure $(PROJECTS)/fd2pragma/makefile
 	$(MAKE) --no-print-directory ndk_inc=1 ndk-proto ndk-lvo ndk-inline ndk-inline-vbcc
+	@echo "sfdc: inline, vbcc inline, lvo and proto headers for $(words $(NDK_INCLUDE_SFD)) libraries; details in $(SFDC_LOG)"
 	@mkdir -p $(BUILD)/ndk-include/
 	@echo "done" >$@
 
@@ -1481,25 +1482,32 @@ $(BUILD)/ndk-include_ndk0: $(PROJECTS)/$(NDK_FOLDER_NAME)/_unpacked $(NDK_INCLUD
 	@mkdir -p $(BUILD)/ndk-include/
 	@echo "done" >$@
 
+# sfdc writes four headers per library, hundreds of quick jobs: they log to
+# one file instead of a progress line each, and ndk-include_ndk reports them
+# all in one line.  A failure names its header.
+SFDC_LOG = log/sfdc.log
+SFDC_L1 = @mkdir -p log; echo "$@" >>$(SFDC_LOG); (
+SFDC_L2 = ) >>$(SFDC_LOG) 2>&1 || { echo "sfdc $(@F) failed: see $(SFDC_LOG)"; exit 1; }
+
 .PHONY: ndk-inline
 ndk-inline: $(NDK_INCLUDE_INLINE) sfdc $(BUILD)/ndk-include_inline
 $(NDK_INCLUDE_INLINE): $(PREFIX)/bin/sfdc $(NDK_INCLUDE_SFD) $(BUILD)/ndk-include_inline $(BUILD)/ndk-include_lvo $(BUILD)/ndk-include_proto $(BUILD)/ndk-include_ndk0
-	$(L0)"sfdc inline $(@F)"$(L1) $(SFDC_FOR_BUILD) --target=m68k-gcc-amigaos --mode=macros --output=$@ $(patsubst $(PREFIX)/$(TARGET)/ndk-include/inline/%.h,$(PROJECTS)/$(NDK_FOLDER_NAME_SFD)/%_lib.sfd,$@) $(L2)
+	$(SFDC_L1) $(SFDC_FOR_BUILD) --target=m68k-gcc-amigaos --mode=macros --output=$@ $(patsubst $(PREFIX)/$(TARGET)/ndk-include/inline/%.h,$(PROJECTS)/$(NDK_FOLDER_NAME_SFD)/%_lib.sfd,$@) $(SFDC_L2)
 
 .PHONY: ndk-inline-vbcc
 ndk-inline-vbcc: $(NDK_INCLUDE_INLINE_VBCC) sfdc $(BUILD)/ndk-include_inline
 $(NDK_INCLUDE_INLINE_VBCC): $(PREFIX)/bin/sfdc $(NDK_INCLUDE_SFD) $(BUILD)/ndk-include_inline $(BUILD)/ndk-include_lvo $(BUILD)/ndk-include_proto $(BUILD)/ndk-include_ndk0
-	$(L0)"sfdc inline vbcc $(@F)"$(L1) $(SFDC_FOR_BUILD) --target=m68kvbcc-amigaos --mode=macros --output=$@ $(patsubst $(PREFIX)/$(TARGET)/ndk-include/inline/%_protos.h,$(PROJECTS)/$(NDK_FOLDER_NAME_SFD)/%_lib.sfd,$@) $(L2)
+	$(SFDC_L1) $(SFDC_FOR_BUILD) --target=m68kvbcc-amigaos --mode=macros --output=$@ $(patsubst $(PREFIX)/$(TARGET)/ndk-include/inline/%_protos.h,$(PROJECTS)/$(NDK_FOLDER_NAME_SFD)/%_lib.sfd,$@) $(SFDC_L2)
 
 .PHONY: ndk-lvo
 ndk-lvo: $(NDK_INCLUDE_LVO) sfdc
 $(NDK_INCLUDE_LVO): $(PREFIX)/bin/sfdc $(NDK_INCLUDE_SFD) $(BUILD)/ndk-include_lvo $(BUILD)/ndk-include_ndk0
-	$(L0)"sfdc lvo $(@F)"$(L1) $(SFDC_FOR_BUILD) --target=m68k-amigaos --mode=lvo --output=$@ $(patsubst $(PREFIX)/$(TARGET)/ndk-include/lvo/%_lib.i,$(PROJECTS)/$(NDK_FOLDER_NAME_SFD)/%_lib.sfd,$@) $(L2)
+	$(SFDC_L1) $(SFDC_FOR_BUILD) --target=m68k-amigaos --mode=lvo --output=$@ $(patsubst $(PREFIX)/$(TARGET)/ndk-include/lvo/%_lib.i,$(PROJECTS)/$(NDK_FOLDER_NAME_SFD)/%_lib.sfd,$@) $(SFDC_L2)
 
 .PHONY: ndk-proto
 ndk-proto: $(NDK_INCLUDE_PROTO) sfdc
 $(NDK_INCLUDE_PROTO): $(PREFIX)/bin/sfdc $(NDK_INCLUDE_SFD)	$(BUILD)/ndk-include_proto $(BUILD)/ndk-include_ndk0
-	$(L0)"sfdc proto $(@F)"$(L1) $(SFDC_FOR_BUILD) --target=m68k-amigaos --mode=proto --output=$@ $(patsubst $(PREFIX)/$(TARGET)/ndk-include/proto/%.h,$(PROJECTS)/$(NDK_FOLDER_NAME_SFD)/%_lib.sfd,$@) $(L2)
+	$(SFDC_L1) $(SFDC_FOR_BUILD) --target=m68k-amigaos --mode=proto --output=$@ $(patsubst $(PREFIX)/$(TARGET)/ndk-include/proto/%.h,$(PROJECTS)/$(NDK_FOLDER_NAME_SFD)/%_lib.sfd,$@) $(SFDC_L2)
 
 $(BUILD)/ndk-include_inline: $(PROJECTS)/$(NDK_FOLDER_NAME)/_unpacked
 	@mkdir -p $(PREFIX)/$(TARGET)/ndk-include/inline
