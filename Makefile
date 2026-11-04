@@ -404,7 +404,11 @@ CXXFLAGS_FOR_TARGET ?= $(CFLAGS_FOR_TARGET)
 E:=CFLAGS="$(CFLAGS)" CXXFLAGS="$(CXXFLAGS)" LDFLAGS="$(LDFLAGS)" CFLAGS_FOR_BUILD="$(BUILD_CFLAGS)" CXXFLAGS_FOR_BUILD="$(BUILD_CXXFLAGS)" LDFLAGS_FOR_BUILD="$(BUILD_LDFLAGS)" CFLAGS_FOR_TARGET="$(CFLAGS_FOR_TARGET)" CXXFLAGS_FOR_TARGET="$(CXXFLAGS_FOR_TARGET)"
 endif
 
-THREADS ?= no
+# gcc's thread model for C++ thread_local, std::thread, the static-local
+# guards and libgcc's emutls: amigaos runs threads as DOS processes and locks
+# with the inline benaphore; posix goes through libpthread, which every C++
+# program then links; no is the single-task model.
+THREADS ?= amigaos
 
 # =================================================
 # determine exe extension for cygwin
@@ -498,7 +502,7 @@ help:
 	@echo ""
 	@echo "Parameters:"
 	@echo "PREFIX=<path>            install directory; required once, the build tree remembers it"
-	@echo "THREADS=posix            build gcc with thread support"
+	@echo "THREADS=posix|no         gcc's thread model (default: amigaos)"
 	@echo "ADDLANG=lang,lang...     configure additional language frontends"
 
 # =================================================
