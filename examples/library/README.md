@@ -1,7 +1,7 @@
 # hello.library
 
 An AmigaOS library, `hello.library`, and a program that calls it, as
-[Libraries](../../libraries.md) in the User's Manual explains.
+[Libraries](../../doc/libraries.md) in the User's Manual explains.
 
 | file | |
 |---|---|
