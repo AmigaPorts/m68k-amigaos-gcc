@@ -70,7 +70,7 @@ modules | while read -r mod branch; do
 	date)
 		[ -d "$dir" ] || continue
 		commit=$(commit_before "$arg" "$branch" "$dir")
-		echo "$mod: $branch at $(git -C "$dir" log -1 --format='%h %cs' "$commit")"
+		echo "$mod: $branch at $(git -C "$dir" --no-pager log -1 --format='%h %cs' "$commit")"
 		git -C "$dir" checkout -q --detach "$commit"
 		;;
 	'')
