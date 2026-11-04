@@ -492,9 +492,7 @@ help:
 	@echo "make update-<target>     perform git pull for the given target"
 	@echo "make sdk=<sdk>           install the sdk <sdk>"
 	@echo "make all-sdk             install all sdks"
-	@echo "make l                   print the last log entry for each project"
-	@echo "make b                   print the branch for each project"
-	@echo "make r                   print the remote for each project"
+	@echo "make b                   print each module's remote, commit and branch or tag"
 	@echo "make v [ref=<ref>|date=<date>]  checkout all modules at a tag, branch or commit, or as of a date; or at their branches"
 	@echo "make branch branch=<branch> mod=<module>  switch the module to the given branch"
 	@echo ""
@@ -2205,24 +2203,11 @@ info:
 print-%:
 	@echo '$($*)'
 
-# print the latest git log entry for all projects
-.PHONY: l
-l:
-	@for i in $(PROJECTS)/* ; do pushd . >/dev/null; cd $$i 2>/dev/null && ([[ -d ".git" ]] && echo $$i && git log -n1 --pretty=format:'%C(yellow)%h %Cred%ad %Cblue%an%Cgreen%d %Creset%s' --date=short); popd >/dev/null; done
-	@echo "." && git log -n1 --pretty=format:'%C(yellow)%h %Cred%ad %Cblue%an%Cgreen%d %Creset%s' --date=short
-
-# print the git remotes for all projects
-.PHONY: r
-r:
-	@for i in $(PROJECTS)/* ; do pushd . >/dev/null; cd $$i 2>/dev/null && ([[ -d ".git" ]] && echo $$i && git remote -v); popd >/dev/null; done
-	@echo "." && git remote -v
-
-# print the git branches for all projects
+# Each module's remote, commit and branch or tag, as scripts/manifest
+# writes .manifest.
 .PHONY: b
 b:
-	@for i in $(PROJECTS)/* ; do pushd . >/dev/null; cd $$i 2>/dev/null && ([[ -d ".git" ]] && echo $$i && (git branch | grep '*')); popd >/dev/null; done
-	@echo "." && git remote -v
-
+	@PROJECTS=$(PROJECTS) scripts/manifest
 
 # Check out every module at one point, see scripts/checkout: the tag,
 # branch or commit ref in all of them, or each module's branch as it was at

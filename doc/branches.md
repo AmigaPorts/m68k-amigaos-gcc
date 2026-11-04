@@ -34,9 +34,11 @@ After `make v ref=...`, restore the branches in `.repos` first:
 `cp default-repos .repos`, then `make branch` for any module that was not
 on its default branch.
 ### Show the current commit for all submodules
-This lists all modules with the last commit. Useful if you switched to a given date to show what's where.
+This lists each module with its remote, its commit, and the branch or tag
+it is on, as in `.manifest`. Useful if you switched to a given date to show
+what's where.
 ```
-make l
+make b
 ```
 ### Switch a module to a different branch
 You can switch modules to different branches. E.g.
