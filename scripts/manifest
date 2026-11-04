@@ -49,7 +49,7 @@ if [ "$format" = --markdown ]; then
 		# a browsable https URL, also for ssh remotes
 		web=$(printf '%s' "${urls[i]}" | sed 's|^git@\([^:]*\):|https://\1/|; s|\.git$||')
 		sha=${commits[i]%-dirty}
-		subject=$(git -C "${dirs[i]}" log -1 --format=%s | tr '|' '/')
+		subject=$(git -C "${dirs[i]}" --no-pager log -1 --format=%s | tr '|' '/')
 		# shellcheck disable=SC2016 # the backticks are markdown
 		printf '| %s | [`%s`](%s/commit/%s)%s | `%s` | %s |\n' "${names[i]#\# }" \
 			"${sha:0:12}" "$web" "$sha" "${commits[i]#"$sha"}" "${refs[i]}" "$subject"

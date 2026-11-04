@@ -107,7 +107,7 @@ top_mine=$(local_tag "$here" "$tag") || exit 1
 if [ -n "$top_mine" ]; then
 	[ "$(git -C "$here" cat-file -t "refs/tags/$tag")" = tag ] ||
 		die "local tag $tag is not annotated; delete it to tag with $notes"
-	git -C "$here" tag -l --format='%(contents)' "$tag" | release_body ||
+	git -C "$here" --no-pager tag -l --format='%(contents)' "$tag" | release_body ||
 		die "local tag $tag has no release notes; delete it to tag with $notes"
 fi
 printf '%-18s %-14s %s\n' "(this repository)" "$top_branch" "$top_sha"
