@@ -4,7 +4,8 @@
 #
 #   scripts/checkout ref REF     the tag, branch or commit REF in every module
 #   scripts/checkout date DATE   each module's branch as it was at DATE
-#   scripts/checkout             each module's branch, as .repos lists it
+#   scripts/checkout             each module's branch, as .repos lists it,
+#                                except modules on another branch
 #
 # `ref` writes REF into the ref column of .repos, so `make update` clones a
 # module that is not checked out yet at REF, and fetches REF into a module
@@ -74,6 +75,14 @@ modules | while read -r mod branch; do
 		;;
 	'')
 		[ -d "$dir" ] || continue
+		# A module on a branch of its own, such as a pull request's, is
+		# work in progress: leave it there.  A detached one, from ref or
+		# date, goes back to its branch.
+		cur=$(git -C "$dir" symbolic-ref -q --short HEAD || true)
+		if [ -n "$cur" ] && [ "$cur" != "$branch" ]; then
+			echo "warning: $mod: left on $cur, not $branch" >&2
+			continue
+		fi
 		echo "$mod: $branch"
 		git -C "$dir" checkout -q "$branch"
 		;;

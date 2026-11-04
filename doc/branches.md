@@ -28,6 +28,8 @@ Run make to switch all modules back to the branch
 ```
 make v
 ```
+A module on another branch, such as a pull request's, stays there with a
+warning; `make branch` moves it.
 After `make v ref=...`, restore the branches in `.repos` first:
 `cp default-repos .repos`, then `make branch` for any module that was not
 on its default branch.
