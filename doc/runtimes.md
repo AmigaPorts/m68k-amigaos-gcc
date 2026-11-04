@@ -135,6 +135,15 @@ newlib is the runtime whose `malloc()` and stdio are safe to call from several
 threads. [examples/cxx_thread](../examples/cxx_thread/) and
 [examples/pthreads](../examples/pthreads/) say hello from four threads.
 
+Two rules that AmigaOS can't enforce:
+- **Every thread ends before `main()` returns.** Join it or let it finish:
+  the program's code is unloaded when it exits, and a thread still running
+  then crashes.
+- **Thread-local variables need `std::thread` or `pthread_create()`.** Both
+  give a thread its own `thread_local` and `_Thread_local` variables, and free
+  them, running their destructors, when it ends. A task started with a plain
+  `CreateNewProc()` must not use them: it can find another thread's.
+
 The details are in each runtime's section below.
 
 ## libnix
