@@ -86,7 +86,7 @@ functions unless their prototypes say how they take their arguments:
 | `-ramiga-lib` | a shared library: libnix's library startup code instead of a program's |
 | `-ramiga-libr` | a shared library whose data is copied for each opener |
 | `-ramiga-dev` | a device |
-| `-pthread` | the POSIX threads library |
+| `-pthread` | the POSIX threads library, as in [examples/pthreads](../examples/pthreads/) |
 
 The `-ramiga-*` options need libnix (`-mcrt=nix20` or `-mcrt=nix13`).
 
