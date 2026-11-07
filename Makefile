@@ -566,7 +566,7 @@ clean-mpfr:
 .PHONY: clean-libgcc
 clean-libgcc:
 	rm -rf $(BUILD)/gcc/$(TARGET)
-	rm -rf $(BUILD)/gcc/_libgcc_done
+	rm -rf $(BUILD)/gcc/_libgcc_done $(BUILD)/gcc/_libstdcxx_headers
 
 .PHONY: clean-binutils
 clean-binutils:
@@ -1636,7 +1636,23 @@ LIBGCCS := $(patsubst %,$(PREFIX)/lib/gcc/$(TARGET)/$(GCC_DIR_VERSION)/%,$(LIBGC
 .PHONY: libgcc
 libgcc: $(BUILD)/gcc/_libgcc_done
 
-$(BUILD)/gcc/_libgcc_done: $(BUILD)/libnix/_done $(BUILD)/libpthread/_done $(LIBAMIGA) $(GCC_TARGET_PREREQ) $(shell find 2>/dev/null $(PROJECTS)/gcc/libgcc -type f)
+# libstdc++ is built without dependency tracking (no-dependencies in its
+# configure.ac), so its objects don't follow the headers they were compiled
+# against: a changed gthread header leaves calls to functions that libgcc no
+# longer has.  When one of these changes, drop libstdc++'s build, and
+# all-target configures and builds it again.
+LIBSTDCXX_HEADERS := $(wildcard \
+	$(PROJECTS)/gcc/libgcc/gthr-amigaos.h \
+	$(PROJECTS)/gcc/gcc/config/m68k/benaphore.h \
+	$(PROJECTS)/aros-stuff/pthreads/pthread.h) \
+	$(BUILD)/newlib/_done
+
+$(BUILD)/gcc/_libstdcxx_headers: $(LIBSTDCXX_HEADERS)
+	rm -rf $(BUILD)/gcc/$(TARGET)/libstdc++-v3
+	@mkdir -p $(dir $@)
+	@touch $@
+
+$(BUILD)/gcc/_libgcc_done: $(BUILD)/libnix/_done $(BUILD)/libpthread/_done $(LIBAMIGA) $(GCC_TARGET_PREREQ) $(BUILD)/gcc/_libstdcxx_headers $(shell find 2>/dev/null $(PROJECTS)/gcc/libgcc -type f)
 ifneq (,$(strip $(HOST)))
 	# Hosted target compilers do not search GCC's build-tree include directory.
 	# Install libgcc first so libstdc++ can find generated headers such as
