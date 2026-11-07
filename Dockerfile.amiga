@@ -47,7 +47,8 @@ RUN test "$(${CC} -dumpmachine)" = "${HOST}" && \
     make branch mod=gcc branch=${GCC_BRANCH} && \
     make branch mod=newlib-cygwin branch=${NEWLIB_BRANCH} && \
     make update && \
-    make gcc-prerequisites
+    make gcc-prerequisites && \
+    make volamos
 
 ARG BUILD_TARGET="all"
 ARG SDK_TARGET="all-sdk"
