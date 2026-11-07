@@ -415,12 +415,36 @@ THREADS ?= amigaos
 # needs a fresh one.  gcc's config.status records the model it was given.
 GCC_THREADS := $(shell sed -n 's/.*--enable-threads=\([a-z]*\).*/\1/p' \
 	$(BUILD)/gcc/config.status 2>/dev/null | head -1)
+
+# newlib locks its stdio and malloc() only with a thread model: without one,
+# a program pays nothing for them, and newlib builds with a gcc that has no
+# <benaphore.h>.  A configured tree's newlib.h says whether it locks.
+ifneq ($(THREADS),no)
+  NEWLIB_FLAGS += --enable-newlib-retargetable-locking
+endif
+NEWLIB_H := $(wildcard $(BUILD)/newlib/newlib/newlib.h)
+ifneq ($(NEWLIB_H),)
+  NEWLIB_LOCKS := $(if $(shell grep -l '_RETARGETABLE_LOCKING 1' $(NEWLIB_H)),yes)
+endif
+
 ifeq ($(filter $(NO_PREFIX_GOALS),$(MAKECMDGOALS)),)
-ifneq ($(GCC_THREADS),)
-ifneq ($(GCC_THREADS),$(THREADS))
-$(error $(BUILD)/gcc was configured for THREADS=$(GCC_THREADS); use that THREADS, another BUILD, or make clean-gcc)
-endif
-endif
+  ifeq ($(GCC_HAS_THREADS),)
+    ifneq ($(THREADS),no)
+      $(error THREADS=$(THREADS) needs gcc 16.2 or later; gcc $(GCC_VERSION) builds with THREADS=no)
+    endif
+  endif
+
+  ifneq ($(GCC_THREADS),)
+    ifneq ($(GCC_THREADS),$(THREADS))
+      $(error $(BUILD)/gcc was configured for THREADS=$(GCC_THREADS); use that THREADS, another BUILD, or make clean-gcc)
+    endif
+  endif
+
+  ifneq ($(NEWLIB_H),)
+    ifneq ($(NEWLIB_LOCKS),$(if $(filter-out no,$(THREADS)),yes))
+      $(error $(BUILD)/newlib was configured for another THREADS; use that THREADS, another BUILD, or make clean-newlib)
+    endif
+  endif
 endif
 
 # =================================================
@@ -515,7 +539,7 @@ help:
 	@echo ""
 	@echo "Parameters:"
 	@echo "PREFIX=<path>            install directory; required once, the build tree remembers it"
-	@echo "THREADS=posix|no         gcc's thread model (default: amigaos); another one needs make clean-gcc"
+	@echo "THREADS=no|posix|amigaos gcc's thread model and newlib's locks (default: amigaos)"
 	@echo "ADDLANG=lang,lang...     configure additional language frontends"
 
 # =================================================
@@ -1793,7 +1817,7 @@ $(BUILD)/newlib/newlib/Makefile: $(PROJECTS)/newlib-cygwin/newlib/configure $(wi
 	$(if $(filter %/configure %/Makefile.in,$?),rm -rf $(BUILD)/newlib/*/)
 	mkdir -p $(BUILD)/newlib/newlib
 	if [ ! -f "$(BUILD)/newlib/newlib/Makefile" ]; then \
-	$(L00)"configure newlib"$(L1) cd $(BUILD)/newlib/newlib && $(NEWLIB_CONFIG) CFLAGS="$(NEWLIB_CFLAGS)" CC_FOR_BUILD="$(CC)" CXXFLAGS="$(NEWLIB_CXXFLAGS)" $(PROJECTS)/newlib-cygwin/newlib/configure --host=$(TARGET) --prefix=$(PREFIX) --enable-newlib-io-long-long --enable-newlib-io-c99-formats --enable-newlib-reent-small --disable-newlib-mb --enable-newlib-long-time_t --disable-newlib-reent-check-verify $(L2) \
+	$(L00)"configure newlib"$(L1) cd $(BUILD)/newlib/newlib && $(NEWLIB_CONFIG) CFLAGS="$(NEWLIB_CFLAGS)" CC_FOR_BUILD="$(CC)" CXXFLAGS="$(NEWLIB_CXXFLAGS)" $(PROJECTS)/newlib-cygwin/newlib/configure --host=$(TARGET) --prefix=$(PREFIX) --enable-newlib-io-long-long --enable-newlib-io-c99-formats --enable-newlib-reent-small --disable-newlib-mb --enable-newlib-long-time_t --disable-newlib-reent-check-verify $(NEWLIB_FLAGS) $(L2) \
 	; else touch "$(BUILD)/newlib/newlib/Makefile"; fi
 
 $(PROJECTS)/newlib-cygwin/newlib/configure:
