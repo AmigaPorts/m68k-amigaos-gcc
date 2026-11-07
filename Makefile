@@ -2340,15 +2340,19 @@ $(BUILD)/$(zlib_DIR)/Makefile: $(PROJECTS)/$(zlib_DIR)/configure
 	$(call MULTICONFIGURE,$(zlib_DIR),libz.a,)
 	@touch $@
 
-# zlib 1.3.2's configure adds -fPIC unconditionally and test-compiles with
-# it; the hunk linker has no GOT and gcc rejects -fPIC, so drop it before
-# configure runs.
+# zlib's configure adds -fPIC unconditionally and test-compiles with it; the
+# hunk linker has no GOT and gcc rejects -fPIC, so drop it before configure
+# runs.
 # gzdopen() calls fcntl() to set O_NONBLOCK and O_CLOEXEC, which mean nothing
-# on AmigaOS and which newlib has no fcntl() for.
+# on AmigaOS and which newlib has no fcntl() for. Each call goes with the if
+# above it: dropping only the call left the ifs to guard "state->fd = fd;".
+# The grep fails the build if a new zlib lays them out differently.
 $(PROJECTS)/$(zlib_DIR)/configure: $(DOWNLOAD)/$(zlib_DIR).tar.gz
 	tar -C $(PROJECTS) -xf $(DOWNLOAD)/$(zlib_DIR).tar.gz
 	$(SED) -i 's/ -fPIC"/"/' $@
-	$(SED) -i '/fcntl(fd, /d' $(PROJECTS)/$(zlib_DIR)/gzlib.c
+	$(SED) -i '/if (oflag & O_\(NONBLOCK\|CLOEXEC\))$$/{N;/\n *fcntl(fd, /d}' \
+		$(PROJECTS)/$(zlib_DIR)/gzlib.c
+	! grep -q 'fcntl(fd, ' $(PROJECTS)/$(zlib_DIR)/gzlib.c
 	@touch $@
 
 # =================================================
