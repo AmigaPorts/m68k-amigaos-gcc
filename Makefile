@@ -404,7 +404,46 @@ CXXFLAGS_FOR_TARGET ?= $(CFLAGS_FOR_TARGET)
 E:=CFLAGS="$(CFLAGS)" CXXFLAGS="$(CXXFLAGS)" LDFLAGS="$(LDFLAGS)" CFLAGS_FOR_BUILD="$(BUILD_CFLAGS)" CXXFLAGS_FOR_BUILD="$(BUILD_CXXFLAGS)" LDFLAGS_FOR_BUILD="$(BUILD_LDFLAGS)" CFLAGS_FOR_TARGET="$(CFLAGS_FOR_TARGET)" CXXFLAGS_FOR_TARGET="$(CXXFLAGS_FOR_TARGET)"
 endif
 
-THREADS ?= no
+# gcc's thread model for C++ thread_local, std::thread, the static-local
+# guards and libgcc's emutls: amigaos runs threads as DOS processes and locks
+# with the inline benaphore; posix goes through libpthread, which every C++
+# program then links; no is the single-task model.
+THREADS ?= amigaos
+
+# A configured gcc tree keeps its thread model: reconfiguring it doesn't
+# reach the target libraries already configured in it, so another THREADS
+# needs a fresh one.  gcc's config.status records the model it was given.
+GCC_THREADS := $(shell sed -n 's/.*--enable-threads=\([a-z]*\).*/\1/p' \
+	$(BUILD)/gcc/config.status 2>/dev/null | head -1)
+
+# newlib locks its stdio and malloc() only with a thread model: without one,
+# a program pays nothing for them.  With one, its configure.host turns the
+# locks on by itself: an explicit --enable would also build the generic
+# libc/misc/lock.c, which clashes with the amigaos one.  config.status
+# records the --disable.
+ifeq ($(THREADS),no)
+  NEWLIB_FLAGS += --disable-newlib-retargetable-locking
+endif
+NEWLIB_CONFIG_STATUS := $(wildcard $(BUILD)/newlib/newlib/config.status)
+ifneq ($(NEWLIB_CONFIG_STATUS),)
+  NEWLIB_CONFIGURED_FLAGS := $(shell sed -n \
+	's/.*\(--disable-newlib-retargetable-locking\).*/\1/p' \
+	$(NEWLIB_CONFIG_STATUS) | head -1)
+endif
+
+ifeq ($(filter $(NO_PREFIX_GOALS),$(MAKECMDGOALS)),)
+  ifneq ($(GCC_THREADS),)
+    ifneq ($(GCC_THREADS),$(THREADS))
+      $(error $(BUILD)/gcc was configured for THREADS=$(GCC_THREADS); use that THREADS, another BUILD, or make clean-gcc)
+    endif
+  endif
+
+  ifneq ($(NEWLIB_CONFIG_STATUS),)
+    ifneq ($(strip $(NEWLIB_CONFIGURED_FLAGS)),$(strip $(NEWLIB_FLAGS)))
+      $(error $(BUILD)/newlib was configured for another THREADS; use that THREADS, another BUILD, or make clean-newlib)
+    endif
+  endif
+endif
 
 # =================================================
 # determine exe extension for cygwin
@@ -498,7 +537,7 @@ help:
 	@echo ""
 	@echo "Parameters:"
 	@echo "PREFIX=<path>            install directory; required once, the build tree remembers it"
-	@echo "THREADS=posix            build gcc with thread support"
+	@echo "THREADS=no|posix|amigaos gcc's thread model and newlib's locks (default: amigaos)"
 	@echo "ADDLANG=lang,lang...     configure additional language frontends"
 
 # =================================================
@@ -1786,7 +1825,7 @@ $(BUILD)/newlib/newlib/Makefile: $(PROJECTS)/newlib-cygwin/newlib/configure $(wi
 	$(if $(filter %/configure %/Makefile.in,$?),rm -rf $(BUILD)/newlib/*/)
 	mkdir -p $(BUILD)/newlib/newlib
 	if [ ! -f "$(BUILD)/newlib/newlib/Makefile" ]; then \
-	$(L00)"configure newlib"$(L1) cd $(BUILD)/newlib/newlib && $(NEWLIB_CONFIG) CFLAGS="$(NEWLIB_CFLAGS)" CC_FOR_BUILD="$(CC)" CXXFLAGS="$(NEWLIB_CXXFLAGS)" $(PROJECTS)/newlib-cygwin/newlib/configure --host=$(TARGET) --prefix=$(PREFIX) --enable-newlib-io-long-long --enable-newlib-io-c99-formats --enable-newlib-reent-small --disable-newlib-mb --enable-newlib-long-time_t --disable-newlib-reent-check-verify $(L2) \
+	$(L00)"configure newlib"$(L1) cd $(BUILD)/newlib/newlib && $(NEWLIB_CONFIG) CFLAGS="$(NEWLIB_CFLAGS)" CC_FOR_BUILD="$(CC)" CXXFLAGS="$(NEWLIB_CXXFLAGS)" $(PROJECTS)/newlib-cygwin/newlib/configure --host=$(TARGET) --prefix=$(PREFIX) --enable-newlib-io-long-long --enable-newlib-io-c99-formats --enable-newlib-reent-small --disable-newlib-mb --enable-newlib-long-time_t --disable-newlib-reent-check-verify $(NEWLIB_FLAGS) $(L2) \
 	; else touch "$(BUILD)/newlib/newlib/Makefile"; fi
 
 $(PROJECTS)/newlib-cygwin/newlib/configure:

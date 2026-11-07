@@ -74,7 +74,7 @@ alone with `-D__libnix__`.
 
 ## Creating a library
 
-[examples/library](examples/library/) builds `hello.library` and a program
+[examples/library](../examples/library/) builds `hello.library` and a program
 that calls it: `make` there builds both, and `make check` runs the program
 under volamos.
 
