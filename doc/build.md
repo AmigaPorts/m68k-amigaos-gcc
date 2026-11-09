@@ -92,3 +92,23 @@ You can use `-j$(nproc)` to speed up the build:
 time make all -j$(nproc)
 ```
 A full bootstrap takes roughly 5 to 15 minutes on current Linux hardware, dominated by multilib phases.
+
+## Thread model
+
+`THREADS=` picks the thread model gcc is built with, which C++'s
+`std::thread`, `std::mutex`, `thread_local` and static-local guards use
+(see [Runtimes](runtimes.md)):
+
+| `THREADS=` | threads | newlib's stdio and `malloc()` |
+|---|---|---|
+| `amigaos`, the default | DOS processes, locked with gcc's `<benaphore.h>` | locked |
+| `posix` | through libpthread, which every C++ program then links | locked |
+| `no` | none: one task | not locked, so they cost nothing |
+
+Both thread models need gcc 16.2 or later. An older gcc branch (see
+[Version management](branches.md)) builds with `THREADS=no`, and another
+value stops with an error.
+
+A build tree keeps the model it was configured with: building it with
+another `THREADS` stops with an error that names the tree. Use that
+`THREADS`, another `BUILD`, or `make clean-gcc` and `make clean-newlib`.
