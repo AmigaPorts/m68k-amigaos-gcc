@@ -407,8 +407,12 @@ endif
 # gcc's thread model for C++ thread_local, std::thread, the static-local
 # guards and libgcc's emutls: amigaos runs threads as DOS processes and locks
 # with the inline benaphore; posix goes through libpthread, which every C++
-# program then links; no is the single-task model.
-THREADS ?= amigaos
+# program then links; no is the single-task model.  Both thread models need
+# gcc's <benaphore.h>, from 16.2 on: an older gcc builds with THREADS=no.
+# Before make update has cloned gcc there is no tree to look at.
+GCC_HAS_THREADS := $(if $(wildcard $(PROJECTS)/gcc/gcc/BASE-VER),$(wildcard \
+	$(PROJECTS)/gcc/gcc/config/m68k/benaphore.h),yes)
+THREADS ?= $(if $(GCC_HAS_THREADS),amigaos,no)
 
 # A configured gcc tree keeps its thread model: reconfiguring it doesn't
 # reach the target libraries already configured in it, so another THREADS
@@ -539,7 +543,7 @@ help:
 	@echo ""
 	@echo "Parameters:"
 	@echo "PREFIX=<path>            install directory; required once, the build tree remembers it"
-	@echo "THREADS=no|posix|amigaos gcc's thread model and newlib's locks (default: amigaos)"
+	@echo "THREADS=no|posix|amigaos gcc's thread model and newlib's locks (default: amigaos; no before gcc 16.2)"
 	@echo "ADDLANG=lang,lang...     configure additional language frontends"
 
 # =================================================
