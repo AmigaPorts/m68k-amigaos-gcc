@@ -80,7 +80,7 @@ ifeq ($(origin PREFIX),undefined)
     endif
   endif
 endif
-# the module makefiles (libnix's Makefile.gcc6, ...) have defaults of their
+# the module makefiles (libnix's Makefile.m68k-amigaos, ...) have defaults of their
 # own: they see ours the way a PREFIX=... on the command line reached them
 export PREFIX
 ifeq (,$(strip $(HOST)))
@@ -746,7 +746,7 @@ update-vlink: $(PROJECTS)/vlink/Makefile
 	@scripts/update-module $(PROJECTS)/vlink
 
 .PHONY: update-libnix
-update-libnix: $(PROJECTS)/libnix/Makefile.gcc6
+update-libnix: $(PROJECTS)/libnix/Makefile.m68k-amigaos
 	@scripts/update-module $(PROJECTS)/libnix
 
 .PHONY: update-clib2
@@ -1614,17 +1614,17 @@ LIBNIX_SRC = $(shell find 2>/dev/null $(PROJECTS)/libnix -not \( -path $(PROJECT
 .PHONY: libnix
 libnix: $(BUILD)/libnix/_done
 
-$(BUILD)/libnix/_done: $(BUILD)/newlib/_done $(BUILD)/ndk-include_ndk $(BUILD)/ndk-include_ndk13 $(BUILD)/_netinclude $(BUILD)/binutils/_done $(BUILD)/gcc/_done $(PROJECTS)/libnix/Makefile.gcc6 $(LIBAMIGA) $(LIBNIX_SRC)
+$(BUILD)/libnix/_done: $(BUILD)/newlib/_done $(BUILD)/ndk-include_ndk $(BUILD)/ndk-include_ndk13 $(BUILD)/_netinclude $(BUILD)/binutils/_done $(BUILD)/gcc/_done $(PROJECTS)/libnix/Makefile.m68k-amigaos $(LIBAMIGA) $(LIBNIX_SRC)
 	@mkdir -p $(PREFIX)/$(TARGET)/libnix/lib/libnix
 	@mkdir -p $(BUILD)/libnix
 	@mkdir -p $(PREFIX)/lib/gcc/$(TARGET)/$(GCC_DIR_VERSION)
 	@if [ ! -e $(PREFIX)/lib/gcc/$(TARGET)/$(GCC_DIR_VERSION)/libgcc.a ]; then $(TARGET_AR_FOR_BUILD) rcs $(PREFIX)/lib/gcc/$(TARGET)/$(GCC_DIR_VERSION)/libgcc.a; fi
-	$(L0)"make libnix"$(L1) CFLAGS="$(CFLAGS_FOR_TARGET) $(LIBNIX_CFLAGS)" $(MAKE) -C $(BUILD)/libnix -f $(PROJECTS)/libnix/Makefile.gcc6 root=$(PROJECTS)/libnix all $(L2)
-	$(L0)"install libnix"$(L1) $(MAKE) -C $(BUILD)/libnix -f $(PROJECTS)/libnix/Makefile.gcc6 root=$(PROJECTS)/libnix install $(L2)
+	$(L0)"make libnix"$(L1) CFLAGS="$(CFLAGS_FOR_TARGET) $(LIBNIX_CFLAGS)" $(MAKE) -C $(BUILD)/libnix -f $(PROJECTS)/libnix/Makefile.m68k-amigaos root=$(PROJECTS)/libnix all $(L2)
+	$(L0)"install libnix"$(L1) $(MAKE) -C $(BUILD)/libnix -f $(PROJECTS)/libnix/Makefile.m68k-amigaos root=$(PROJECTS)/libnix install $(L2)
 	@rsync --delete -a --no-group $(PROJECTS)/libnix/sources/headers/* $(PREFIX)/$(TARGET)/libnix/include/
 	@echo "done" >$@
 
-$(PROJECTS)/libnix/Makefile.gcc6:
+$(PROJECTS)/libnix/Makefile.m68k-amigaos:
 	@cd $(PROJECTS) && git clone -b $(libnix_BRANCH) --depth 4 $(libnix_URL)
 
 # =================================================
@@ -1655,7 +1655,7 @@ endif
 libnix4.library: $(BUILD)/libnix/libb/libnix4.library
 $(BUILD)/libnix/libb/libnix4.library: $(BUILD)/gcc/_libgcc_done $(BUILD)/libnix/_done
 	$(L0)"make libnix4.library"$(L1) CFLAGS="$(CFLAGS_FOR_TARGET) $(LIBNIX_CFLAGS)" \
-	$(MAKE) -C $(BUILD)/libnix -f $(PROJECTS)/libnix/Makefile.gcc6 root=$(PROJECTS)/libnix libb/libnix4.library $(L2)
+	$(MAKE) -C $(BUILD)/libnix -f $(PROJECTS)/libnix/Makefile.m68k-amigaos root=$(PROJECTS)/libnix libb/libnix4.library $(L2)
 
 # =================================================
 # clib2
@@ -1713,8 +1713,8 @@ libpthread: $(BUILD)/libpthread/_done
 
 $(BUILD)/libpthread/_done: $(BUILD)/libpthread/Makefile
 	@rsync -a --no-group --exclude=debug.h $(BUILD)/libpthread/*.h $(PREFIX)/$(TARGET)/include/
-	$(L0)"make libpthread"$(L1) cd $(BUILD)/libpthread && $(MAKE) -f Makefile.gcc6 $(L2)
-	$(L0)"install libpthread"$(L1) cd $(BUILD)/libpthread && $(MAKE) -f Makefile.gcc6 install PREFIX=$(PREFIX) $(L2)
+	$(L0)"make libpthread"$(L1) cd $(BUILD)/libpthread && $(MAKE) -f Makefile.m68k-amigaos $(L2)
+	$(L0)"install libpthread"$(L1) cd $(BUILD)/libpthread && $(MAKE) -f Makefile.m68k-amigaos install PREFIX=$(PREFIX) $(L2)
 	@echo "done" >$@
 
 $(BUILD)/libpthread/Makefile: $(BUILD)/libnix/_done $(PROJECTS)/aros-stuff/pthreads/Makefile $(shell find 2>/dev/null $(PROJECTS)/aros-stuff/pthreads -type f)
@@ -2072,8 +2072,8 @@ check-libnix: $(MIN_IF_MISSING) $(PREFIX)/bin/volamos
 # under the single-tasking simulator because it lacks CreateNewProc().
 .PHONY: check-libpthread
 check-libpthread: $(BUILD)/libpthread/_done
-	@set -o pipefail; if grep -q '^check:' $(BUILD)/libpthread/Makefile.gcc6; then \
-	  $(MAKE) --no-print-directory -C $(BUILD)/libpthread -f Makefile.gcc6 check \
+	@set -o pipefail; if grep -q '^check:' $(BUILD)/libpthread/Makefile.m68k-amigaos; then \
+	  $(MAKE) --no-print-directory -C $(BUILD)/libpthread -f Makefile.m68k-amigaos check \
 	    CC=$(PREFIX)/bin/$(TARGET)-gcc CXX=$(PREFIX)/bin/$(TARGET)-g++ \
 	    AR=$(PREFIX)/bin/$(TARGET)-ar; \
 	  else echo 'SKIP: aros-stuff does not yet have the pthread check target'; fi \
