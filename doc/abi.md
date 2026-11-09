@@ -72,6 +72,20 @@ registers that it must keep, d2 and a2 here, as usual.
 a5 can't be named: `__asm("a5")` on a parameter fails with "register 'a5'
 is reserved for the frame or stack pointer", at every optimization level.
 
+A named register must be able to hold the argument:
+
+- **wider values:** an argument wider than its register takes the
+  registers after it. A `long long`, a `double` without an FPU or a
+  `_Complex int` named d0 takes d0 and d1, and `-mregparm` places the
+  arguments after it in the registers left. Two arguments that share a
+  register are an error.
+- **FP registers:** fp0 to fp7 hold a floating point argument of any size,
+  one each, and only with an FPU (`-m68881`). A `_Complex double` takes two,
+  so fp7 can't hold one.
+- **anything else** is an error, such as "register 'fp0' cannot hold an
+  argument of type 'double'" without an FPU, or a structure with no integer
+  mode in a data register.
+
 A hook, for example, is called with the hook in a0, the object in a2 and
 the message in a1:
 
