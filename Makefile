@@ -1007,18 +1007,6 @@ endif
 ifneq (,$(strip $(GCC_FOR_TARGET_BUILD)))
 GCC_BUILD_MAKE_FLAGS += GCC_FOR_TARGET="$(GCC_FOR_TARGET_BUILD)"
 endif
-ifneq (,$(filter 6.%,$(GCC_VERSION)))
-# GCC 16 defaults to C++17, which cannot parse GCC 6's libstdc++ headers.
-# Put a same-named wrapper first in PATH only while building target libraries.
-# Supplying -std=gnu++98 in CXX_FOR_TARGET makes GCC move it to the end of
-# CXXFLAGS_FOR_TARGET, after libstdc++'s per-directory -std=gnu++11.  A PATH
-# wrapper supplies the baseline first, so those later source-specific flags win.
-TARGET_CXX_FOR_BUILD ?= $(shell command -v $(TARGET)-c++ 2>/dev/null)
-GCC6_TARGET_CXX_WRAPPER_DIR := $(BUILD_TOOLS)/gcc6/bin
-GCC6_TARGET_CXX_WRAPPER := $(GCC6_TARGET_CXX_WRAPPER_DIR)/$(TARGET)-c++
-GCC_TARGET_MAKE_FLAGS += PATH="$(GCC6_TARGET_CXX_WRAPPER_DIR):$(PATH)"
-GCC_TARGET_PREREQ += $(GCC6_TARGET_CXX_WRAPPER)
-endif
 GCC_TARGET_PREREQ += $(TARGET_EXEC_WRAPPERS) $(TARGET_COMPILER_WRAPPERS) $(TARGET_PREFIXED_EXEC_WRAPPERS)
 ifneq (,$(strip $(GCC_FOR_TARGET_BUILD)))
 GCC_TARGET_MAKE_FLAGS += GCC_FOR_TARGET="$(GCC_FOR_TARGET_BUILD)" \
@@ -1055,20 +1043,6 @@ GCC_TARGET_TOOL_ENV := \
 GCC_TARGET_MAKE_FLAGS += $(GCC_TARGET_TOOL_ENV)
 endif
 endif
-endif
-
-ifneq (,$(strip $(GCC6_TARGET_CXX_WRAPPER)))
-# A hosted build puts a wrapper named $(TARGET)-c++ first in PATH
-# (TARGET_COMPILER_WRAPPER_DIR) which adds -B$(PREFIX)/lib/gcc/$(TARGET)/
-# $(GCC_DIR_VERSION)/, so libstdc++ finds the unwind.h that
-# install-target-libgcc put there.  This wrapper shadows that one, and the
-# raw build-to-target g++ has no libgcc installed: exec the -B wrapper when
-# there is one.  A native build has none and keeps the raw compiler.
-$(GCC6_TARGET_CXX_WRAPPER): $(BUILD)/gcc/_done $(TARGET_COMPILER_WRAPPERS)
-	@mkdir -p $(@D)
-	@test -n "$(TARGET_CXX_FOR_BUILD)"
-	@printf '%s\n' '#!/bin/sh' 'exec "$(or $(TARGET_CXX_COMMAND_FOR_BUILD),$(TARGET_CXX_FOR_BUILD))" -std=gnu++98 "$$@"' > $@
-	@chmod +x $@
 endif
 
 GCC_DIR := . gcc gcc/c gcc/c-family gcc/cp gcc/objc gcc/config/m68k libiberty libcpp libdecnumber
