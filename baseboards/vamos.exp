@@ -17,7 +17,8 @@ if {![info exists SIM]} {
 }
 setup_sim amigaos
 # vamos runs as a 68020, which also runs 68000 code.
-set_board_info sim,options "-C 68020 -s 4096 -m 11264"
+# -s is in KiB: the 1M stack of volamos.exp.
+set_board_info sim,options "-C 68020 -s 1024 -m 11264"
 
 # Options after the board name are added to every compile and link, as in
 # board=vamos/-mcrt=newlib/-fbaserel.

@@ -24,7 +24,12 @@ setup_sim amigaos
 # the misaligned word and long accesses a 68020 tolerates.
 # --dirty-heap: memory allocated without MEMF_CLEAR is filled with 0xA5, as
 # real hardware leaves it with garbage, so code that expects zeros fails.
-set volamos_options "--cpu 68000 --stack 4096K --ram 11264K --dirty-heap"
+# --stack 1M: the tests that need more than 64K are
+#   - g++.dg/torture/pr119610.C, a 512 KB local array;
+#   - newlib's newlib.string/tstring.c, 365 KB of local buffers.
+# Threads take their creator's stack size, and with 4M the gthread tests
+# could not fit three of them in --ram.
+set volamos_options "--cpu 68000 --stack 1M --ram 11264K --dirty-heap"
 if {![info exists SANITIZE] || $SANITIZE} {
     append volamos_options " --sanitize"
 }
