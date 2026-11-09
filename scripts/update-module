@@ -29,11 +29,19 @@ update() {
 	# request) has no branch to pull.
 	git symbolic-ref -q HEAD >/dev/null || return 0
 
+	# A local work branch has nothing to pull from: leave it alone.
+	if ! git rev-parse -q --verify '@{u}' >/dev/null; then
+		echo "warning: not updated: $(git symbolic-ref --short HEAD) has no upstream"
+		return 0
+	fi
+
 	pull && return 0
 
 	# A shallow clone may lack the merge base of a fast-forward, for example
-	# when the branch merged history older than the clone.
-	if [ "$(git rev-parse --is-shallow-repository)" = true ]; then
+	# when the branch merged history older than the clone.  Only then does
+	# more history help: a branch with local commits has a merge base.
+	if [ "$(git rev-parse --is-shallow-repository)" = true ] &&
+		! git merge-base HEAD '@{u}' >/dev/null; then
 		git fetch --deepen 1000 && pull && return 0
 	fi
 
