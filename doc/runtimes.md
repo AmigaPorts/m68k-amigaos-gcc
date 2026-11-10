@@ -129,19 +129,28 @@ stack while the program runs: the compiler has no `-mstackcheck` or
 `-mstackextend`.
 
 Threads are AmigaOS processes that share the program's console and current
-directory, and need OS 2.0. C++'s `std::thread`, `std::mutex` and
-`thread_local` need no option; `-pthread` adds the POSIX threads library.
-newlib is the runtime whose `malloc()` and stdio are safe to call from several
-threads. [examples/cxx_thread](../examples/cxx_thread/) and
+directory, and need OS 2.0. `-pthread` adds the POSIX threads library. The
+rest depends on the thread model the toolchain was built with (see
+[Thread model](build.md#thread-model)):
+
+| | `THREADS=no`, the default | `THREADS=amigaos` |
+|---|---|---|
+| C++'s `std::thread`, `std::mutex` | `<thread>` and `<mutex>` don't compile | need no option |
+| `thread_local`, `_Thread_local` | one per program | one per thread |
+| newlib's `malloc()` and stdio | not safe from several threads | safe |
+
+libnix's stdio isn't safe from several threads with either model.
+[examples/cxx_thread](../examples/cxx_thread/) and
 [examples/pthreads](../examples/pthreads/) say hello from four threads.
 
 Two rules that AmigaOS can't enforce:
 - **Every thread ends before `main()` returns.** Join it or let it finish:
   the program's code is unloaded when it exits, and a thread still running
   then crashes.
-- **Thread-local variables need `std::thread` or `pthread_create()`.** Both
-  give a thread its own `thread_local` and `_Thread_local` variables, and free
-  them, running their destructors, when it ends. A task started with a plain
+- **Thread-local variables need `std::thread` or `pthread_create()`.** With
+  `THREADS=amigaos`, both give a thread its own `thread_local` and
+  `_Thread_local` variables, and free them, running their destructors, when
+  it ends. A task started with a plain
   `CreateNewProc()` must not use them: it can find another thread's.
 
 The details are in each runtime's section below.

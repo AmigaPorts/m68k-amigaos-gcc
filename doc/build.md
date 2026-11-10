@@ -101,13 +101,13 @@ A full bootstrap takes roughly 5 to 15 minutes on current Linux hardware, domina
 
 | `THREADS=` | threads | newlib's stdio and `malloc()` |
 |---|---|---|
-| `amigaos`, the default | DOS processes, locked with gcc's `<benaphore.h>` | locked |
+| `amigaos` | DOS processes, locked with gcc's `<benaphore.h>` | locked |
 | `posix` | through libpthread, which every C++ program then links | locked |
-| `no` | none: one task | not locked, so they cost nothing |
+| `no`, the default | none: one task | not locked, so they cost nothing |
 
-Both thread models need gcc 16.2 or later. An older gcc branch (see
-[Version management](branches.md)) builds with `THREADS=no`, and another
-value stops with an error.
+The release binaries are built with the default. Both thread models need gcc
+16.2 or later: an older gcc branch (see [Version management](branches.md))
+builds with `THREADS=no`, and another value stops with an error.
 
 A build tree keeps the model it was configured with: building it with
 another `THREADS` stops with an error that names the tree. Use that
