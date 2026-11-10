@@ -70,8 +70,8 @@ PREFIX_STAMP := $(BUILD)/.prefix
 ifeq ($(origin PREFIX),undefined)
   ifneq ($(wildcard $(PREFIX_STAMP)),)
     PREFIX := $(shell cat $(PREFIX_STAMP))
-    # quiet for print-%, whose output scripts read
-    ifneq ($(if $(MAKECMDGOALS),$(filter-out print-%,$(MAKECMDGOALS)),all),)
+    # only for goals that use it: quiet for print-%, whose output scripts read
+    ifneq ($(if $(MAKECMDGOALS),$(filter-out $(NO_PREFIX_GOALS),$(MAKECMDGOALS)),all),)
       $(info PREFIX=$(PREFIX), from $(PREFIX_STAMP))
     endif
   else
