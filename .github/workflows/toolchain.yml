@@ -129,7 +129,8 @@ jobs:
                  "ci-check-c++-baserel32",
                  "ci-check-c-newlib",
                  "ci-check-c++-newlib",
-                 "ci-check-newlib"
+                 "ci-check-newlib",
+                 "ci-check-threads"
                ]'),
                inputs.ci_label || github.event.label.name)
     runs-on: ubuntu-24.04
@@ -220,6 +221,7 @@ jobs:
             || needs.refs.outputs.label == 'ci-check-c++-baserel32' && 'check-c++ board=volamos/-mcrt=nix20/-m68020-60/-fbaserel32'
             || needs.refs.outputs.label == 'ci-check-c++-newlib' && 'check-c++ board=volamos/-mcrt=newlib'
             || needs.refs.outputs.label == 'ci-check-newlib' && 'check-newlib'
+            || needs.refs.outputs.label == 'ci-check-threads' && 'THREADS=amigaos check-gcc-amigaos check-libpthread check-newlib'
             || format('all all-sdk vbcc vlink zlib libpng check-gdb-libpython package {0}{1}{2}',
                       inputs.run_testsuite && 'check' || 'check-multilib check-binutils check-gcc-amigaos check-libnix check-libpthread',
                       inputs.run_cxx_testsuite && ' check-c++' || '',
@@ -324,16 +326,18 @@ jobs:
       - name: Record module revisions
         run: scripts/manifest --markdown >> $GITHUB_STEP_SUMMARY
 
-      # /ci make runs reuse the toolchain a run with the same Makefile and
-      # patches built, and rebuild only the modules whose commit changed:
-      # see .github/scripts/toolchain-cache.sh.  Releases and the default
+      # /ci make runs reuse the toolchain a run with the same Makefile,
+      # patches and thread model built, and rebuild only the modules whose
+      # commit changed: see .github/scripts/toolchain-cache.sh.  The Makefile
+      # refuses a tree built with another THREADS.  Releases and the default
       # runs always build from scratch.
       - name: Toolchain cache key
         id: tc
         if: inputs.make_args != '' && !startsWith(github.ref, 'refs/tags/')
         run: |
           echo "build=$(make -s print-BUILD)" >> $GITHUB_OUTPUT
-          echo "prefix=toolchain-${{ runner.os }}-${{ runner.arch }}-$GCC_VER-${{ hashFiles('Makefile', 'patches/**', 'default-archives', '.github/workflows/toolchain.yml', '.github/scripts/toolchain-cache.sh') }}-" >> $GITHUB_OUTPUT
+          threads=$(make -s print-THREADS $(printf '%s\n' $MAKE_ARGS | grep '^THREADS='))
+          echo "prefix=toolchain-${{ runner.os }}-${{ runner.arch }}-$GCC_VER-$threads-${{ hashFiles('Makefile', 'patches/**', 'default-archives', '.github/workflows/toolchain.yml', '.github/scripts/toolchain-cache.sh') }}-" >> $GITHUB_OUTPUT
           echo "modules=$(scripts/manifest | awk 'NR > 1 { print $1, $2, $3 }' | sha256sum | cut -c1-16)" >> $GITHUB_OUTPUT
 
       # with the downloaded archives and the trees unpacked from them, which
