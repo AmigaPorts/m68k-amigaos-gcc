@@ -33,7 +33,8 @@ if {[string match "*-mcrt=*" [board_info $board multilib_flags]]} {
 }
 set_board_info ldscript "";
 
-set_board_info gcc,stack_size 4096
+# In bytes, as in volamos.exp: -s, less 64K for the C runtime's frames.
+set_board_info gcc,stack_size [expr {1024 * 1024 - 64 * 1024}]
 set_board_info isremote 0
 set_board_info slow_simulator 0
 

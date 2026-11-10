@@ -69,7 +69,9 @@ if {[string match "*-mcrt=*" $variant_flags]} {
 }
 set_board_info ldscript "";
 
-set_board_info gcc,stack_size 4096
+# In bytes: the stack a test may use, which dg-require-stack-size checks and
+# STACK_SIZE sizes arrays by.  --stack, less 64K for the C runtime's frames.
+set_board_info gcc,stack_size [expr {1024 * 1024 - 64 * 1024}]
 set_board_info isremote 0
 set_board_info slow_simulator 0
 
