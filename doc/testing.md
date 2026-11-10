@@ -39,7 +39,7 @@ sources.
 | `check-newlib` | newlib's own testsuite, on both newlib boards |
 | `check-libc-test` | musl's testsuite, [libc-test](https://wiki.musl-libc.org/libc-test.html), see below. It has known failures ([#239](https://github.com/AmigaPorts/m68k-amigaos-gcc/issues/239)) |
 | `check-libnix` | libnix's target tests |
-| `check-libpthread` | builds libpthread's test programs; the simulator cannot run them |
+| `check-libpthread` | builds libpthread's test programs, runs its link checks, and runs under volamos the programs that pass there |
 | `check-binutils` | the gas and ld tests for the Amiga hunk format |
 | `check-multilib` | the multilib list against the driver's |
 | `check-shell` | shellcheck on `scripts/` and `.github/scripts/` |
