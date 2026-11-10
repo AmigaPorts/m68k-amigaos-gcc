@@ -14,10 +14,11 @@ which shares the program's console and current directory. Threads need OS 2.0.
 
 | runtime | size | C library across threads |
 |---|---:|---|
-| newlib | 69 KB | `malloc()` and stdio are safe |
-| nix20 | 14 KB | `malloc()` is safe; stdio and `errno` aren't, so this program locks around `printf()` itself |
+| newlib | 69 KB | `malloc()` and stdio are safe with a toolchain built with `THREADS=amigaos`, not with the default `THREADS=no` (see [Thread model](../../doc/build.md#thread-model)) |
+| nix20 | 14 KB | `malloc()` is safe; stdio and `errno` aren't |
 
-volamos runs a single task, so this one runs on an Amiga or an emulator:
+So this program locks around `printf()` itself. It runs on an Amiga, an
+emulator, or volamos:
 
 ```
 1> hello

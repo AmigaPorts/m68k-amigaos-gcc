@@ -7,6 +7,10 @@ Hello, World from four C++ threads, which take turns at `printf()` with a
 make CXX=/path/to/m68k-amigaos-g++
 ```
 
+`std::thread` needs a toolchain built with a thread model, `THREADS=amigaos`
+(see [Thread model](../../doc/build.md#thread-model)). With the default,
+`THREADS=no`, `<thread>` and `<mutex>` don't compile.
+
 Each `std::thread` is an AmigaOS process, which shares the program's console
 and current directory. Threads need OS 2.0 and a C library whose `malloc()` and
 stdio are safe across tasks, which is newlib: libnix and clib2 can start
