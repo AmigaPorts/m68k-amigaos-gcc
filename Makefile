@@ -2058,14 +2058,14 @@ check-libnix: $(MIN_IF_MISSING) $(PREFIX)/bin/volamos
 	  CROSS_CC=$(PREFIX)/bin/$(TARGET)-gcc SIM=$(PREFIX)/bin/volamos \
 	  SIMFLAGS="--stack 4K --sanitize --dirty-heap" 2>&1 | tee $@.summary.txt
 
-# Build libpthread's regression programs for each multilib.  They cannot run
-# under the single-tasking simulator because it lacks CreateNewProc().
+# Build libpthread's regression programs for each multilib, check what they
+# link, and run under volamos the ones that pass there.
 .PHONY: check-libpthread
-check-libpthread: $(BUILD)/libpthread/_done
-	@set -o pipefail; if grep -q '^check:' $(BUILD)/libpthread/Makefile.m68k-amigaos; then \
+check-libpthread: $(BUILD)/libpthread/_done $(PREFIX)/bin/volamos
+	set -o pipefail; if grep -q '^check:' $(BUILD)/libpthread/Makefile.m68k-amigaos; then \
 	  $(MAKE) --no-print-directory -C $(BUILD)/libpthread -f Makefile.m68k-amigaos check \
 	    CC=$(PREFIX)/bin/$(TARGET)-gcc CXX=$(PREFIX)/bin/$(TARGET)-g++ \
-	    AR=$(PREFIX)/bin/$(TARGET)-ar; \
+	    AR=$(PREFIX)/bin/$(TARGET)-ar SIM=$(PREFIX)/bin/volamos; \
 	  else echo 'SKIP: aros-stuff does not yet have the pthread check target'; fi \
 	  2>&1 | tee $@.summary.txt
 
