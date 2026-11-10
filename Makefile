@@ -1707,10 +1707,13 @@ $(BUILD)/libpthread/_done: $(BUILD)/libpthread/Makefile
 	$(L0)"install libpthread"$(L1) cd $(BUILD)/libpthread && $(MAKE) -f Makefile.m68k-amigaos install PREFIX=$(PREFIX) $(L2)
 	@echo "done" >$@
 
+# --delete: Makefile.m68k-amigaos builds every pthread_*.c it finds, so a
+# source removed from the tree, or left by another branch's build, must go.
+# It takes the objects with it: a changed source rebuilds the library.
 $(BUILD)/libpthread/Makefile: $(BUILD)/libnix/_done $(PROJECTS)/aros-stuff/pthreads/Makefile $(shell find 2>/dev/null $(PROJECTS)/aros-stuff/pthreads -type f)
-	@mkdir -p $(BUILD)/libpthread
-	@rsync -a --no-group $(PROJECTS)/aros-stuff/pthreads/* $(BUILD)/libpthread
-	@touch $(BUILD)/libpthread/Makefile
+	mkdir -p $(BUILD)/libpthread
+	rsync -a --no-group --delete $(PROJECTS)/aros-stuff/pthreads/ $(BUILD)/libpthread/
+	touch $(BUILD)/libpthread/Makefile
 
 $(PROJECTS)/aros-stuff/pthreads/Makefile:
 	@cd $(PROJECTS) && git clone -b $(aros-stuff_BRANCH) --depth 4 $(aros-stuff_URL)
