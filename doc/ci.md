@@ -90,7 +90,9 @@ A `ci-*` label on a pull request builds it with the pull request's own
 workflows, so it is the way to test a change to them. Remove and re-add a
 label to rebuild after a push. The platform labels are the `/ci` platforms
 above (`ci-linux`, `ci-linux-arm`, ...), without `make`. Each `ci-check-*`
-label runs one testsuite on `linux-arm`:
+label runs one testsuite on `linux-arm`, except `ci-check-threads`, which runs
+the thread tests with the `amigaos` thread model that the default build leaves
+out:
 
 | label | same as |
 |---|---|
@@ -102,6 +104,7 @@ label runs one testsuite on `linux-arm`:
 | `ci-check-c++-baserel32` | `/ci linux-arm make check-c++ board=volamos/-mcrt=nix20/-m68020-60/-fbaserel32` |
 | `ci-check-c++-newlib` | `/ci linux-arm make check-c++ board=volamos/-mcrt=newlib` |
 | `ci-check-newlib` | `/ci linux-arm make check-newlib` |
+| `ci-check-threads` | `/ci linux-arm make THREADS=amigaos check-gcc-amigaos check-libpthread check-newlib` |
 
 ## Dispatch
 
