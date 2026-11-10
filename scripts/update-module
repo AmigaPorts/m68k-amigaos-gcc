@@ -37,6 +37,13 @@ update() {
 
 	pull && return 0
 
+	# The pull's fetch may have pruned the upstream, whose branch is gone
+	# from the remote, as a merged pull request's is: leave it alone too.
+	if ! git rev-parse -q --verify '@{u}' >/dev/null; then
+		echo "warning: not updated: $(git symbolic-ref --short HEAD)'s upstream is gone"
+		return 0
+	fi
+
 	# A shallow clone may lack the merge base of a fast-forward, for example
 	# when the branch merged history older than the clone.  Only then does
 	# more history help: a branch with local commits has a merge base.
