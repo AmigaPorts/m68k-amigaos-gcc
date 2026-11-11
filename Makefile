@@ -2100,12 +2100,15 @@ check-gcc-amigaos: $(MIN_IF_MISSING) $(BOARD_PREREQ)
 # libnix sources with the installed cross compiler and run under volamos
 # with its memory sanitizer and a dirty heap, as the volamos board.  The objects
 # are left in projects/libnix/test and rebuilt on every run (-B), since they do
-# not depend on the compiler.
+# not depend on the compiler.  The tests run with their build directory as the
+# current one, where they may create files and popen starts itself: volamos's
+# own default, SYS:, is shared by all its runs.
 .PHONY: check-libnix
 check-libnix: $(MIN_IF_MISSING) $(PREFIX)/bin/volamos
 	set -o pipefail; $(MAKE) --no-print-directory -B -C $(PROJECTS)/libnix/test check-target \
 	  CROSS_CC=$(PREFIX)/bin/$(TARGET)-gcc SIM=$(PREFIX)/bin/volamos \
-	  SIMFLAGS="--stack 4K --sanitize --dirty-heap" 2>&1 | tee $@.summary.txt
+	  SIMFLAGS="--stack 4K --sanitize --dirty-heap -V TESTS:$(PROJECTS)/libnix/test/build --cwd TESTS:" \
+	  2>&1 | tee $@.summary.txt
 
 # Build libpthread's regression programs for each multilib, check what they
 # link, and run under volamos the ones that pass there.
