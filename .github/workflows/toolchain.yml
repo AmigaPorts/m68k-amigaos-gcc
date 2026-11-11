@@ -364,10 +364,17 @@ jobs:
         run: .github/scripts/toolchain-cache.sh prepare "${{ steps.tc.outputs.build }}" "$PREFIX" download projects/NDK* projects/gmp-* projects/mpc-* projects/mpfr-*
 
       # the restored stamps hide changes from MIN_IF_MISSING, so build min
-      # explicitly: nothing on an exact hit, the changed modules otherwise
+      # explicitly: nothing on an exact hit, the changed modules otherwise.
+      # With the make arguments' variables, as the targets below: a THREADS
+      # there configures gcc, which this builds and the cache keeps.
       - name: make min
         if: steps.tc.outputs.prefix
-        run: make -j $NPROC min
+        run: |
+          vars=()
+          while IFS= read -r w; do
+            case $w in *=*) vars+=("$w") ;; esac
+          done < <(python3 -c 'import shlex, sys; [print(w) for w in shlex.split(sys.argv[1])]' "$MAKE_ARGS")
+          make -j $NPROC min ${vars[@]+"${vars[@]}"}
 
       - name: Save the toolchain
         if: steps.tc.outputs.prefix && steps.tc-restore.outputs.cache-hit != 'true'
