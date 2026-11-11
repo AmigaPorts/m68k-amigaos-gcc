@@ -1580,6 +1580,7 @@ $(BUILD)/ndk-include_ndk13: $(BUILD)/ndk-include_ndk $(NDK_FD2SFD_PREREQ) $(BUIL
 	@for i in $(PREFIX)/$(TARGET)/ndk/lib/fd13/*; do $(FD2SFD_FOR_BUILD) $$i $(PREFIX)/$(TARGET)/ndk13-include/clib/$$(basename $$i _lib.fd)_protos.h > $(PREFIX)/$(TARGET)/ndk/lib/sfd13/$$(basename $$i .fd).sfd; done
 	$(L0)"macros+protos ndk13"$(L1) for i in $(PREFIX)/$(TARGET)/ndk/lib/sfd13/*; do \
 	  $(SFDC_FOR_BUILD) --target=m68k-gcc-amigaos --mode=macros --output=$(PREFIX)/$(TARGET)/ndk13-include/inline/$$(basename $$i _lib.sfd).h $$i; \
+	  $(SFDC_FOR_BUILD) --target=m68kvbcc-amigaos --mode=macros --output=$(PREFIX)/$(TARGET)/ndk13-include/inline/$$(basename $$i _lib.sfd)_protos.h $$i; \
 	  $(SFDC_FOR_BUILD) --target=m68k-amigaos --mode=proto --output=$(PREFIX)/$(TARGET)/ndk13-include/proto/$$(basename $$i _lib.sfd).h $$i; \
 	done $(L2)
 	$(L0)"STDARGing ndk13"$(L1) for i in $$(find $(PREFIX)/$(TARGET)/ndk13-include/clib/*protos.h -type f); do \
