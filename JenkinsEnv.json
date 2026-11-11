@@ -2,23 +2,6 @@
     "builds": [
         {
             "DockerRoot": "amigadev",
-            "DockerImage": "m68k-amigaos",
-            "DockerTag": "latest",
-            "Dockerfile": "Dockerfile",
-            "Platforms": [
-                "amd64",
-                "arm64"
-            ],
-            "BuildIfSuccessful": [
-                "AmigaDev/docker-amiga-gcc"
-            ],
-            "BuildParam": "m68k-amigaos",
-            "PathPrefix": "m68k-amigaos",
-            "BinutilsBranch": "amiga-2.46",
-            "GCCBranch": "amiga6"
-        },
-        {
-            "DockerRoot": "amigadev",
             "DockerImage": "m68k-amigaos-gcc10",
             "DockerTag": "latest",
             "Dockerfile": "Dockerfile",
