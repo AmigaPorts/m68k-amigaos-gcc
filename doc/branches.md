@@ -10,8 +10,8 @@ gcc:
 * `amiga6`: the legacy GCC 6.5.0b, on feature freeze
 
 binutils:
-* `amiga-2.46`: binutils 2.46 with AmigaOS support and DWARF2 debugging (default)
-* `amiga-2.47`: the next release, with no known regressions
+* `amiga-2.47`: binutils 2.47 with AmigaOS support and DWARF2 debugging (default)
+* `amiga-2.46`: binutils 2.46, the previous default
 
 ## Switching modules
 

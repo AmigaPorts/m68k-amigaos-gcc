@@ -38,7 +38,7 @@ is a separate job, and they all run in parallel. For example:
 /ci macos
 /ci linux-arm make check-c board=volamos/-mcrt=newlib
 /ci linux-arm make all all-sdk libpng check-c++
-/ci linux binutils=amiga-2.47 make check-c
+/ci linux binutils=amiga-2.46 make check-c
 ```
 
 A `<module>=<branch>` word builds that module, named as in `default-repos`,
