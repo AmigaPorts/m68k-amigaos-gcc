@@ -2,7 +2,7 @@ FROM amigadev/docker-base:latest
 WORKDIR /root/amiga-gcc
 COPY ./ ./
 ARG PATHPREFIX="m68k-amigaos"
-ARG BINUTILS_BRANCH="amiga-2.46"
+ARG BINUTILS_BRANCH="amiga-2.47"
 ARG GCC_BRANCH="amiga16.2"
 # a release tag such as v16.2-rc21: every module is built at the tag release-tag made in it, and the branches are ignored
 ARG RELEASE_TAG=""

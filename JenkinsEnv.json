@@ -31,7 +31,7 @@
             ],
             "BuildParam": "m68k-amigaos-gcc10",
             "PathPrefix": "m68k-amigaos",
-            "BinutilsBranch": "amiga-2.46",
+            "BinutilsBranch": "amiga-2.47",
             "GCCBranch": "amiga16.2"
         }
     ]

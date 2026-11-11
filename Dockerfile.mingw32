@@ -20,7 +20,7 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
 COPY ./ ./
 
 ARG PATHPREFIX="m68k-amigaos"
-ARG BINUTILS_BRANCH="amiga-2.46"
+ARG BINUTILS_BRANCH="amiga-2.47"
 ARG GCC_BRANCH="amiga16.2"
 
 ENV PATH="/opt/build-binutils:${PATH}" \
