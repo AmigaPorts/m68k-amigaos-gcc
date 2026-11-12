@@ -1546,13 +1546,12 @@ $(BUILD)/ndk-include_proto: $(PROJECTS)/$(NDK_FOLDER_NAME)/_unpacked
 	@mkdir -p $(BUILD)/ndk-include/
 	@echo "done" >$@
 
-$(PROJECTS)/$(NDK_FOLDER_NAME)/_unpacked: $(DOWNLOAD)/$(NDK_ARC_NAME).lha $(shell find 2>/dev/null patches/$(NDK_FOLDER_NAME)/ -type f) | $(LHA_PREREQ)
+$(PROJECTS)/$(NDK_FOLDER_NAME)/_unpacked: $(DOWNLOAD)/$(NDK_ARC_NAME).lha $(shell find 2>/dev/null patches/$(NDK_FOLDER_NAME)/ -type f) scripts/sdk-patch | $(LHA_PREREQ)
 	$(L0)"unpack ndk"$(L1) mkdir -p $(PROJECTS)/NDK3.2 && cd $(PROJECTS)/NDK3.2 && \
 	   $(LHA_FOR_BUILD) xf $(DOWNLOAD)/$(NDK_ARC_NAME).lha $(L2)
-	$(L0)"patch ndk"$(L1) for i in $$(find patches/$(NDK_FOLDER_NAME)/ -type f); do \
-	   if [[ "$$i" == *.diff ]] ; \
-		then j=$${i:8}; patch -N "$(PROJECTS)/$${j%.diff}" "$$i"; \
-		else cp -pv "$$i" "$(PROJECTS)/$${i:8}"; fi ; done $(L2)
+	$(L0)"patch ndk"$(L1) scripts/sdk-patch $(PROJECTS)/$(NDK_FOLDER_NAME) \
+	   $(shell find 2>/dev/null patches/$(NDK_FOLDER_NAME)/ -name '*.diff') && \
+	   rsync -a --no-group --exclude='*.diff' patches/$(NDK_FOLDER_NAME)/ $(PROJECTS)/$(NDK_FOLDER_NAME)/ $(L2)
 	@echo "done" >$@
 
 

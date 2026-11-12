@@ -1,5 +1,5 @@
---- projects/NDK3.2/SFD/locale_lib.sfd	2020-09-12 05:55:08.000000000 +0200
-+++ projects/NDK3.2/SFD/locale_lib.sfd	2021-08-10 22:18:56.850176474 +0200
+--- a/SFD/locale_lib.sfd	2020-09-12 05:55:08.000000000 +0200
++++ b/SFD/locale_lib.sfd	2021-08-10 22:18:56.850176474 +0200
 @@ -1,5 +1,6 @@
  ==id $VER: locale_lib.sfd 47.1 (30.11.2021)
  * "locale.library"
