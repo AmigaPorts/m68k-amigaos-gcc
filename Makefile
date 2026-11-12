@@ -7,9 +7,8 @@
 # =================================================
 include disable_implicite_rules.mk
 
-# Keep variable-only invocations such as `make sdk=ahi` working even when
-# helper targets are declared before the dispatcher below.
-.DEFAULT_GOAL := x
+# A bare `make` prints the help, though other rules come before it
+.DEFAULT_GOAL := help
 
 # =================================================
 # variables
@@ -62,6 +61,7 @@ endif
 
 # Goals that touch nothing under PREFIX, so they run without one
 NO_PREFIX_GOALS := clean% drop-prefix help info print-% update% branch release-tag v
+GOALS := $(or $(MAKECMDGOALS),$(.DEFAULT_GOAL))
 
 # PREFIX has no default: the first build names it, the build tree records
 # it (written on the first build, checked below) and a make without PREFIX
@@ -71,11 +71,11 @@ ifeq ($(origin PREFIX),undefined)
   ifneq ($(wildcard $(PREFIX_STAMP)),)
     PREFIX := $(shell cat $(PREFIX_STAMP))
     # only for goals that use it: quiet for print-%, whose output scripts read
-    ifneq ($(if $(MAKECMDGOALS),$(filter-out $(NO_PREFIX_GOALS),$(MAKECMDGOALS)),all),)
+    ifneq ($(filter-out $(NO_PREFIX_GOALS),$(GOALS)),)
       $(info PREFIX=$(PREFIX), from $(PREFIX_STAMP))
     endif
   else
-    ifneq ($(filter-out $(NO_PREFIX_GOALS),$(MAKECMDGOALS)),)
+    ifneq ($(filter-out $(NO_PREFIX_GOALS),$(GOALS)),)
       $(error PREFIX is not set: pass PREFIX=<install directory> once, the build tree remembers it)
     endif
   endif
@@ -172,8 +172,6 @@ TARGET_RANLIB_FOR_BUILD := $(TARGET_RUNNER_WRAPPER_DIR)/$(TARGET)-ranlib
 TARGET_CXX_FOR_BUILD := $(TARGET_RUNNER_WRAPPER_DIR)/$(TARGET)-c++
 export PATH := $(TARGET_RUNNER_WRAPPER_DIR):$(PATH)
 endif
-SDK_CC_FOR_BUILD := $(TARGET_CC_FOR_BUILD)
-SDK_AR_FOR_BUILD := $(TARGET_AR_FOR_BUILD)
 ifneq (,$(strip $(TARGET_EXEC_PREFIX_FOR_BUILD)))
 TARGET_EXEC_WRAPPER_DIR := $(BUILD_TOOLS)/target-exec
 TARGET_EXEC_TOOL_NAMES := ar as ld ld.bfd nm objcopy objdump ranlib strip
@@ -290,7 +288,7 @@ MAKEOVERRIDES += MAKEINFO=$(MAKEINFO)
 
 # binutils, gcc and newlib record the prefix in their configured build
 # trees: building the same tree for another PREFIX installs into both
-ifeq ($(filter $(NO_PREFIX_GOALS),$(MAKECMDGOALS)),)
+ifeq ($(filter $(NO_PREFIX_GOALS),$(GOALS)),)
 ifneq ($(wildcard $(PREFIX_STAMP)),)
 ifneq ($(shell cat $(PREFIX_STAMP)),$(abspath $(PREFIX)))
 $(error $(BUILD) was configured for PREFIX=$(shell cat $(PREFIX_STAMP)); use that PREFIX, another BUILD, or make clean)
@@ -432,7 +430,7 @@ ifneq ($(NEWLIB_H),)
   NEWLIB_LOCKS := $(if $(shell grep -l '_RETARGETABLE_LOCKING 1' $(NEWLIB_H)),yes)
 endif
 
-ifeq ($(filter $(NO_PREFIX_GOALS),$(MAKECMDGOALS)),)
+ifeq ($(filter $(NO_PREFIX_GOALS),$(GOALS)),)
   ifeq ($(GCC_HAS_THREADS),)
     ifneq ($(THREADS),no)
       $(error THREADS=$(THREADS) needs gcc 16.2 or later; gcc $(GCC_VERSION) builds with THREADS=no)
@@ -474,9 +472,7 @@ MPFRFILE := $(mpfr_ARCHIVE)
 # =================================================
 TEEEE := >&
 
-ifeq ($(sdk),)
 __LINIT := $(shell rm .state 2>/dev/null)
-endif
 
 $(eval has_flock = $(shell which flock 2>/dev/null))
 ifeq ($(has_flock),)
@@ -509,16 +505,6 @@ endif
 .SILENT:
 
 # =================================================
-
-.PHONY: x init
-x:
-	@if [ "$(sdk)" == "" ]; then \
-		$(MAKE) --no-print-directory help; \
-	else \
-		$(MAKE) --no-print-directory sdk; \
-	fi
-
-# =================================================
 # help
 # =================================================
 .PHONY: help
@@ -536,7 +522,7 @@ help:
 	@echo "make volamos             install the volamos simulator used by the testsuite"
 	@echo "make update              perform git pull for all targets"
 	@echo "make update-<target>     perform git pull for the given target"
-	@echo "make sdk=<sdk>           install the sdk <sdk>"
+	@echo "make sdk-<sdk>           install the sdk <sdk> (sdk/<sdk>.sdk)"
 	@echo "make all-sdk             install all sdks"
 	@echo "make b                   print each module's remote, commit and branch or tag"
 	@echo "make v [ref=<ref>|date=<date>]  checkout all modules at a tag, branch or commit, or as of a date; or at their branches"
@@ -1882,17 +1868,14 @@ $(BUILD)/ixemul/_done: $(DOWNLOAD)/$(ixemul-sdk_ARCHIVE) $(IXEMUL_HEADERS) scrip
 # =================================================
 # sdk installation
 # =================================================
-.PHONY: sdk all-sdk
-sdk: libnix | $(LHA_PREREQ)
-	$(L0)"sdk $(sdk)"$(L1) TOOL_RUNNER="$(HOST_RUNNER)" HOST_EXEEXT="$(EXEEXT)" CC_FOR_SDK="$(SDK_CC_FOR_BUILD)" AR_FOR_SDK="$(SDK_AR_FOR_BUILD)" FD2SFD_FOR_BUILD="$(FD2SFD_FOR_BUILD)" SFDC_FOR_BUILD="$(SFDC_FOR_BUILD)" LHA_FOR_BUILD="$(LHA_FOR_BUILD)" $(PWD)/scripts/sdk-install $(sdk) $(PREFIX) $(L2)
-
-SDKS0=$(shell find sdk/*.sdk)
-SDKS=$(patsubst sdk/%.sdk,%,$(SDKS0))
-.PHONY: $(SDKS)
+# sdk-<name> installs sdk/<name>.sdk
+SDKS := $(patsubst sdk/%.sdk,sdk-%,$(wildcard sdk/*.sdk))
+.PHONY: all-sdk $(SDKS)
 all-sdk: $(SDKS)
 
-$(SDKS): libnix | $(LHA_PREREQ)
-	@$(MAKE) --no-print-directory sdk sdk=$@
+# a static pattern rule: make skips the implicit rule search for phony targets
+$(SDKS): sdk-%: sdk/%.sdk libnix | $(LHA_PREREQ)
+	$(L0)"sdk $*"$(L1) HOST_RUNNER="$(HOST_RUNNER)" EXEEXT="$(EXEEXT)" TARGET_CC_FOR_BUILD="$(TARGET_CC_FOR_BUILD)" TARGET_AR_FOR_BUILD="$(TARGET_AR_FOR_BUILD)" FD2SFD_FOR_BUILD="$(FD2SFD_FOR_BUILD)" SFDC_FOR_BUILD="$(SFDC_FOR_BUILD)" LHA_FOR_BUILD="$(LHA_FOR_BUILD)" $(PWD)/scripts/sdk-install $* $(PREFIX) $(L2)
 
 # =================================================
 # tag a release
