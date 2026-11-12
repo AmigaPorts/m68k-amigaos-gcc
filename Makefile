@@ -1885,7 +1885,7 @@ $(BUILD)/ixemul/_done: $(DOWNLOAD)/$(ixemul-sdk_ARCHIVE) $(IXEMUL_HEADERS) scrip
 # =================================================
 .PHONY: sdk all-sdk
 sdk: libnix | $(LHA_PREREQ)
-	$(L0)"sdk $(sdk)"$(L1) TOOL_RUNNER="$(HOST_RUNNER)" HOST_EXEEXT="$(EXEEXT)" CC_FOR_SDK="$(SDK_CC_FOR_BUILD)" AR_FOR_SDK="$(SDK_AR_FOR_BUILD)" FD2SFD_FOR_BUILD="$(FD2SFD_FOR_BUILD)" SFDC_FOR_BUILD="$(SFDC_FOR_BUILD)" LHA_FOR_BUILD="$(LHA_FOR_BUILD)" $(PWD)/scripts/sdk-install install $(sdk) $(PREFIX) $(L2)
+	$(L0)"sdk $(sdk)"$(L1) TOOL_RUNNER="$(HOST_RUNNER)" HOST_EXEEXT="$(EXEEXT)" CC_FOR_SDK="$(SDK_CC_FOR_BUILD)" AR_FOR_SDK="$(SDK_AR_FOR_BUILD)" FD2SFD_FOR_BUILD="$(FD2SFD_FOR_BUILD)" SFDC_FOR_BUILD="$(SFDC_FOR_BUILD)" LHA_FOR_BUILD="$(LHA_FOR_BUILD)" $(PWD)/scripts/sdk-install $(sdk) $(PREFIX) $(L2)
 
 SDKS0=$(shell find sdk/*.sdk)
 SDKS=$(patsubst sdk/%.sdk,%,$(SDKS0))
