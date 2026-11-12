@@ -1,0 +1,32 @@
+--- old/sys/time.h
++++ new/sys/time.h
+@@ -44,14 +44,24 @@
+  * Structure returned by gettimeofday(2) system call,
+  * and used in other calls.
+  */
+-#ifndef DEVICES_TIMER_H
++#if !defined(DEVICES_TIMER_H) && !defined(_TIMEVAL_DEFINED)
+ /* Use whatever was included first, standard or Amiga (devices/timer.h)
+- * includes (jch). */
++ * includes (jch).  As in NDK 3.2's <devices/timer.h>, which skips its own
++ * definition under _TIMEVAL_DEFINED, the Amiga names are there too, and
++ * the POSIX ones are signed. */
++#define _TIMEVAL_DEFINED
+ struct timeval {
+-	long	tv_sec;		/* seconds */
+-	long	tv_usec;	/* and microseconds */
++	union {
++		long	tv_sec;		/* seconds */
++		unsigned long tv_secs;
++	};
++	union {
++		long	tv_usec;	/* and microseconds */
++		unsigned long tv_micro;
++	};
+ };
+-#else
++#elif !defined(_TIMEVAL_DEFINED)
++/* An older <devices/timer.h> came first, with the Amiga names only. */
+ #define tv_sec  tv_secs
+ #define tv_usec tv_micro
+ #endif
