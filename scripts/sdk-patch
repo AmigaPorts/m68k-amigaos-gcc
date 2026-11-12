@@ -1,0 +1,32 @@
+#!/bin/bash
+# Apply patches to an unpacked tree, each at most once.
+#
+# Each patch is -p1, relative to <dir>.  One that is already applied is
+# skipped, so a rerun on the same tree is harmless; one that applies neither
+# way stops with patch's own report.
+
+if [ $# -lt 2 ]; then
+	echo "usage: $0 <dir> <patch>..." >&2
+	exit 2
+fi
+
+dir=$1
+shift
+for patch in "$@"; do
+	# absolute: patch chdirs to the -d directory before opening -i
+	case $patch in
+	/*) ;;
+	*) patch=$PWD/$patch ;;
+	esac
+	if patch --forward --dry-run --batch -d "$dir" -p1 -i "$patch" >/dev/null 2>&1; then
+		echo "applying patch $patch to $dir"
+		# no .orig from a fuzzy hunk: the trees are installed as they are
+		patch --forward --batch --no-backup-if-mismatch -d "$dir" -p1 -i "$patch" || exit 1
+	elif patch --reverse --dry-run --batch -d "$dir" -p1 -i "$patch" >/dev/null 2>&1; then
+		echo "patch $patch already applied to $dir"
+	else
+		echo "failed to apply patch $patch to $dir" >&2
+		patch --forward --dry-run --batch -d "$dir" -p1 -i "$patch" >&2
+		exit 1
+	fi
+done

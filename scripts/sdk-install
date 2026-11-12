@@ -234,18 +234,7 @@ case $1 in
 				patch -N -p0 -r - -d "build/$2" < "$patch"
 			;;
 			patch1)
-				# absolute path: patch chdirs to the -d directory before opening -i
-				patch=$PWD/${a[1]}
-				if patch --forward --dry-run --batch -d "build/$2" -p1 -i "$patch" >/dev/null 2>&1; then
-					echo "applying patch $patch to build/$2"
-					patch --forward --batch -d "build/$2" -p1 -i "$patch" || exit 1
-				elif patch --reverse --dry-run --batch -d "build/$2" -p1 -i "$patch" >/dev/null 2>&1; then
-					echo "patch $patch already applied to build/$2"
-				else
-					echo "failed to apply patch $patch to build/$2"
-					patch --forward --dry-run --batch -d "build/$2" -p1 -i "$patch"
-					exit 1
-				fi
+				scripts/sdk-patch "build/$2" "${a[1]}" || exit 1
 			;;
 			copy)
 				source_file=${a[1]}
