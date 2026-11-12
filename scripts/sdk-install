@@ -1,6 +1,17 @@
 #!/bin/bash
-# Install an SDK described by sdk/<sdk>.sdk into <prefix>, for make all-sdk.
+# Install an SDK described by sdk/<sdk>.sdk into <prefix>, for make sdk-<sdk>.
 # scripts/sdk-clean removes what it unpacked.
+#
+# The tools come from the environment, under the names the Makefile gives
+# them; those left unset default to the ones installed in <prefix>:
+#   LHA_FOR_BUILD        lha, to unpack the archives (required)
+#   SFDC_FOR_BUILD       sfdc
+#   FD2SFD_FOR_BUILD     fd2sfd
+#   TARGET_CC_FOR_BUILD  the target compiler, for the stub libraries
+#   TARGET_AR_FOR_BUILD  the target ar
+#   EXEEXT               the executable suffix of <prefix>'s tools (.exe)
+#   HOST_RUNNER          the command that runs <prefix>'s compiler and ar
+#                        when they are built for another host, e.g. wine
 
 if [ $# -ne 2 ]; then
 	echo "usage: $0 <sdk> <prefix>" >&2
@@ -11,42 +22,41 @@ prefix=$2
 
 export PATH=$PATH:$prefix/bin
 sdk_descriptor="sdk/$sdk.sdk"
-sdk_prefix=$prefix
 
 run_host_tool()
 {
-	local -a sdk_tool_runner=()
-	if [ -n "$TOOL_RUNNER" ]; then
-		read -r -a sdk_tool_runner <<< "$TOOL_RUNNER"
+	local -a runner=()
+	if [ -n "$HOST_RUNNER" ]; then
+		read -r -a runner <<< "$HOST_RUNNER"
 	fi
-	"${sdk_tool_runner[@]}" "$@"
+	"${runner[@]}" "$@"
 }
 
 run_sfdc()
 {
-	"${SFDC_FOR_BUILD:-$sdk_prefix/bin/sfdc}" "$@"
+	"${SFDC_FOR_BUILD:-$prefix/bin/sfdc}" "$@"
 }
 
 run_fd2sfd()
 {
-	"${FD2SFD_FOR_BUILD:-$sdk_prefix/bin/fd2sfd${HOST_EXEEXT}}" "$@"
+	"${FD2SFD_FOR_BUILD:-$prefix/bin/fd2sfd${EXEEXT}}" "$@"
 }
 
 run_target_cc()
 {
-	if [ -n "$CC_FOR_SDK" ]; then
-		"$CC_FOR_SDK" "$@"
+	if [ -n "$TARGET_CC_FOR_BUILD" ]; then
+		"$TARGET_CC_FOR_BUILD" "$@"
 	else
-		run_host_tool "$sdk_prefix/bin/m68k-amigaos-gcc${HOST_EXEEXT}" "$@"
+		run_host_tool "$prefix/bin/m68k-amigaos-gcc${EXEEXT}" "$@"
 	fi
 }
 
 run_target_ar()
 {
-	if [ -n "$AR_FOR_SDK" ]; then
-		"$AR_FOR_SDK" "$@"
+	if [ -n "$TARGET_AR_FOR_BUILD" ]; then
+		"$TARGET_AR_FOR_BUILD" "$@"
 	else
-		run_host_tool "$sdk_prefix/bin/m68k-amigaos-ar${HOST_EXEEXT}" "$@"
+		run_host_tool "$prefix/bin/m68k-amigaos-ar${EXEEXT}" "$@"
 	fi
 }
 
