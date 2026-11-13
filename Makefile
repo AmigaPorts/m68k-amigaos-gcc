@@ -1602,6 +1602,8 @@ LIBAMIGA := $(PREFIX)/$(TARGET)/lib/libamiga.a
 LIBBAMIGA := $(PREFIX)/$(TARGET)/lib/libb/libamiga.a
 LIBAMIGA_SRC = $(shell find 2>/dev/null $(PROJECTS)/libnix/sources/amiga -type f)
 LIBAMIGA_CFLAGS := -Os -fomit-frame-pointer -fno-builtin -I$(PROJECTS)/libnix/sources/headers
+# The compiler this build installs, when no other is set.
+LIBAMIGA_CC = $(or $(strip $(TARGET_CC_FOR_BUILD)),$(PREFIX)/bin/$(TARGET)-gcc)
 
 .PHONY: libamiga
 libamiga: $(LIBAMIGA) $(LIBBAMIGA)
@@ -1623,7 +1625,7 @@ $(LIBAMIGA) $(LIBBAMIGA): $(BUILD)/libamiga/_stubs $(BUILD)/newlib/_done $(BUILD
 	@rm -rf $(BUILD)/libamiga/$(LIBAMIGA_KIND) && mkdir -p $(BUILD)/libamiga/$(LIBAMIGA_KIND) $(@D)
 	$(L0)"make libamiga $(LIBAMIGA_KIND)"$(L1) cd $(BUILD)/libamiga/$(LIBAMIGA_KIND) && \
 	  printf '%s\n' ../stubs/*.S $$(ls $(PROJECTS)/libnix/sources/amiga/misc/*.c | grep -v /DoPktn.c) | \
-	  xargs -n 64 $(TARGET_CC_FOR_BUILD) $(LIBAMIGA_CFLAGS) $(LIBAMIGA_FLAGS) -c && \
+	  xargs -n 64 $(LIBAMIGA_CC) $(LIBAMIGA_CFLAGS) $(LIBAMIGA_FLAGS) -c && \
 	  printf '%s\n' *.o | xargs -n 256 $(TARGET_AR_FOR_BUILD) rcs libamiga.a $(L2)
 	@install -m 644 $(BUILD)/libamiga/$(LIBAMIGA_KIND)/libamiga.a $@
 
