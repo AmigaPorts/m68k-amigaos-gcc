@@ -574,7 +574,7 @@ build-target-tools: $(TARGET_BUILD_TOOLS_PREREQ)
 # clean
 # =================================================
 .PHONY: clean
-clean: clean-gcc clean-binutils clean-fd2sfd clean-lha clean-fd2pragma clean-ira clean-sfdc clean-vasm clean-vbcc clean-vlink clean-libnix clean-ixemul clean-clib2 clean-libdebug clean-libpthread clean-newlib clean-ndk clean-gmp clean-mpc clean-mpfr
+clean: clean-gcc clean-binutils clean-fd2sfd clean-lha clean-fd2pragma clean-ira clean-sfdc clean-vasm clean-vbcc clean-vlink clean-libamiga clean-libnix clean-ixemul clean-clib2 clean-libdebug clean-libpthread clean-newlib clean-ndk clean-gmp clean-mpc clean-mpfr
 	rm -rf $(BUILD)
 	rm -rf *.log
 	mkdir -p $(BUILD)
@@ -643,6 +643,10 @@ clean-vlink:
 .PHONY: clean-ndk
 clean-ndk:
 	rm -rf $(BUILD)/ndk*
+
+.PHONY: clean-libamiga
+clean-libamiga:
+	rm -rf $(BUILD)/libamiga
 
 .PHONY: clean-libnix
 clean-libnix:
@@ -1591,20 +1595,40 @@ $(PROJECTS)/amiga-netinclude/README.md:
 # =================================================
 # libamiga
 # =================================================
+# amiga.lib as hunk objects, plain and base-relative: scripts/sfd-stubs
+# writes a stub for every public function in the NDK's SFD files, and the
+# support routines (CreatePort, DoMethod, HookEntry, ...) are libnix's.
 LIBAMIGA := $(PREFIX)/$(TARGET)/lib/libamiga.a
 LIBBAMIGA := $(PREFIX)/$(TARGET)/lib/libb/libamiga.a
+LIBAMIGA_SRC = $(shell find 2>/dev/null $(PROJECTS)/libnix/sources/amiga -type f)
+LIBAMIGA_CFLAGS := -Os -fomit-frame-pointer -fno-builtin -I$(PROJECTS)/libnix/sources/headers
+# The compiler this build installs, when no other is set.
+LIBAMIGA_CC = $(or $(strip $(TARGET_CC_FOR_BUILD)),$(PREFIX)/bin/$(TARGET)-gcc)
 
+.PHONY: libamiga
 libamiga: $(LIBAMIGA) $(LIBBAMIGA)
-	@echo "built $(LIBAMIGA) and $(LIBBAMIGA)"
+	echo "built $(LIBAMIGA) and $(LIBBAMIGA)"
 
-$(LIBAMIGA):
-	@mkdir -p $(@D)
-	#@cp $(PROJECTS)/$(NDK_FOLDER_NAME_LIBS)/amiga.lib $@
-	@install -m 644 lib/libamiga.a $@
+# The SFD files include patches/NDK3.2/SFD/dtclass_lib.sfd: the NDK only has
+# an FD file for ObtainEngine().
+$(BUILD)/libamiga/_stubs: scripts/sfd-stubs $(NDK_INCLUDE_SFD) $(PROJECTS)/$(NDK_FOLDER_NAME)/_unpacked
+	rm -rf $(BUILD)/libamiga/stubs && mkdir -p $(BUILD)/libamiga/stubs
+	$(L0)"make libamiga stubs"$(L1) scripts/sfd-stubs $(BUILD)/libamiga/stubs $(PROJECTS)/$(NDK_FOLDER_NAME_SFD)/*_lib.sfd $(L2)
+	echo "done" >$@
 
-$(LIBBAMIGA):
-	@mkdir -p $(@D)
-	@install -m 644 lib/libb/libamiga.a $@
+$(LIBAMIGA): LIBAMIGA_KIND := lib
+$(LIBBAMIGA): LIBAMIGA_KIND := libb
+$(LIBBAMIGA): LIBAMIGA_FLAGS := -fbaserel
+
+# DoPktn.c is left out: dos_lib.sfd has DoPkt0() to DoPkt4() as aliases.
+# xargs keeps the command lines short enough for every build host.
+$(LIBAMIGA) $(LIBBAMIGA): $(BUILD)/libamiga/_stubs $(BUILD)/newlib/_done $(BUILD)/ndk-include_ndk $(BUILD)/binutils/_done $(BUILD)/gcc/_done $(PROJECTS)/libnix/Makefile.m68k-amigaos $(LIBAMIGA_SRC)
+	rm -rf $(BUILD)/libamiga/$(LIBAMIGA_KIND) && mkdir -p $(BUILD)/libamiga/$(LIBAMIGA_KIND) $(@D)
+	$(L0)"make libamiga $(LIBAMIGA_KIND)"$(L1) cd $(BUILD)/libamiga/$(LIBAMIGA_KIND) && \
+	  printf '%s\n' ../stubs/*.S $$(ls $(PROJECTS)/libnix/sources/amiga/misc/*.c | grep -v /DoPktn.c) | \
+	  xargs -n 64 $(LIBAMIGA_CC) $(LIBAMIGA_CFLAGS) $(LIBAMIGA_FLAGS) -c && \
+	  printf '%s\n' *.o | xargs -n 256 $(TARGET_AR_FOR_BUILD) rcs libamiga.a $(L2)
+	install -m 644 $(BUILD)/libamiga/$(LIBAMIGA_KIND)/libamiga.a $@
 
 # =================================================
 # libnix
@@ -1620,7 +1644,7 @@ LIBNIX_SRC = $(shell find 2>/dev/null $(PROJECTS)/libnix -not \( -path $(PROJECT
 .PHONY: libnix
 libnix: $(BUILD)/libnix/_done
 
-$(BUILD)/libnix/_done: $(BUILD)/newlib/_done $(BUILD)/ndk-include_ndk $(BUILD)/ndk-include_ndk13 $(BUILD)/_netinclude $(BUILD)/binutils/_done $(BUILD)/gcc/_done $(PROJECTS)/libnix/Makefile.m68k-amigaos $(LIBAMIGA) $(LIBNIX_SRC)
+$(BUILD)/libnix/_done: $(BUILD)/newlib/_done $(BUILD)/ndk-include_ndk $(BUILD)/ndk-include_ndk13 $(BUILD)/_netinclude $(BUILD)/binutils/_done $(BUILD)/gcc/_done $(PROJECTS)/libnix/Makefile.m68k-amigaos $(LIBAMIGA) $(LIBBAMIGA) $(LIBNIX_SRC)
 	@mkdir -p $(PREFIX)/$(TARGET)/libnix/lib/libnix
 	@mkdir -p $(BUILD)/libnix
 	@mkdir -p $(PREFIX)/lib/gcc/$(TARGET)/$(GCC_DIR_VERSION)
