@@ -1615,18 +1615,22 @@ $(LIBBAMIGA):
 # The AmigaOS-hosted gcc and binutils pass POSIX paths around and DON'T WORK WITHOUT IT.
 LIBNIX_CFLAGS = -DIXPATHS
 
-LIBNIX_SRC = $(shell find 2>/dev/null $(PROJECTS)/libnix -not \( -path $(PROJECTS)/libnix/.git -prune \) -not \( -path $(PROJECTS)/libnix/sources/stubs/libbases -prune \) -not \( -path $(PROJECTS)/libnix/sources/stubs/libnames -prune \) -type f)
+LIBNIX_SRC = $(shell find 2>/dev/null $(PROJECTS)/libnix -not \( -path $(PROJECTS)/libnix/.git -prune \) -type f)
+
+# libnix's Makefile has sfdc write the library bases of libstubs.a from the
+# NDK's SFD files.
+LIBNIX_SFDC = SFDC=$(SFDC_FOR_BUILD) SFD_DIR=$(PROJECTS)/$(NDK_FOLDER_NAME_SFD)
 
 .PHONY: libnix
 libnix: $(BUILD)/libnix/_done
 
-$(BUILD)/libnix/_done: $(BUILD)/newlib/_done $(BUILD)/ndk-include_ndk $(BUILD)/ndk-include_ndk13 $(BUILD)/_netinclude $(BUILD)/binutils/_done $(BUILD)/gcc/_done $(PROJECTS)/libnix/Makefile.m68k-amigaos $(LIBAMIGA) $(LIBNIX_SRC)
+$(BUILD)/libnix/_done: $(BUILD)/newlib/_done $(BUILD)/ndk-include_ndk $(BUILD)/ndk-include_ndk13 $(BUILD)/_netinclude $(BUILD)/binutils/_done $(BUILD)/gcc/_done $(BUILD)/sfdc/_done $(NDK_INCLUDE_SFD) $(PROJECTS)/libnix/Makefile.m68k-amigaos $(LIBAMIGA) $(LIBNIX_SRC)
 	@mkdir -p $(PREFIX)/$(TARGET)/libnix/lib/libnix
 	@mkdir -p $(BUILD)/libnix
 	@mkdir -p $(PREFIX)/lib/gcc/$(TARGET)/$(GCC_DIR_VERSION)
 	@if [ ! -e $(PREFIX)/lib/gcc/$(TARGET)/$(GCC_DIR_VERSION)/libgcc.a ]; then $(TARGET_AR_FOR_BUILD) rcs $(PREFIX)/lib/gcc/$(TARGET)/$(GCC_DIR_VERSION)/libgcc.a; fi
-	$(L0)"make libnix"$(L1) CFLAGS="$(CFLAGS_FOR_TARGET) $(LIBNIX_CFLAGS)" $(MAKE) -C $(BUILD)/libnix -f $(PROJECTS)/libnix/Makefile.m68k-amigaos root=$(PROJECTS)/libnix all $(L2)
-	$(L0)"install libnix"$(L1) $(MAKE) -C $(BUILD)/libnix -f $(PROJECTS)/libnix/Makefile.m68k-amigaos root=$(PROJECTS)/libnix install $(L2)
+	$(L0)"make libnix"$(L1) CFLAGS="$(CFLAGS_FOR_TARGET) $(LIBNIX_CFLAGS)" $(MAKE) -C $(BUILD)/libnix -f $(PROJECTS)/libnix/Makefile.m68k-amigaos root=$(PROJECTS)/libnix $(LIBNIX_SFDC) all $(L2)
+	$(L0)"install libnix"$(L1) $(MAKE) -C $(BUILD)/libnix -f $(PROJECTS)/libnix/Makefile.m68k-amigaos root=$(PROJECTS)/libnix $(LIBNIX_SFDC) install $(L2)
 	@rsync --delete -a --no-group $(PROJECTS)/libnix/sources/headers/* $(PREFIX)/$(TARGET)/libnix/include/
 	@echo "done" >$@
 
