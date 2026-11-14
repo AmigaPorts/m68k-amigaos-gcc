@@ -1,0 +1,20 @@
+Short: OpenPCI library development files
+Version: 40.16.1
+Url: https://aminet.net/driver/other/openpci68k.lha
+Sha256: 9d360a59e41509092b952987888da34530b8b11d7e7d273f774d2e67e8e7f87e
+
+Development/openpci.doc
+PCI.guide
+Development/openpci.fd
+Include/clib/openpci_protos.h
+Include/libraries/openpci.h
+Include/libraries/pcitags.h
+Include/libraries/pcimemory.h
+Include/libraries/openpci.i
+Include/libraries/pcitags.i
+Include/libraries/pcimemory.i
+Include/pragmas/openpci_pragmas.h
+Include/proto/openpci.h
+Include/lvo/openpci_lvo.i
+fd2sfd : openpci.fd clib/openpci_protos.h
+sfdc : openpci.sfd
