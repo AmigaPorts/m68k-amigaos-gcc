@@ -1,0 +1,10 @@
+==id $Id: dtclass_lib.sfd,v 1.0 2026/11/12 00:00:00 noname Exp $
+* A DataTypes class library.  The NDK has dtclass_lib.fd but no SFD file.
+==base _DTClassBase
+==basetype struct Library *
+==bias 30
+==public
+==include <intuition/classes.h>
+==version 39
+Class *ObtainEngine() ()
+==end
