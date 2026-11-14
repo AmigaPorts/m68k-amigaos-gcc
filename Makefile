@@ -1452,6 +1452,20 @@ NDK_INCLUDE_INLINE = $(patsubst $(PROJECTS)/$(NDK_FOLDER_NAME_SFD)/%_lib.sfd,$(P
 NDK_INCLUDE_INLINE_VBCC = $(patsubst $(PROJECTS)/$(NDK_FOLDER_NAME_SFD)/%_lib.sfd,$(PREFIX)/$(TARGET)/ndk-include/inline/%_protos.h,$(NDK_INCLUDE_SFD))
 NDK_INCLUDE_LVO    = $(patsubst $(PROJECTS)/$(NDK_FOLDER_NAME_SFD)/%_lib.sfd,$(PREFIX)/$(TARGET)/ndk-include/lvo/%_lib.i,$(NDK_INCLUDE_SFD))
 NDK_INCLUDE_PROTO  = $(patsubst $(PROJECTS)/$(NDK_FOLDER_NAME_SFD)/%_lib.sfd,$(PREFIX)/$(TARGET)/ndk-include/proto/%.h,$(NDK_INCLUDE_SFD))
+
+# The NDK's copy of the Roadshow SDK has the SFD files of bsdsocket.library
+# and usergroup.library.  They get inline headers and LVO symbols with the
+# NDK's own libraries, but no proto header: amiga-netinclude has that, and its
+# clib prototypes, which sfdc's proto header would include, are disabled
+# because they clash with those of the C libraries.  They stay out of
+# NDK_INCLUDE_SFD, and so out of libamiga.a.
+NET_SFD_DIR := $(PROJECTS)/$(NDK_FOLDER_NAME)/SANA+RoadshowTCP-IP/sfd
+NET_INCLUDE_SFD = $(shell find 2>/dev/null $(NET_SFD_DIR) -type f -name *_lib.sfd)
+NDK_INCLUDE_INLINE += $(patsubst $(NET_SFD_DIR)/%_lib.sfd,$(PREFIX)/$(TARGET)/ndk-include/inline/%.h,$(NET_INCLUDE_SFD))
+NDK_INCLUDE_INLINE_VBCC += $(patsubst $(NET_SFD_DIR)/%_lib.sfd,$(PREFIX)/$(TARGET)/ndk-include/inline/%_protos.h,$(NET_INCLUDE_SFD))
+NDK_INCLUDE_LVO    += $(patsubst $(NET_SFD_DIR)/%_lib.sfd,$(PREFIX)/$(TARGET)/ndk-include/lvo/%_lib.i,$(NET_INCLUDE_SFD))
+# the SFD file of library $(1), in either directory
+sfd_of = $(firstword $(wildcard $(PROJECTS)/$(NDK_FOLDER_NAME_SFD)/$(1)_lib.sfd $(NET_SFD_DIR)/$(1)_lib.sfd))
 SYS_INCLUDE2 = $(filter-out $(NDK_INCLUDE_PROTO),$(patsubst $(PROJECTS)/$(NDK_FOLDER_NAME_H)/%,$(PREFIX)/$(TARGET)/ndk-include/%, $(NDK_INCLUDE)))
 
 
@@ -1497,18 +1511,18 @@ SFDC_L2 = ) >>$(SFDC_LOG) 2>&1 || { echo "sfdc $(@F) failed: see $(SFDC_LOG)"; e
 
 .PHONY: ndk-inline
 ndk-inline: $(NDK_INCLUDE_INLINE) sfdc $(BUILD)/ndk-include_inline
-$(NDK_INCLUDE_INLINE): $(PREFIX)/bin/sfdc $(NDK_INCLUDE_SFD) $(BUILD)/ndk-include_inline $(BUILD)/ndk-include_lvo $(BUILD)/ndk-include_proto $(BUILD)/ndk-include_ndk0
-	$(SFDC_L1) $(SFDC_FOR_BUILD) --target=m68k-gcc-amigaos --mode=macros --output=$@ $(patsubst $(PREFIX)/$(TARGET)/ndk-include/inline/%.h,$(PROJECTS)/$(NDK_FOLDER_NAME_SFD)/%_lib.sfd,$@) $(SFDC_L2)
+$(NDK_INCLUDE_INLINE): $(PREFIX)/bin/sfdc $(NDK_INCLUDE_SFD) $(NET_INCLUDE_SFD) $(BUILD)/ndk-include_inline $(BUILD)/ndk-include_lvo $(BUILD)/ndk-include_proto $(BUILD)/ndk-include_ndk0
+	$(SFDC_L1) $(SFDC_FOR_BUILD) --target=m68k-gcc-amigaos --mode=macros --output=$@ $(call sfd_of,$(patsubst $(PREFIX)/$(TARGET)/ndk-include/inline/%.h,%,$@)) $(SFDC_L2)
 
 .PHONY: ndk-inline-vbcc
 ndk-inline-vbcc: $(NDK_INCLUDE_INLINE_VBCC) sfdc $(BUILD)/ndk-include_inline
-$(NDK_INCLUDE_INLINE_VBCC): $(PREFIX)/bin/sfdc $(NDK_INCLUDE_SFD) $(BUILD)/ndk-include_inline $(BUILD)/ndk-include_lvo $(BUILD)/ndk-include_proto $(BUILD)/ndk-include_ndk0
-	$(SFDC_L1) $(SFDC_FOR_BUILD) --target=m68kvbcc-amigaos --mode=macros --output=$@ $(patsubst $(PREFIX)/$(TARGET)/ndk-include/inline/%_protos.h,$(PROJECTS)/$(NDK_FOLDER_NAME_SFD)/%_lib.sfd,$@) $(SFDC_L2)
+$(NDK_INCLUDE_INLINE_VBCC): $(PREFIX)/bin/sfdc $(NDK_INCLUDE_SFD) $(NET_INCLUDE_SFD) $(BUILD)/ndk-include_inline $(BUILD)/ndk-include_lvo $(BUILD)/ndk-include_proto $(BUILD)/ndk-include_ndk0
+	$(SFDC_L1) $(SFDC_FOR_BUILD) --target=m68kvbcc-amigaos --mode=macros --output=$@ $(call sfd_of,$(patsubst $(PREFIX)/$(TARGET)/ndk-include/inline/%_protos.h,%,$@)) $(SFDC_L2)
 
 .PHONY: ndk-lvo
 ndk-lvo: $(NDK_INCLUDE_LVO) sfdc
-$(NDK_INCLUDE_LVO): $(PREFIX)/bin/sfdc $(NDK_INCLUDE_SFD) $(BUILD)/ndk-include_lvo $(BUILD)/ndk-include_ndk0
-	$(SFDC_L1) $(SFDC_FOR_BUILD) --target=m68k-amigaos --mode=lvo --output=$@ $(patsubst $(PREFIX)/$(TARGET)/ndk-include/lvo/%_lib.i,$(PROJECTS)/$(NDK_FOLDER_NAME_SFD)/%_lib.sfd,$@) $(SFDC_L2)
+$(NDK_INCLUDE_LVO): $(PREFIX)/bin/sfdc $(NDK_INCLUDE_SFD) $(NET_INCLUDE_SFD) $(BUILD)/ndk-include_lvo $(BUILD)/ndk-include_ndk0
+	$(SFDC_L1) $(SFDC_FOR_BUILD) --target=m68k-amigaos --mode=lvo --output=$@ $(call sfd_of,$(patsubst $(PREFIX)/$(TARGET)/ndk-include/lvo/%_lib.i,%,$@)) $(SFDC_L2)
 
 .PHONY: ndk-proto
 ndk-proto: $(NDK_INCLUDE_PROTO) sfdc
@@ -1580,9 +1594,12 @@ $(BUILD)/ndk-include_ndk13: $(BUILD)/ndk-include_ndk $(NDK_FD2SFD_PREREQ) $(BUIL
 .PHONY: netinclude
 netinclude: $(BUILD)/_netinclude
 
+# amiga-netinclude has the headers of the Roadshow SDK.  The inline headers of
+# its two libraries are sfdc's, written with the NDK's: a copy that
+# amiga-netinclude may still have does not replace them.
 $(BUILD)/_netinclude: $(PROJECTS)/amiga-netinclude/README.md $(BUILD)/ndk-include_ndk $(shell find 2>/dev/null $(PROJECTS)/amiga-netinclude/include -type f)
 	@mkdir -p $(PREFIX)/$(TARGET)/ndk-include
-	@rsync -a --no-group $(PROJECTS)/amiga-netinclude/include/* $(PREFIX)/$(TARGET)/ndk-include
+	@rsync -a --no-group $(patsubst $(NET_SFD_DIR)/%_lib.sfd,--exclude=/inline/%.h,$(NET_INCLUDE_SFD)) $(PROJECTS)/amiga-netinclude/include/ $(PREFIX)/$(TARGET)/ndk-include
 	@echo "done" >$@
 
 $(PROJECTS)/amiga-netinclude/README.md:
