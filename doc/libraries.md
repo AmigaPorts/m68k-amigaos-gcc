@@ -14,11 +14,12 @@ a6. [abi.md](abi.md#calling-amigaos-libraries) has the register rules.
 
 With libnix and newlib, the startup code opens the libraries a program uses.
 A program that references a library base, such as `IntuitionBase`, without
-defining it links that base from `libstubs.a`, and the startup code opens the
+defining it links that base from `libamiga.a`, and the startup code opens the
 library before `main()` and closes it at exit:
 
-- `libstubs.a` has the libraries of the NDK, the ReAction classes and some
-  resources.
+- `libamiga.a` has the libraries of the NDK, the ReAction classes and some
+  resources; `libstubs.a` has those of the SDKs installed with
+  `make sdk-<sdk>`.
 - If a library is missing, the program prints `intuition.library failed to
   load` and exits with 20.
 
@@ -30,14 +31,15 @@ by defining a global variable; the default is 0, no minimum version:
 long __oslibversion = 39;
 ```
 
-clib2 and ixemul don't support the auto-open mechanism: the link fails on the
-undefined base.
+clib2 and ixemul don't support the auto-open mechanism. With clib2, the link
+fails on the undefined base. With ixemul, it takes the base from `libamiga.a`
+and succeeds, but nothing opens the library: the base stays at -1.
 
 ### Opened by the program
 
 To require a different version for each library, or with clib2 and ixemul,
 the program defines the base and opens the library itself. Its definition
-takes the place of the one in `libstubs.a`:
+takes the place of the one in `libamiga.a`:
 
 ```c
 #include <proto/exec.h>

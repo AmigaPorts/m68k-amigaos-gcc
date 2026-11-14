@@ -574,7 +574,7 @@ build-target-tools: $(TARGET_BUILD_TOOLS_PREREQ)
 # clean
 # =================================================
 .PHONY: clean
-clean: clean-gcc clean-binutils clean-fd2sfd clean-lha clean-fd2pragma clean-ira clean-sfdc clean-vasm clean-vbcc clean-vlink clean-libamiga clean-libnix clean-ixemul clean-clib2 clean-libdebug clean-libpthread clean-newlib clean-ndk clean-gmp clean-mpc clean-mpfr
+clean: clean-gcc clean-binutils clean-fd2sfd clean-lha clean-fd2pragma clean-ira clean-sfdc clean-vasm clean-vbcc clean-vlink clean-libnix clean-ixemul clean-clib2 clean-libdebug clean-libpthread clean-newlib clean-ndk clean-gmp clean-mpc clean-mpfr
 	rm -rf $(BUILD)
 	rm -rf *.log
 	mkdir -p $(BUILD)
@@ -643,10 +643,6 @@ clean-vlink:
 .PHONY: clean-ndk
 clean-ndk:
 	rm -rf $(BUILD)/ndk*
-
-.PHONY: clean-libamiga
-clean-libamiga:
-	rm -rf $(BUILD)/libamiga
 
 .PHONY: clean-libnix
 clean-libnix:
@@ -1595,40 +1591,14 @@ $(PROJECTS)/amiga-netinclude/README.md:
 # =================================================
 # libamiga
 # =================================================
-# amiga.lib as hunk objects, plain and base-relative: scripts/sfd-stubs
-# writes a stub for every public function in the NDK's SFD files, and the
-# support routines (CreatePort, DoMethod, HookEntry, ...) are libnix's.
-LIBAMIGA := $(PREFIX)/$(TARGET)/lib/libamiga.a
-LIBBAMIGA := $(PREFIX)/$(TARGET)/lib/libb/libamiga.a
-LIBAMIGA_SRC = $(shell find 2>/dev/null $(PROJECTS)/libnix/sources/amiga -type f)
-LIBAMIGA_CFLAGS := -Os -fomit-frame-pointer -fno-builtin -I$(PROJECTS)/libnix/sources/headers
-# The compiler this build installs, when no other is set.
-LIBAMIGA_CC = $(or $(strip $(TARGET_CC_FOR_BUILD)),$(PREFIX)/bin/$(TARGET)-gcc)
-
-.PHONY: libamiga
-libamiga: $(LIBAMIGA) $(LIBBAMIGA)
-	echo "built $(LIBAMIGA) and $(LIBBAMIGA)"
-
+# amiga.lib, as hunk objects for every multilib, is built and installed by
+# libnix: its Makefile has sfdc write the library stubs, the library bases
+# and the LVO symbols from the NDK's SFD files, and adds its own support
+# routines (CreatePort, DoMethod, HookEntry, ...).
 # The SFD files include patches/NDK3.2/SFD/dtclass_lib.sfd: the NDK only has
 # an FD file for ObtainEngine().
-$(BUILD)/libamiga/_stubs: scripts/sfd-stubs $(NDK_INCLUDE_SFD) $(PROJECTS)/$(NDK_FOLDER_NAME)/_unpacked
-	rm -rf $(BUILD)/libamiga/stubs && mkdir -p $(BUILD)/libamiga/stubs
-	$(L0)"make libamiga stubs"$(L1) scripts/sfd-stubs $(BUILD)/libamiga/stubs $(PROJECTS)/$(NDK_FOLDER_NAME_SFD)/*_lib.sfd $(L2)
-	echo "done" >$@
-
-$(LIBAMIGA): LIBAMIGA_KIND := lib
-$(LIBBAMIGA): LIBAMIGA_KIND := libb
-$(LIBBAMIGA): LIBAMIGA_FLAGS := -fbaserel
-
-# DoPktn.c is left out: dos_lib.sfd has DoPkt0() to DoPkt4() as aliases.
-# xargs keeps the command lines short enough for every build host.
-$(LIBAMIGA) $(LIBBAMIGA): $(BUILD)/libamiga/_stubs $(BUILD)/newlib/_done $(BUILD)/ndk-include_ndk $(BUILD)/binutils/_done $(BUILD)/gcc/_done $(PROJECTS)/libnix/Makefile.m68k-amigaos $(LIBAMIGA_SRC)
-	rm -rf $(BUILD)/libamiga/$(LIBAMIGA_KIND) && mkdir -p $(BUILD)/libamiga/$(LIBAMIGA_KIND) $(@D)
-	$(L0)"make libamiga $(LIBAMIGA_KIND)"$(L1) cd $(BUILD)/libamiga/$(LIBAMIGA_KIND) && \
-	  printf '%s\n' ../stubs/*.S $$(ls $(PROJECTS)/libnix/sources/amiga/misc/*.c | grep -v /DoPktn.c) | \
-	  xargs -n 64 $(LIBAMIGA_CC) $(LIBAMIGA_CFLAGS) $(LIBAMIGA_FLAGS) -c && \
-	  printf '%s\n' *.o | xargs -n 256 $(TARGET_AR_FOR_BUILD) rcs libamiga.a $(L2)
-	install -m 644 $(BUILD)/libamiga/$(LIBAMIGA_KIND)/libamiga.a $@
+.PHONY: libamiga
+libamiga: libnix
 
 # =================================================
 # libnix
@@ -1639,18 +1609,21 @@ $(LIBAMIGA) $(LIBBAMIGA): $(BUILD)/libamiga/_stubs $(BUILD)/newlib/_done $(BUILD
 # The AmigaOS-hosted gcc and binutils pass POSIX paths around and DON'T WORK WITHOUT IT.
 LIBNIX_CFLAGS = -DIXPATHS
 
-LIBNIX_SRC = $(shell find 2>/dev/null $(PROJECTS)/libnix -not \( -path $(PROJECTS)/libnix/.git -prune \) -not \( -path $(PROJECTS)/libnix/sources/stubs/libbases -prune \) -not \( -path $(PROJECTS)/libnix/sources/stubs/libnames -prune \) -type f)
+LIBNIX_SRC = $(shell find 2>/dev/null $(PROJECTS)/libnix -not \( -path $(PROJECTS)/libnix/.git -prune \) -type f)
+
+# What libnix's Makefile needs for libamiga.a: sfdc and the NDK's SFD files.
+LIBNIX_SFDC = SFDC=$(SFDC_FOR_BUILD) SFD_DIR=$(PROJECTS)/$(NDK_FOLDER_NAME_SFD)
 
 .PHONY: libnix
 libnix: $(BUILD)/libnix/_done
 
-$(BUILD)/libnix/_done: $(BUILD)/newlib/_done $(BUILD)/ndk-include_ndk $(BUILD)/ndk-include_ndk13 $(BUILD)/_netinclude $(BUILD)/binutils/_done $(BUILD)/gcc/_done $(PROJECTS)/libnix/Makefile.m68k-amigaos $(LIBAMIGA) $(LIBBAMIGA) $(LIBNIX_SRC)
+$(BUILD)/libnix/_done: $(BUILD)/newlib/_done $(BUILD)/ndk-include_ndk $(BUILD)/ndk-include_ndk13 $(BUILD)/_netinclude $(BUILD)/binutils/_done $(BUILD)/gcc/_done $(BUILD)/sfdc/_done $(NDK_INCLUDE_SFD) $(PROJECTS)/libnix/Makefile.m68k-amigaos $(LIBNIX_SRC)
 	@mkdir -p $(PREFIX)/$(TARGET)/libnix/lib/libnix
 	@mkdir -p $(BUILD)/libnix
 	@mkdir -p $(PREFIX)/lib/gcc/$(TARGET)/$(GCC_DIR_VERSION)
 	@if [ ! -e $(PREFIX)/lib/gcc/$(TARGET)/$(GCC_DIR_VERSION)/libgcc.a ]; then $(TARGET_AR_FOR_BUILD) rcs $(PREFIX)/lib/gcc/$(TARGET)/$(GCC_DIR_VERSION)/libgcc.a; fi
-	$(L0)"make libnix"$(L1) CFLAGS="$(CFLAGS_FOR_TARGET) $(LIBNIX_CFLAGS)" $(MAKE) -C $(BUILD)/libnix -f $(PROJECTS)/libnix/Makefile.m68k-amigaos root=$(PROJECTS)/libnix all $(L2)
-	$(L0)"install libnix"$(L1) $(MAKE) -C $(BUILD)/libnix -f $(PROJECTS)/libnix/Makefile.m68k-amigaos root=$(PROJECTS)/libnix install $(L2)
+	$(L0)"make libnix"$(L1) CFLAGS="$(CFLAGS_FOR_TARGET) $(LIBNIX_CFLAGS)" $(MAKE) -C $(BUILD)/libnix -f $(PROJECTS)/libnix/Makefile.m68k-amigaos root=$(PROJECTS)/libnix $(LIBNIX_SFDC) all $(L2)
+	$(L0)"install libnix"$(L1) $(MAKE) -C $(BUILD)/libnix -f $(PROJECTS)/libnix/Makefile.m68k-amigaos root=$(PROJECTS)/libnix $(LIBNIX_SFDC) install $(L2)
 	@rsync --delete -a --no-group $(PROJECTS)/libnix/sources/headers/* $(PREFIX)/$(TARGET)/libnix/include/
 	@echo "done" >$@
 
@@ -1682,7 +1655,7 @@ $(BUILD)/gcc/_libstdcxx_headers: $(LIBSTDCXX_HEADERS)
 	@mkdir -p $(dir $@)
 	@touch $@
 
-$(BUILD)/gcc/_libgcc_done: $(BUILD)/libnix/_done $(BUILD)/libpthread/_done $(LIBAMIGA) $(GCC_TARGET_PREREQ) $(BUILD)/gcc/_libstdcxx_headers $(shell find 2>/dev/null $(PROJECTS)/gcc/libgcc -type f)
+$(BUILD)/gcc/_libgcc_done: $(BUILD)/libnix/_done $(BUILD)/libpthread/_done $(GCC_TARGET_PREREQ) $(BUILD)/gcc/_libstdcxx_headers $(shell find 2>/dev/null $(PROJECTS)/gcc/libgcc -type f)
 ifneq (,$(strip $(HOST)))
 	# Hosted target compilers do not search GCC's build-tree include directory.
 	# Install libgcc first so libstdc++ can find generated headers such as
@@ -1710,7 +1683,7 @@ $(BUILD)/libnix/libb/libnix4.library: $(BUILD)/gcc/_libgcc_done $(BUILD)/libnix/
 .PHONY: clib2
 clib2: $(BUILD)/clib2/_done
 
-$(BUILD)/clib2/_done: $(PROJECTS)/clib2/LICENSE $(shell find 2>/dev/null $(PROJECTS)/clib2 -not \( -path $(PROJECTS)/clib2/.git -prune \) -type f) $(BUILD)/libnix/_done $(LIBAMIGA)
+$(BUILD)/clib2/_done: $(PROJECTS)/clib2/LICENSE $(shell find 2>/dev/null $(PROJECTS)/clib2 -not \( -path $(PROJECTS)/clib2/.git -prune \) -type f) $(BUILD)/libnix/_done
 	@mkdir -p $(BUILD)/clib2/
 	@rsync -a --no-group $(PROJECTS)/clib2/library/* $(BUILD)/clib2
 	@rsync -a --no-group --delete $(PROJECTS)/clib2/library/include/ $(BUILD)/clib2/include/
