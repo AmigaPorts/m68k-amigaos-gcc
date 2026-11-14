@@ -10,6 +10,16 @@ Calling AmigaOS libraries, and building your own.
 load the arguments into their registers and call through `IntuitionBase` in
 a6. [abi.md](abi.md#calling-amigaos-libraries) has the register rules.
 
+Two link libraries, which every program gets without asking, cover the rest:
+
+- `libamiga.a` is an open-source equivalent of the NDK's amiga.lib: a
+  function for each library call, for code that calls without the macros; the
+  `_LVO` offsets, for assembler sources; and support functions such as
+  `CreatePort()` and `DoMethod()`. It is built as part of libnix, and newlib
+  and ixemul link it too; clib2 has its own.
+- `libstubs.a`, with libnix and newlib, has the library bases that the startup
+  code opens, as below.
+
 ### Opened by the startup code
 
 With libnix and newlib, the startup code opens the libraries a program uses.
