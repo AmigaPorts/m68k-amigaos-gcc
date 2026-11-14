@@ -223,7 +223,7 @@ jobs:
             || needs.refs.outputs.label == 'ci-check-newlib' && 'check-newlib'
             || needs.refs.outputs.label == 'ci-check-threads' && 'THREADS=amigaos check-gcc-amigaos check-libnix check-libpthread check-newlib'
             || format('all all-sdk vbcc vlink zlib libpng check-gdb-libpython package {0}{1}{2}',
-                      inputs.run_testsuite && 'check' || 'check-multilib check-binutils check-gcc-amigaos check-libnix check-libpthread',
+                      inputs.run_testsuite && 'check' || 'check-multilib check-binutils check-sfdc check-gcc-amigaos check-libnix check-libpthread',
                       inputs.run_cxx_testsuite && ' check-c++' || '',
                       (inputs.simulator || 'volamos') == 'vamos' && ' board=vamos' || '') }}
       AMITOOLS_GIT: ${{ inputs.amitools_git || 'git+https://github.com/AmigaPorts/amitools.git' }}

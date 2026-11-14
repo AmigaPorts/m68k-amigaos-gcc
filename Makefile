@@ -2031,6 +2031,7 @@ check:
 	$(MAKE) --no-print-directory check-shell
 	$(MAKE) --no-print-directory check-multilib
 	$(MAKE) --no-print-directory check-binutils
+	$(MAKE) --no-print-directory check-sfdc
 	$(MAKE) --no-print-directory check-gcc-amigaos
 	$(MAKE) --no-print-directory check-libnix
 	$(MAKE) --no-print-directory check-libpthread
@@ -2120,6 +2121,14 @@ check-libnix: $(MIN_IF_MISSING) $(PREFIX)/bin/volamos
 	  CROSS_CC=$(PREFIX)/bin/$(TARGET)-gcc SIM=$(PREFIX)/bin/volamos \
 	  SIMFLAGS="--stack 4K --sanitize --dirty-heap -V TESTS:$(PROJECTS)/libnix/test/build --cwd TESTS:" \
 	  2>&1 | tee $@.summary.txt
+
+# sfdc's own tests (test/Makefile): check looks at what the installed sfdc
+# writes, and check-compile compiles the stubs, the library base and the LVO
+# symbols with the installed cross compiler, which sfdc's own CI lacks.
+.PHONY: check-sfdc
+check-sfdc: $(MIN_IF_MISSING) $(BUILD)/sfdc/_done
+	$(MAKE) --no-print-directory -B -C $(PROJECTS)/sfdc/test check check-compile \
+	  SFDC=$(SFDC_FOR_BUILD) CC=$(PREFIX)/bin/$(TARGET)-gcc OUT=$(BUILD)/sfdc/test-out
 
 # Build libpthread's regression programs for each multilib, check what they
 # link, and run under volamos the ones that pass there.

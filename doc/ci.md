@@ -49,7 +49,8 @@ builds the whole distribution and runs the fast tests:
 
 ```
 make all all-sdk vbcc vlink zlib libpng check-gdb-libpython package \
-  check-multilib check-binutils check-gcc-amigaos check-libnix check-libpthread
+  check-multilib check-binutils check-sfdc check-gcc-amigaos check-libnix \
+  check-libpthread
 ```
 
 `/ci` alone lists the platforms.
