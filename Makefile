@@ -1516,7 +1516,7 @@ $(NDK_INCLUDE_LVO): $(PREFIX)/bin/sfdc $(NDK_INCLUDE_SFD) $(BUILD)/ndk-include_l
 
 .PHONY: ndk-proto
 ndk-proto: $(NDK_INCLUDE_PROTO) sfdc
-$(NDK_INCLUDE_PROTO): $(PREFIX)/bin/sfdc $(NDK_INCLUDE_SFD)	$(BUILD)/ndk-include_proto $(BUILD)/ndk-include_ndk0
+$(NDK_INCLUDE_PROTO): $(PREFIX)/bin/sfdc $(NDK_INCLUDE_SFD) $(BUILD)/ndk-include_proto $(BUILD)/ndk-include_ndk0
 	$(SFDC_L1) $(SFDC_FOR_BUILD) --target=m68k-amigaos --mode=proto --output=$@ $(patsubst $(PREFIX)/$(TARGET)/ndk-include/proto/%.h,$(PROJECTS)/$(NDK_FOLDER_NAME_SFD)/%_lib.sfd,$@) $(SFDC_L2)
 
 $(BUILD)/ndk-include_inline: $(PROJECTS)/$(NDK_FOLDER_NAME)/_unpacked
