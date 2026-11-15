@@ -3,19 +3,19 @@
 The GNU C Compiler with binutils and other useful tools for cross compiling software for AmigaOS.
 This is the AmigaPorts continuation of bebbo's amiga-gcc; fixes flow both ways.
 
-Currently, these tools are built:
+* [Amiga GCC User's Manual](doc/manual.md): using the toolchain, and its Amiga-specific options, attributes and C runtimes.
+* [Amiga GCC Development Manual](doc/devel.md): building, packaging, testing and releasing the toolchain, its branches, and making changes to it.
+
+Currently, these tools are bundled:
 
 * binutils with Hunk binary format support
-* gcc with frontends for C/C++/ObjC; the experimental Rust frontend (gccrs) builds with `make ADDLANG=rust`, which needs cargo (see [examples/rust](examples/rust/))
+* gcc with frontends for C/C++/ObjC; the experimental Rust frontend (gccrs) builds with `make ADDLANG=rust` (see [examples/rust](examples/rust/))
 * libnix, newlib, clib2
 * sfdc, fd2sfd, fd2pragma
 * vbcc, vasm, vlink
 * ira (m68k reassembler)
-
-## Documentation
-
-* [Amiga GCC User's Manual](doc/manual.md): using the toolchain, and its Amiga-specific options, attributes and C runtimes.
-* [Amiga GCC Development Manual](doc/devel.md): building, packaging, testing and releasing the toolchain, its branches, and making changes to it.
+* zlib, libpng, freetype
+* Various Amiga SDKs (see [sdk](sdk/))
 
 ## Copyrights
 
