@@ -4,7 +4,7 @@
 * aros-stuff: libpthread, Copyright (C) 2014 Szilard Biro.
 * binutils and gdb: Free Software Foundation, GNU GENERAL PUBLIC LICENSE V3.
 * clib2: Copyright (c) 2002-2015 by Olaf Barthel, BSD 3-Clause License.
-* fd2pragma: Dirk Stoecker, public domain.
+* fd2pragma's inline/macros.h and inline/stubs.h: Dirk Stoecker, public domain.
 * fd2sfd: Martin Blom et al, GNU GENERAL PUBLIC LICENSE V2.
 * freetype: David Turner, Robert Wilhelm, Werner Lemberg et al, the FreeType License or GNU GENERAL PUBLIC LICENSE V2, at your choice.
 * gcc: Free Software Foundation, GNU GENERAL PUBLIC LICENSE V3; libgcc, libstdc++ and the other runtime libraries with the GCC Runtime Library Exception 3.1.
