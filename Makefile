@@ -1546,13 +1546,18 @@ $(BUILD)/ndk-include_proto: $(PROJECTS)/$(NDK_FOLDER_NAME)/_unpacked
 	@mkdir -p $(BUILD)/ndk-include/
 	@echo "done" >$@
 
+# The SANA-II headers come from the NDK's copy of the Roadshow SDK, and go with
+# the rest of the NDK's: sana2.h, and sana2specialstats.h, which includes it.
 $(PROJECTS)/$(NDK_FOLDER_NAME)/_unpacked: $(DOWNLOAD)/$(NDK_ARC_NAME).lha $(shell find 2>/dev/null patches/$(NDK_FOLDER_NAME)/ -type f) scripts/sdk-patch | $(LHA_PREREQ)
 	$(L0)"unpack ndk"$(L1) mkdir -p $(PROJECTS)/NDK3.2 && cd $(PROJECTS)/NDK3.2 && \
 	   $(LHA_FOR_BUILD) xf $(DOWNLOAD)/$(NDK_ARC_NAME).lha $(L2)
 	$(L0)"patch ndk"$(L1) scripts/sdk-patch $(PROJECTS)/$(NDK_FOLDER_NAME) \
 	   $(shell find 2>/dev/null patches/$(NDK_FOLDER_NAME)/ -name '*.diff') && \
-	   rsync -a --no-group --exclude='*.diff' patches/$(NDK_FOLDER_NAME)/ $(PROJECTS)/$(NDK_FOLDER_NAME)/ $(L2)
-	@echo "done" >$@
+	   rsync -a --no-group --exclude='*.diff' patches/$(NDK_FOLDER_NAME)/ $(PROJECTS)/$(NDK_FOLDER_NAME)/ && \
+	   cp -p $(PROJECTS)/$(NDK_FOLDER_NAME)/SANA+RoadshowTCP-IP/include/devices/sana2.h \
+	   $(PROJECTS)/$(NDK_FOLDER_NAME)/SANA+RoadshowTCP-IP/include/devices/sana2specialstats.h \
+	   $(PROJECTS)/$(NDK_FOLDER_NAME_H)/devices/ $(L2)
+	echo "done" >$@
 
 
 # =================================================
