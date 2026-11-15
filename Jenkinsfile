@@ -27,6 +27,13 @@ def notifyFailure(labels, target) {
 	notify("Build Failed: ${labels.name} #${env.BUILD_NUMBER} Target: ${target}")
 }
 
+// The tag suffix that names the gcc and binutils of a build, as in
+// m68k-amigaos:latest-gcc16.2-binutils-2.47.
+@NonCPS
+def buildVersion(buildConf) {
+	return "-${buildConf.GCCBranch.replace('amiga', 'gcc')}-${buildConf.BinutilsBranch.replace('amiga', 'binutils')}";
+}
+
 @NonCPS
 def shouldPublish(branchName, isPullRequest) {
 	return !isPullRequest && ['master', 'gcc10', 'dev'].contains(branchName)
@@ -58,7 +65,7 @@ def killall_jobs() {
 	echo "Done killing"
 }
 
-def buildStep(buildConf, DOCKER_ROOT, DOCKERIMAGE, DOCKERTAG, DOCKERFILE, BUILD_NEXT, BUILD_PARAM) {
+def buildStep(buildConf, DOCKER_ROOT, DOCKERIMAGE, DOCKERTAG, PLATFORM, DOCKERFILE, BUILD_NEXT, BUILD_PARAM) {
 	def labels = jobLabels(env.JOB_NAME)
 	def buildenv = '';
 	def tag = '';
@@ -86,6 +93,11 @@ def buildStep(buildConf, DOCKER_ROOT, DOCKERIMAGE, DOCKERTAG, DOCKERFILE, BUILD_
 			tag = "${DOCKERTAG}";
 		}
 
+		// The same image goes out twice: as <tag>_<platform>, as before, and
+		// with the gcc and binutils in its name.
+		def versionedTag = "${tag}${buildVersion(buildConf)}_${PLATFORM}";
+		tag = "${tag}_${PLATFORM}";
+
 		def buildArgs = "--build-arg BUILDENV=${buildenv} --build-arg PATHPREFIX=${buildConf.PathPrefix} --build-arg GCC_BRANCH=${buildConf.GCCBranch} --build-arg BINUTILS_BRANCH=${buildConf.BinutilsBranch} --network=host --pull -f ${DOCKERFILE} .";
 		docker.withRegistry("https://index.docker.io/v1/", "dockerhub") {
 			def customImage
@@ -100,6 +112,7 @@ def buildStep(buildConf, DOCKER_ROOT, DOCKERIMAGE, DOCKERTAG, DOCKERFILE, BUILD_
 			} else {
 				stage("Pushing to docker hub registry...") {
 					customImage.push();
+					customImage.push(versionedTag);
 				}
 			}
 		}
@@ -110,7 +123,7 @@ def buildStep(buildConf, DOCKER_ROOT, DOCKERIMAGE, DOCKERTAG, DOCKERFILE, BUILD_
 	}
 }
 
-def buildManifest(DOCKER_ROOT, DOCKERIMAGE, DOCKERTAG, DOCKERFILE, PLATFORMS, BUILD_NEXT, BUILD_PARAM) {
+def buildManifest(buildConf, DOCKER_ROOT, DOCKERIMAGE, DOCKERTAG, DOCKERFILE, PLATFORMS, BUILD_NEXT, BUILD_PARAM) {
 	def labels = jobLabels(env.JOB_NAME)
 	def buildenv = ''
 	def tag = ''
@@ -146,6 +159,19 @@ def buildManifest(DOCKER_ROOT, DOCKERIMAGE, DOCKERTAG, DOCKERFILE, PLATFORMS, BU
 				
 				sh("docker manifest create ${DOCKER_ROOT}/${DOCKERIMAGE}:${tag} ${platformsString}");
 				sh("docker manifest push ${DOCKER_ROOT}/${DOCKERIMAGE}:${tag}");
+			}
+
+			// The same manifest, under the name with the gcc and binutils in it.
+			def versionedTag = "${tag}${buildVersion(buildConf)}";
+			stage("Building ${DOCKERIMAGE}:${versionedTag} manifest...") {
+				def platformsString = "";
+				PLATFORMS.each { p ->
+					sh("docker pull ${DOCKER_ROOT}/${DOCKERIMAGE}:${versionedTag}_${p}");
+					platformsString = "${platformsString} ${DOCKER_ROOT}/${DOCKERIMAGE}:${versionedTag}_${p}"
+				}
+
+				sh("docker manifest create ${DOCKER_ROOT}/${DOCKERIMAGE}:${versionedTag} ${platformsString}");
+				sh("docker manifest push ${DOCKER_ROOT}/${DOCKERIMAGE}:${versionedTag}");
 			}
 		}
 		def branches = [:]
@@ -194,7 +220,7 @@ node('master') {
 				platforms["Build ${v.DockerRoot}/${v.DockerImage}:${v.DockerTag}_${p}"] = {
 					stage("Build ${p} version") {
 						node(p) {
-							buildStep(v, v.DockerRoot, v.DockerImage, "${v.DockerTag}_${p}", v.Dockerfile, [], v.BuildParam);
+							buildStep(v, v.DockerRoot, v.DockerImage, v.DockerTag, p, v.Dockerfile, [], v.BuildParam);
 						}
 					}
 				}
@@ -204,7 +230,7 @@ node('master') {
 
 			stage('Build multi-arch manifest') {
 				node() {
-					buildManifest(v.DockerRoot, v.DockerImage, v.DockerTag, v.Dockerfile, v.Platforms, v.BuildIfSuccessful, v.BuildParam);
+					buildManifest(v, v.DockerRoot, v.DockerImage, v.DockerTag, v.Dockerfile, v.Platforms, v.BuildIfSuccessful, v.BuildParam);
 				}
 			}
 		}
