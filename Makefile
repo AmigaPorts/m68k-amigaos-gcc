@@ -34,8 +34,14 @@ TARGET_TOOL_PREFIX ?=
 # Default empty; set to .exe for MinGW targets
 ifneq (,$(findstring mingw,$(HOST)))
   EXEEXT := .exe
+  # At -Os, MinGW gcc 16 calls the unified (C4) constructors of the
+  # std::string members that libstdc++ instantiates, which its libstdc++.a
+  # does not have, only C1 and C2: gdb fails to link.
+  # https://gcc.gnu.org/bugzilla/show_bug.cgi?id=125359
+  HOST_CXX_FLAGS := -fno-declone-ctor-dtor
 else
   EXEEXT :=
+  HOST_CXX_FLAGS :=
 endif
 
 ifneq (,$(findstring amigaos,$(HOST)))
@@ -391,7 +397,7 @@ CXXFLAGS_FOR_TARGET ?= $(CFLAGS_FOR_TARGET)
 E:=CFLAGS="$(CFLAGS)" CXXFLAGS="$(CXXFLAGS)" CFLAGS_FOR_BUILD="$(CFLAGS)" CXXFLAGS_FOR_BUILD="$(CXXFLAGS)"  CFLAGS_FOR_TARGET="$(CFLAGS_FOR_TARGET)" CXXFLAGS_FOR_TARGET="$(CFLAGS_FOR_TARGET)"
 else
 CFLAGS ?= -Os $(HOST_CPU_FLAGS) $(HOST_CRT_FLAGS)
-CXXFLAGS ?= $(CFLAGS) $(HOST_CXX_ABI_FLAGS)
+CXXFLAGS ?= $(CFLAGS) $(HOST_CXX_ABI_FLAGS) $(HOST_CXX_FLAGS)
 LDFLAGS ?= $(HOST_LINK_FLAGS)
 BUILD_CFLAGS ?= -O2
 BUILD_CXXFLAGS ?= $(BUILD_CFLAGS)
