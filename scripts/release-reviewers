@@ -1,0 +1,73 @@
+#!/bin/bash
+# Count the pull requests each reviewer approved, among those merged since
+# the previous release in this repository and in every module listed in
+# default-repos, and print them as a Markdown table for the release notes.
+#
+#   scripts/release-reviewers SINCE [UNTIL]
+#
+# SINCE is the previous release's tag in this repository (v16.2-rc24): the
+# date of its commit starts the range.  UNTIL, a tag or a date, ends it;
+# the default is now.  A reviewer counts once for each pull request they
+# approved, however many times; an author's approval of their own pull
+# request doesn't count.
+
+set -euo pipefail
+
+since=${1-} until=${2-}
+top_url=${TOP_URL:-https://github.com/AmigaPorts/m68k-amigaos-gcc}
+# The top of this repository, wherever in it the script is.
+here=$(git -C "$(dirname "$(readlink -f "$0")")" rev-parse --show-toplevel)
+
+die() { echo "release-reviewers: $*" >&2; exit 1; }
+
+[ -n "$since" ] || die "usage: release-reviewers SINCE [UNTIL]"
+
+# A tag of this repository, or a date, as UTC for the search.
+utc() {
+	local when=$1
+	if git -C "$here" rev-parse -q --verify "$when^{commit}" >/dev/null; then
+		when=$(git -C "$here" log -1 --format=%cI "$when^{commit}")
+	fi
+	date -u -d "$when" +%Y-%m-%dT%H:%M:%SZ || die "not a tag or a date: $1"
+}
+
+range=">=$(utc "$since")"
+[ -z "$until" ] || range="$(utc "$since")..$(utc "$until")"
+
+# owner/name of this repository and of each module hosted on GitHub
+repos=$(
+	{ echo "$top_url"; awk '{ print $2 }' "$here/default-repos"; } |
+	sed -n 's|^https://github\.com/\([^/]*/[^/]*\)$|\1|p' | sed 's/\.git$//'
+)
+[ -n "$repos" ] || die "no GitHub repositories in default-repos"
+
+q="is:pr is:merged merged:$range"
+for r in $repos; do
+	q+=" repo:$r"
+done
+
+# shellcheck disable=SC2016 # GraphQL variables, not shell ones
+query='query($q: String!, $endCursor: String) {
+  search(query: $q, type: ISSUE, first: 50, after: $endCursor) {
+    pageInfo { hasNextPage endCursor }
+    nodes {
+      ... on PullRequest {
+        number
+        repository { nameWithOwner }
+        author { login }
+        reviews(states: APPROVED, first: 50) { nodes { author { login } } }
+      }
+    }
+  }
+}'
+
+# shellcheck disable=SC2016 # jq variables
+gh api graphql --paginate -f query="$query" -f q="$q" --jq '
+  .data.search.nodes[]
+  | . as $pr
+  | [.reviews.nodes[].author.login] | unique[]
+  | select(. != $pr.author.login)
+  | "\(.)\t\($pr.repository.nameWithOwner)#\($pr.number)"' |
+	sort -u | cut -f1 | sort | uniq -c | sort -k1,1nr -k2,2 |
+	awk 'BEGIN { print "| reviewer | approved |"; print "|---|---:|" }
+	     { printf "| @%s | %d |\n", $2, $1 }'
