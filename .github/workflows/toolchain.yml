@@ -626,9 +626,18 @@ jobs:
       - name: Let git read the checkout
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
+      # The image is Debian unstable, which dropped libcapi20-3t64 while its
+      # wine still depends on it; stable, at a low priority, provides only
+      # what unstable can't.
       - name: Install host runner
         run: |
           export DEBIAN_FRONTEND=noninteractive
+          printf '%s\n' 'Types: deb' 'URIs: http://deb.debian.org/debian' \
+            'Suites: trixie' 'Components: main' \
+            'Signed-By: /usr/share/keyrings/debian-archive-keyring.pgp' \
+            >/etc/apt/sources.list.d/trixie.sources
+          printf '%s\n' 'Package: *' 'Pin: release n=trixie' 'Pin-Priority: 100' \
+            >/etc/apt/preferences.d/trixie
           apt-get update
           apt-get install -y --no-install-recommends ccache wine wine64
           rm -rf /var/lib/apt/lists/*
