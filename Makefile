@@ -60,7 +60,7 @@ ifneq (,$(strip $(HOST)))
 endif
 
 # Goals that touch nothing under PREFIX, so they run without one
-NO_PREFIX_GOALS := clean% drop-prefix help info print-% update% branch release-tag v
+NO_PREFIX_GOALS := clean% drop-prefix help info print-% update% branch release-tag release-reviewers v
 GOALS := $(or $(MAKECMDGOALS),$(.DEFAULT_GOAL))
 
 # PREFIX has no default: the first build names it, the build tree records
@@ -1896,6 +1896,13 @@ $(SDKS): sdk-%: sdk/%.sdk libnix | $(LHA_PREREQ)
 .PHONY: release-tag
 release-tag:
 	@PROJECTS=$(PROJECTS) scripts/release-tag "$(TAG)" "$(NOTES)" $(if $(filter yes,$(CONFIRM)),--confirm)
+
+# The reviewers of the pull requests merged since the release SINCE, and how
+# many each approved, as a Markdown table for the release notes:
+#   make -s release-reviewers SINCE=v16.2-rc24 [UNTIL=<tag or date>]
+.PHONY: release-reviewers
+release-reviewers:
+	scripts/release-reviewers "$(SINCE)" $(UNTIL)
 
 # =================================================
 # update repos

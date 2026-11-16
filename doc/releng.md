@@ -12,7 +12,12 @@ rebuilt later.
 1. Write the release notes in a file: a subject line, a blank line, then
    the notes in Markdown. They become the tag message, and the notes after
    the subject become the GitHub release's text. Following the previous
-   release's layout keeps them consistent.
+   release's layout keeps them consistent. The reviewers are credited with
+   the table this prints: the pull requests merged since the previous
+   release, in this repository and the modules, that each one approved:
+   ```
+   make -s release-reviewers SINCE=v16.2-rc18
+   ```
 2. See what would be tagged:
    ```
    make release-tag TAG=v16.2-rc19 NOTES=notes.md
