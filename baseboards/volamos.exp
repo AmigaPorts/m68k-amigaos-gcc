@@ -17,9 +17,8 @@ if {![info exists SIM]} {
 }
 setup_sim amigaos
 # --sanitize: volamos checks guest memory accesses and fails the run on a
-# violation (exit status 99).  A runtest SANITIZE=0 leaves it out; the
-# Makefile passes that for the C++ suite, whose -fstrub tests read the
-# scrubbed stack below the stack pointer on purpose.
+# violation (exit status 99).  A runtest SANITIZE=0 leaves it out, and
+# sim_spawn below leaves it out for the -fstrub tests.
 # --cpu 68000: this board builds 68000 code, so run it on one, which traps
 # the misaligned word and long accesses a 68020 tolerates.
 # --dirty-heap: memory allocated without MEMF_CLEAR is filled with 0xA5, as
@@ -80,4 +79,17 @@ set_board_info gdb,nosignals 1
 set_board_info gdb,cannot_call_functions 1
 
 set timeout 30
+
+# sim.exp's, without --sanitize for a test compiled with -fstrub: it scrubs
+# the stack a function used, then reads it back below the stack pointer on
+# purpose.  Outside a dg test, current_compiler_flags fails and the options
+# stay as they are.
+proc sim_spawn { dest cmdline args } {
+    set sim [board_info $dest sim]
+    set simflags [board_info $dest sim,options]
+    if {![catch {current_compiler_flags} flags] && [string match "*-fstrub*" $flags]} {
+	regsub -- { --sanitize} $simflags "" simflags
+    }
+    return [eval remote_spawn host \{ $sim $simflags $cmdline \} $args]
+}
 
