@@ -588,8 +588,9 @@ jobs:
       (needs.refs.outputs.label == '' && inputs.build_hosted && inputs.make_args == '')
     runs-on: ubuntu-24.04
     timeout-minutes: 300
+    # The first Ubuntu with the UCRT MinGW compilers; no LTS has them yet
     container:
-      image: amigadev/crosstools:x86_64-w64-mingw32
+      image: ubuntu:26.10
     defaults:
       run:
         shell: bash
@@ -601,6 +602,13 @@ jobs:
       HOST: x86_64-w64-mingw32ucrt
       BUILD_TRIPLET: x86_64-linux-gnu
       HOST_RUNNER: wine
+      # the HOST tools, as a cross image would set them
+      CC: x86_64-w64-mingw32ucrt-gcc
+      CXX: x86_64-w64-mingw32ucrt-g++
+      AR: x86_64-w64-mingw32ucrt-ar
+      AS: x86_64-w64-mingw32ucrt-as
+      LD: x86_64-w64-mingw32ucrt-ld
+      RANLIB: x86_64-w64-mingw32ucrt-ranlib
       BUILD_CC: ccache x86_64-linux-gnu-gcc -B/opt/build-binutils/
       BUILD_CXX: ccache x86_64-linux-gnu-g++ -B/opt/build-binutils/
       CC_FOR_BUILD: ccache x86_64-linux-gnu-gcc -B/opt/build-binutils/
@@ -613,6 +621,22 @@ jobs:
       CCACHE_BASEDIR: ${{ github.workspace }}
 
     steps:
+      # before the checkout, which needs git for the history the Makefile
+      # describes; wine runs the HOST tools the build makes, lha unpacks
+      # the SDKs, curl downloads them and patch fixes them up, libtool
+      # runs file on the MinGW import libraries, and the native
+      # m68k-amigaos gcc the build uses links the system GMP, MPFR and MPC
+      - name: Install the cross compilers and build tools
+        run: |
+          export DEBIAN_FRONTEND=noninteractive
+          apt-get update
+          apt-get install -y --no-install-recommends \
+            bison build-essential ca-certificates ccache curl file flex \
+            g++-mingw-w64-ucrt64 gcc-mingw-w64-ucrt64 gettext git lhasa \
+            libgmp-dev libmpc-dev libmpfr-dev patch rsync wine wine64 \
+            xz-utils
+          rm -rf /var/lib/apt/lists/*
+
       - uses: actions/checkout@v7
         with:
           repository: ${{ inputs.checkout_repo }}
@@ -620,18 +644,10 @@ jobs:
           # the Makefile stamps the tools with git describe --tags
           fetch-depth: 0
 
-
       # the runner checked the tree out as its own user and the container
       # runs as root: git refuses the repository without this
       - name: Let git read the checkout
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
-
-      - name: Install host runner
-        run: |
-          export DEBIAN_FRONTEND=noninteractive
-          apt-get update
-          apt-get install -y --no-install-recommends ccache wine wine64
-          rm -rf /var/lib/apt/lists/*
 
       - name: Prepare native build tools
         run: |
@@ -646,7 +662,7 @@ jobs:
           test "$(x86_64-linux-gnu-gcc -dumpmachine)" = "$BUILD_TRIPLET"
           command -v wine
           command -v lha
-          # the image's mingw compilers, through ccache from here on
+          # the mingw compilers, through ccache from here on
           echo "CC=ccache $CC" >> "$GITHUB_ENV"
           echo "CXX=ccache $CXX" >> "$GITHUB_ENV"
 
