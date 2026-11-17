@@ -16,7 +16,7 @@ SAS/C has them:
 | `__saveds` | function | loads its own a4 on entry, for a function called with someone else's, such as a hook or a callback: see [options.md](options.md#addressing-data) |
 | `__regargs` | function | arguments in registers: `__attribute__((regparm(2)))`, see [abi.md](abi.md#register-arguments) |
 | `__stdargs` | function | arguments on the stack, also with `-mregparm`: `__attribute__((stkparm))` |
-| `__saveallregs` | function | saves and restores every register, d0 included, so the function can't return a value: use it only on `void` functions |
+| `__saveallregs` | function | saves and restores every register but those that hold its return value: d0, d0/d1 for a 64-bit value or an 8-byte struct, fp0 for a floating-point value with an FPU, and d0 with the address of a value returned in memory. A `void` function gives back all of them |
 | `__entrypoint` | function | saves no registers, not even those a caller expects to keep |
 | `__interrupt` | function | returns with `rte`, for a raw 68000 exception vector. Exec interrupt servers and handlers (`AddIntServer()`, `SetIntVector()`) are ordinary functions that return with `rts`: don't use it for them |
 | `__stackext` | function | accepted and ignored: there is no stack extension |
