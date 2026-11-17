@@ -82,12 +82,14 @@ set timeout 30
 
 # sim.exp's, without --sanitize for a test compiled with -fstrub: it scrubs
 # the stack a function used, then reads it back below the stack pointer on
-# purpose.  Outside a dg test, current_compiler_flags fails and the options
-# stay as they are.
+# purpose.  current_compiler_flags exists only in gcc's testsuite: calling
+# it elsewhere, as newlib's, would be a DejaGnu ERROR even inside a catch.
 proc sim_spawn { dest cmdline args } {
     set sim [board_info $dest sim]
     set simflags [board_info $dest sim,options]
-    if {![catch {current_compiler_flags} flags] && [string match "*-fstrub*" $flags]} {
+    if {[llength [info procs current_compiler_flags]]
+	&& ![catch {current_compiler_flags} flags]
+	&& [string match "*-fstrub*" $flags]} {
 	regsub -- { --sanitize} $simflags "" simflags
     }
     return [eval remote_spawn host \{ $sim $simflags $cmdline \} $args]
