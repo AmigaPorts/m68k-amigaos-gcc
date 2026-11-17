@@ -1441,7 +1441,7 @@ $(BUILD)/vbcc_target_m68k-amigaos/_unpacked: $(DOWNLOAD)/vbcc_target_m68k-amigao
 # =================================================
 
 NDK_INCLUDE = $(shell find 2>/dev/null $(PROJECTS)/$(NDK_FOLDER_NAME_H) -type f)
-NDK_INCLUDE_SFD = $(shell find 2>/dev/null $(PROJECTS)/$(NDK_FOLDER_NAME_SFD) -type f -name *.sfd)
+NDK_INCLUDE_SFD = $(shell find 2>/dev/null $(PROJECTS)/$(NDK_FOLDER_NAME_SFD) -type f -name '*.sfd')
 NDK_FD2PRAGMA_PREREQ := $(BUILD)/fd2pragma/_done
 ifneq (,$(strip $(HOST)))
 NDK_FD2SFD_PREREQ := $(BUILD_TOOLS)/fd2sfd/_done
@@ -1460,7 +1460,7 @@ NDK_INCLUDE_PROTO  = $(patsubst $(PROJECTS)/$(NDK_FOLDER_NAME_SFD)/%_lib.sfd,$(P
 # because they clash with those of the C libraries.  They stay out of
 # NDK_INCLUDE_SFD, and so out of libamiga.a.
 NET_SFD_DIR := $(PROJECTS)/$(NDK_FOLDER_NAME)/SANA+RoadshowTCP-IP/sfd
-NET_INCLUDE_SFD = $(shell find 2>/dev/null $(NET_SFD_DIR) -type f -name *_lib.sfd)
+NET_INCLUDE_SFD = $(shell find 2>/dev/null $(NET_SFD_DIR) -type f -name '*_lib.sfd')
 NDK_INCLUDE_INLINE += $(patsubst $(NET_SFD_DIR)/%_lib.sfd,$(PREFIX)/$(TARGET)/ndk-include/inline/%.h,$(NET_INCLUDE_SFD))
 NDK_INCLUDE_INLINE_VBCC += $(patsubst $(NET_SFD_DIR)/%_lib.sfd,$(PREFIX)/$(TARGET)/ndk-include/inline/%_protos.h,$(NET_INCLUDE_SFD))
 NDK_INCLUDE_LVO    += $(patsubst $(NET_SFD_DIR)/%_lib.sfd,$(PREFIX)/$(TARGET)/ndk-include/lvo/%_lib.i,$(NET_INCLUDE_SFD))
