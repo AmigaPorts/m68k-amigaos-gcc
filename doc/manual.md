@@ -15,6 +15,7 @@ specific to the Amiga.
 ### How to
 
 - [Libraries](libraries.md): calling AmigaOS libraries, and creating your own libraries and devices.
+- [Small programs](small.md): the smallest C runtime, the options, and programs without startup code.
 
 <br clear="right" />
 
