@@ -1119,12 +1119,15 @@ TARGET_BUILD_BINUTILS_CONFIG := --prefix=$(TARGET_BUILD_TOOLS_PREFIX) \
 	--build=$(TARGET_BUILD_MACHINE) --host=$(TARGET_BUILD_MACHINE) \
 	--target=$(TARGET) --disable-werror --disable-nls --without-msgpack \
 	--disable-gdb --disable-gdbserver --enable-plugins
+# This gcc builds no target libraries, so it must not link libatomic:
+# the target libraries' configure link tests use it before there is one
 TARGET_BUILD_GCC_CONFIG := --prefix=$(TARGET_BUILD_TOOLS_PREFIX) \
 	--build=$(TARGET_BUILD_MACHINE) --host=$(TARGET_BUILD_MACHINE) \
 	--target=$(TARGET) --enable-languages=c,c++,objc,$(ADDLANG) \
 	--enable-version-specific-runtime-libs --enable-lto \
 	--disable-bootstrap --disable-libssp --disable-nls --without-zstd \
 	--disable-shared --disable-werror --enable-threads=$(THREADS) \
+	--disable-libatomic \
 	--with-headers=$(PROJECTS)/newlib-cygwin/newlib/libc/sys/amigaos/include/ \
 	--with-build-time-tools=$(TARGET_BUILD_TOOLS_PREFIX)/$(TARGET)/bin \
 	--with-gmp=/usr --with-mpfr=/usr --with-mpc=/usr
