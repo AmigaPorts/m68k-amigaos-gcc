@@ -14,8 +14,9 @@ specific to the Amiga.
 
 ### How to
 
-- [Libraries](libraries.md): calling AmigaOS libraries, and creating your own libraries and devices.
-- [Small programs](small.md): the smallest C runtime, the options, and programs without startup code.
+- [Libraries](libraries.md): calling AmigaOS libraries and creating your own libraries and devices.
+- [Small programs](small.md): minimizing code size, C runtime overhead, and writing programs with no C startup.
+- [Workbench programs](wbstartup.md): WBStartup arguments, icon tool types, and opening a console window.
 
 <br clear="right" />
 
