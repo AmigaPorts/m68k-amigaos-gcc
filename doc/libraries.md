@@ -66,6 +66,83 @@ int main()
 }
 ```
 
+### Library bases that aren't global variables
+
+The calls can go through a base other than the global one:
+
+- **Speed and size.** Any library call may change memory, so the compiler
+  loads a global base again before each call: `move.l _GfxBase,a6`, or
+  `move.l _GfxBase:W(a4),a6` with `-fbaserel`. A base in a local variable or a
+  parameter is loaded into a6 once, and stays there from call to call, since
+  libraries preserve a6. For the three calls below, that is 48 bytes of code
+  instead of 64, or 56 with `-fbaserel`.
+- **Libraries calling themselves or other libraries.** A library function
+  gets its own base as an argument, and calls the library's other functions
+  through it. The global variables of a library are shared by all the tasks
+  that call it, so a base that it opens for each of them goes in its own
+  library base, or is passed from function to function as an argument.
+- **Threads.** bsdsocket.library gives each task that opens it a base of its
+  own, so a program whose threads use sockets keeps a base for each thread.
+
+Macros defined before the first `#include <proto/...>` choose the base:
+
+| Macro | The calls use as the base |
+|---|---|
+| `__NOLIBBASE__` | the variable named like the base, such as `GfxBase`, that is in scope where the call is; the proto headers don't declare the global bases |
+| `<LIBRARY>_BASE_NAME`, such as `BSDSOCKET_BASE_NAME` or `DOS_BASE_NAME` | the expression it expands to, in place of the name of the base |
+
+Defining them after the `#include` is too late: the header has already chosen
+the base. Without `__NOLIBBASE__`, the functions with a variable number of
+arguments, such as `syslog()`, `SocketBaseTags()` and `Printf()`, are defined
+in the header and expand `<LIBRARY>_BASE_NAME` there, so it must be valid
+outside any function. With `__NOLIBBASE__`, each call expands it, and it can
+use the function's parameters and variables. `__NOLIBBASE__` applies to all
+the proto headers that the file includes, so the file declares any global base
+it still uses, such as `SysBase`.
+
+A function that gets the base as a parameter, and loads it into a6 once for
+the three calls:
+
+```c
+#define __NOLIBBASE__
+#include <proto/graphics.h>
+
+void draw_corner(struct GfxBase *GfxBase, struct RastPort *rp)
+{
+	Move(rp, 0, 0);
+	Draw(rp, 10, 0);
+	Draw(rp, 10, 10);
+}
+```
+
+A library that keeps a bsdsocket.library base for each opener in its own
+base:
+
+```c
+#define __NOLIBBASE__
+#define BSDSOCKET_BASE_NAME (lb->SocketBase)
+#include <proto/bsdsocket.h>
+
+struct MyLibBase {
+	struct Library lib;
+	struct Library *SocketBase;
+};
+
+LONG my_close(struct MyLibBase *lb, LONG sock)
+{
+	return CloseSocket(sock);
+}
+```
+
+A program that looks up the base of the calling thread:
+
+```c
+struct Library *GetSocketBase(void);
+
+#define BSDSOCKET_BASE_NAME GetSocketBase()
+#include <proto/bsdsocket.h>
+```
+
 ### Libraries outside the NDK
 
 sfdc, installed with the toolchain, generates a library's headers from its
