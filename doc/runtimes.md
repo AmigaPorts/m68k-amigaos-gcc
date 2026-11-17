@@ -173,6 +173,15 @@ functions and `strtold()` compute in `double` precision. There is no wide
 character I/O, and `mbstowcs()` doesn't decode UTF-8. `setlocale()` opens
 `locale.library` locales. `-pthread` links a POSIX threads library.
 
+Its libraries are built for size (`-Os`), with two exceptions built for
+speed (`-O2`):
+
+- the string and memory functions (`mem*()`, `str*()`, `bcopy()` and
+  `bzero()`), which sit in their callers' inner loops;
+- the FPU libm, used with `-m68881`, as Amigas with an FPU usually have more
+  memory too. That includes the `printf()` and `scanf()` libm provides:
+  `printf()` with `-lm` is about 7 KB larger with `-m68881`.
+
 **C++ and OS support:** C++ works, with exceptions and the standard library;
 the g++ testsuite runs on libnix. Kickstart 2.0 and later, or 1.3 with
 `-mcrt=nix13`.
