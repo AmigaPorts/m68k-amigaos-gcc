@@ -2040,6 +2040,7 @@ check:
 	$(MAKE) --no-print-directory check-gcc-amigaos
 	$(MAKE) --no-print-directory check-libnix
 	$(MAKE) --no-print-directory check-libpthread
+	$(MAKE) --no-print-directory check-examples
 	$(MAKE) --no-print-directory check-newlib
 	$(MAKE) --no-print-directory check-c
 	$(MAKE) --no-print-directory check-c board=volamos/-mcrt=ixemul/-m68020-60/-m68881
@@ -2226,6 +2227,24 @@ check-rust: $(BOARD_PREREQ)
 	$(L0)"check rust"$(L1)$(MAKE) -C $(BUILD)/gcc check-gcc-rust "RUNTESTFLAGS=--target_board=$(board)$(RUNTEST_SIM)"$(L2)
 	@{ echo '----- rust -----'; grep '^# of' $(RUSTTESTSUITE)/rust.sum || echo '(no tests run)'; grep -E '^(FAIL|ERROR|XPASS)' $(RUSTTESTSUITE)/rust.sum || true; } | tee $@.summary.txt
 	@echo "results: $(RUSTTESTSUITE)/rust.{sum,log}"
+
+# make check in each example, with the installed toolchain. With -j they run
+# in parallel, each logged to its own file in log/. The C++ threads example
+# needs THREADS=amigaos.
+CHECK_EXAMPLES := \
+	check-examples-library \
+	check-examples-pthreads
+ifeq ($(THREADS),amigaos)
+CHECK_EXAMPLES += check-examples-cxx_thread
+endif
+
+.PHONY: check-examples $(CHECK_EXAMPLES)
+check-examples: $(CHECK_EXAMPLES)
+
+$(CHECK_EXAMPLES): $(MIN_IF_MISSING) $(VOLAMOS)
+	$(L0)"check example $(@:check-examples-%=%)"$(L1)$(MAKE) -C examples/$(@:check-examples-%=%) check \
+	  CC=$(PREFIX)/bin/$(TARGET)-gcc CXX=$(PREFIX)/bin/$(TARGET)-g++ \
+	  SFDC=$(SFDC_FOR_BUILD) VOLAMOS=$(VOLAMOS)$(L2)
 
 # libc-test, musl's testsuite: its groups of tests (math, and functional for
 # printf, scanf, strto*, fnmatch, qsort and the string functions) on one C

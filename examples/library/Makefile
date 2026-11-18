@@ -31,8 +31,8 @@ hello_autoopen.c: hello_lib.sfd
 # directory instead of LIBS:, and checks every memory access of the client and
 # the library: out of bounds, after free, and below the stack pointer.
 check: all
-	$(VOLAMOS) --sanitize --libs-dir . client 2>&1 | tee check.out
-	test "$$(cat check.out)" = "Hello, World"
+	$(VOLAMOS) --sanitize --libs-dir . client > check.out
+	grep -x "Hello, World" check.out
 
 clean:
 	rm -rf include hello_autoopen.c hello.library client check.out
