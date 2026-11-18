@@ -40,6 +40,7 @@ sources.
 | `check-libc-test` | musl's testsuite, [libc-test](https://wiki.musl-libc.org/libc-test.html), see below. It has known failures ([#239](https://github.com/AmigaPorts/m68k-amigaos-gcc/issues/239)) |
 | `check-libnix` | libnix's target tests |
 | `check-libpthread` | builds libpthread's test programs, runs its link checks, and runs under volamos the programs that pass there |
+| `check-examples` | `make check` in each of the [examples](../examples/), under volamos; `make -j` runs them in parallel. The C++ threads example needs `THREADS=amigaos` |
 | `check-binutils` | the gas and ld tests for the Amiga hunk format |
 | `check-sfdc` | sfdc's tests, and what it writes for a link library compiled with the cross compiler |
 | `check-multilib` | the multilib list against the driver's |

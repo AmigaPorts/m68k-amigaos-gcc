@@ -1,4 +1,5 @@
 CC = m68k-amigaos-gcc
+VOLAMOS = volamos
 CRT = newlib
 CFLAGS = -Os -mcrt=$(CRT) -pthread -Wall -Wextra
 
@@ -10,7 +11,13 @@ all: hello
 hello: hello.c
 	$(CC) $(CFLAGS) -s -o $@ $<
 
-clean:
-	rm -f hello
+# Runs the program under volamos, which checks every memory access: out of
+# bounds, after free, and below the stack pointer.
+check: all
+	$(VOLAMOS) --sanitize hello > check.out
+	grep -x "All 4 threads are done" check.out
 
-.PHONY: all clean
+clean:
+	rm -f hello check.out
+
+.PHONY: all check clean
