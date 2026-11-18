@@ -14,7 +14,8 @@
 #  - the sources of the modules whose commit changed since the build get the
 #    current time, after T.
 # make then rebuilds the changed modules and what depends on them, also where
-# a rule installs into the prefix directly, and leaves the rest alone.  The
+# a rule installs into the prefix directly, and leaves the rest alone.  A
+# changed gcc also drops the build of its target libraries.  The
 # cache key covers the Makefile and the patches, so the restored trees match
 # them.
 set -euo pipefail
@@ -53,6 +54,12 @@ prepare)
 	sleep 2
 	for m in ${changed[@]+"${changed[@]}"}; do
 		find "$projects/$m" -path "$projects/$m/.git" -prune -o -exec touch -h {} +
+		# libgcc, libstdc++ and libatomic keep what their configure found
+		# out about the compiler that built the cache, such as whether it
+		# has aliases: another gcc configures them again
+		if [ "$m" = gcc ]; then
+			make -s -C "$here" clean-libgcc BUILD="$build"
+		fi
 	done
 	echo "restored files at $(date -d "@$t" +%T), the sources of ${#changed[@]} changed module(s) after"
 	;;
