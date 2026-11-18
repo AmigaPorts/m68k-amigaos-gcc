@@ -1959,11 +1959,14 @@ ifeq ($(VOLAMOS_UNAME_S),Darwin)
   endif
 endif
 
+# the volamos the tests run, which comes with the toolchain
+VOLAMOS = $(PREFIX)/bin/volamos
+
 .PHONY: volamos
-volamos: $(PREFIX)/bin/volamos
+volamos: $(VOLAMOS)
 
 ifeq (,$(VOLAMOS_HOST))
-$(PREFIX)/bin/volamos:
+$(VOLAMOS):
 	@echo "volamos has no release for $(VOLAMOS_UNAME_S) $(VOLAMOS_UNAME_M)." >&2
 	@echo "Build it from https://github.com/sidick/volamos and copy it to $(PREFIX)/bin." >&2
 	@exit 1
@@ -1971,7 +1974,7 @@ else
 VOLAMOS_DIR := $(volamos-$(VOLAMOS_HOST)_DIR)
 VOLAMOS_ARC := $(volamos-$(VOLAMOS_HOST)_ARCHIVE)
 
-$(PREFIX)/bin/volamos: $(DOWNLOAD)/$(VOLAMOS_ARC)
+$(VOLAMOS): $(DOWNLOAD)/$(VOLAMOS_ARC)
 	@mkdir -p $(PREFIX)/bin
 	$(L0)"unpack volamos"$(L1) tar xzf $(DOWNLOAD)/$(VOLAMOS_ARC) -C $(PREFIX)/bin \
 	  --strip-components=1 $(VOLAMOS_DIR)/volamos && touch $@$(L2)
@@ -1991,7 +1994,7 @@ endif
 RUNTEST_SIM = $(if $(SIM), SIM=$(SIM))
 
 # A volamos board installs volamos first, unless SIM= names another binary.
-BOARD_PREREQ = $(if $(and $(filter volamos%,$(board)),$(if $(SIM),,y)),$(PREFIX)/bin/volamos)
+BOARD_PREREQ = $(if $(and $(filter volamos%,$(board)),$(if $(SIM),,y)),$(VOLAMOS))
 
 # min builds every runtime but clib2, so a clib2 board builds it if missing, with the libdebug it links.
 BOARD_PREREQ += $(if $(findstring -mcrt=clib2,$(board)),$(call if-missing,$(BUILD)/clib2/_done $(BUILD)/libdebug/_done,clib2 libdebug))
@@ -2118,9 +2121,9 @@ check-gcc-amigaos: $(MIN_IF_MISSING) $(BOARD_PREREQ)
 # current one, where they may create files and popen starts itself: volamos's
 # own default, SYS:, is shared by all its runs.
 .PHONY: check-libnix
-check-libnix: $(MIN_IF_MISSING) $(PREFIX)/bin/volamos
+check-libnix: $(MIN_IF_MISSING) $(VOLAMOS)
 	set -o pipefail; $(MAKE) --no-print-directory -B -C $(PROJECTS)/libnix/test check-target \
-	  CROSS_CC=$(PREFIX)/bin/$(TARGET)-gcc SIM=$(PREFIX)/bin/volamos \
+	  CROSS_CC=$(PREFIX)/bin/$(TARGET)-gcc SIM=$(VOLAMOS) \
 	  SIMFLAGS="--stack 4K --sanitize --dirty-heap -V TESTS:$(PROJECTS)/libnix/test/build --cwd TESTS:" \
 	  2>&1 | tee $@.summary.txt
 
@@ -2135,11 +2138,11 @@ check-sfdc: $(MIN_IF_MISSING) $(BUILD)/sfdc/_done
 # Build libpthread's regression programs for each multilib, check what they
 # link, and run under volamos the ones that pass there.
 .PHONY: check-libpthread
-check-libpthread: $(BUILD)/libpthread/_done $(PREFIX)/bin/volamos
+check-libpthread: $(BUILD)/libpthread/_done $(VOLAMOS)
 	set -o pipefail; if grep -q '^check:' $(BUILD)/libpthread/Makefile.m68k-amigaos; then \
 	  $(MAKE) --no-print-directory -C $(BUILD)/libpthread -f Makefile.m68k-amigaos check \
 	    CC=$(PREFIX)/bin/$(TARGET)-gcc CXX=$(PREFIX)/bin/$(TARGET)-g++ \
-	    AR=$(PREFIX)/bin/$(TARGET)-ar SIM=$(PREFIX)/bin/volamos; \
+	    AR=$(PREFIX)/bin/$(TARGET)-ar SIM=$(VOLAMOS); \
 	  else echo 'SKIP: aros-stuff does not yet have the pthread check target'; fi \
 	  2>&1 | tee $@.summary.txt
 
@@ -2166,7 +2169,7 @@ newlib-check-dir = $(NEWLIBTESTSUITE)/$(call newlib-board-dir,$(1))/$(subst /,_,
 NEWLIB_CHECKS = $(foreach b,$(NEWLIB_BOARDS),$(foreach e,$(NEWLIB_EXPS),$(call newlib-check-dir,$(b),$(e))/newlib.sum))
 
 .PHONY: newlib-site-exp $(NEWLIB_CHECKS)
-newlib-site-exp: $(MIN_IF_MISSING) $(PREFIX)/bin/volamos
+newlib-site-exp: $(MIN_IF_MISSING) $(VOLAMOS)
 	@rm -f $(BUILD)/newlib/newlib/site.exp
 	@$(MAKE) --no-print-directory -C $(BUILD)/newlib/newlib site.exp build_alias=`$(BUILD_CC) -dumpmachine` >/dev/null
 
@@ -2245,7 +2248,7 @@ $(PROJECTS)/libc-test/Makefile: | repos-current
 
 # + for the jobserver: libc-test's make, which the script runs, shares this one's -j
 .PHONY: check-libc-test
-check-libc-test: $(PROJECTS)/libc-test/Makefile $(MIN_IF_MISSING) $(LIBC_TEST_PREREQ) $(PREFIX)/bin/volamos
+check-libc-test: $(PROJECTS)/libc-test/Makefile $(MIN_IF_MISSING) $(LIBC_TEST_PREREQ) $(VOLAMOS)
 	+set -o pipefail; rm -f $@.summary.txt; rc=0; for group in $(libc-test-group); do \
 	  LIBC_TEST_TIMEOUT=$(libc-test-timeout) scripts/libc-test --group $$group $(PROJECTS)/libc-test \
 	    $(BUILD)/libc-test/$(libc-test-crt)$(subst $() ,,$(libc-test-cflags)) \
