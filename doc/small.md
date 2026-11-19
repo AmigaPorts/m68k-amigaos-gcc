@@ -22,8 +22,9 @@ the programs that use it.
 | `-fbaserel` | a4-relative data: shorter instructions and fewer relocations, see [options.md](options.md#addressing-data) |
 | `-mpcrel` | PC-relative references: fewer relocations, see [options.md](options.md#code-model) |
 | `-msmall-code` | 16-bit branches only, see [options.md](options.md#code-model) |
-| `-flto` | link-time optimization: inlines and drops functions across source files |
-| `-mregparm=3` | arguments in registers: shorter calls, see [abi.md](abi.md#register-arguments) |
+| `-flto` | link-time optimization: inlines functions across source files and drops unreachable symbols, see [below](#-flto) |
+| `-mregparm=N` | passes the first N arguments in registers: shorter calls, see [below](#-mregparmn) |
+| `-ffunction-sections -fdata-sections -Wl,--gc-sections` | drops unreferenced functions and variables, see [below](#-ffunction-sections--fdata-sections--wl--gc-sections) |
 | `-m68020-60` | 68020 instructions, such as 32-bit multiplication and division, instead of calls; the program no longer runs on a 68000, see [options.md](options.md#cpu-and-fpu) |
 | `-m68881` | with a 68020 or later CPU, FPU instructions instead of the software floating point in libgcc and libm |
 
@@ -32,19 +33,76 @@ the programs that use it.
 libraries are built without them. The program without startup code below is
 188 bytes, and 168 with `-mpcrel`.
 
-`-flto` and `-mregparm` help most with larger programs which are broken into
-multiple functions and source files. Register arguments alone can shrink a
-large program by about 3%: [Benchwork results](https://github.com/codewiz/benchwork/blob/main/results/regparm.md).
-
-When using `-mregparm`, declare `main()` as `__stdargs`: the startup code passes
-its arguments on the stack, see [abi.md](abi.md#main-with--mregparm).
-
 `-m68020-60` and `-m68881` shrink a program that computes: one with a loop
 of 32-bit multiplications and divisions, `sqrt()`, `sin()` and `pow()` is
 5452 bytes with libnix and `-Os -s`, 5284 with `-m68020-60`, and 4524 with
 `-m68020-60 -m68881`. But libnix's FPU libm is built for speed, not size:
 `printf()` with `-lm` grows by about 7 KB with `-m68881`, see
 [C runtimes](runtimes.md#libnix).
+
+The following three options are most effective on larger programs, which
+consist of many functions and source files. Each places requirements on the
+program.
+
+### -flto
+
+Enables Link Time Optimizations: gcc optimizes the whole program at link
+time, inlining functions across source files. A program that consists of a
+single source file is unaffected.
+
+- Pass `-flto` both when compiling and when linking, with the same `-O`
+  option.
+- gcc drops unreachable symbols, such as functions that are never called
+  and global variables that are never referenced. Mark with
+  `[[gnu::used]]` the symbols that are reached in a way the compiler cannot
+  see, from an `asm()` string or by scanning the program:
+  - the entry point of a program without startup code, such as `start()`
+    below;
+  - a `$VER:` string;
+  - the Resident structure of a library or device.
+
+### -mregparm=N
+
+Passes the first N arguments of each kind in registers instead of on the
+stack, see [abi.md](abi.md#register-arguments). `-mregparm=3` can shrink a
+large program by about 3%: [Benchwork results](https://github.com/codewiz/benchwork/blob/main/results/regparm.md).
+
+A function that is called by code built without the option receives its
+arguments on the stack, and must be declared `__stdargs`:
+
+- `main()`, which the startup code calls, see [abi.md](abi.md#main-with--mregparm);
+- a callback passed to a library, such as the comparison function of
+  `qsort()`. gcc warns about these, see [abi.md](abi.md#mixing-conventions);
+- a function written in assembler that reads its arguments from the stack.
+
+The functions of the C runtime require no change: its headers declare them
+`__stdargs`.
+
+### -ffunction-sections -fdata-sections -Wl,--gc-sections
+
+This simpler technique is superseded by `-flto`. It often makes programs
+slower, because it requires long jumps even between functions that are
+defined in the same source file: the program below grows from 188 to 204
+bytes.
+
+The compiler places each function and variable in a section of its own, and
+the linker drops unreferenced sections. It is useful when the source files
+contain more code than the program uses, as with a library taken from
+another project.
+
+- All three options are required: without `-Wl,--gc-sections`, the other
+  two only make the program slightly larger.
+- In a program linked with a C runtime, the linker also drops symbols that
+  are found by scanning the program, even those marked `[[gnu::used]]`: a
+  `$VER:` string, or the Resident structure of a library or device. Make
+  such a symbol global and name it with `-Wl,-u,_<symbol>`.
+  `[[gnu::retain]]`, which keeps such symbols on ELF targets, is not
+  supported by the m68k-amigaos target: it relies on an ELF section flag
+  that the Hunk object format lacks.
+- A program without startup code is a special case. The linker drops
+  nothing from it, and with `-flto` it drops everything: `-Wl,-u,_start`
+  keeps the entry point of the program below, and each `$VER:` string
+  needs its own `-Wl,-u`.
 
 ## Without startup code
 
