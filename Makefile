@@ -1663,17 +1663,21 @@ libgcc: $(BUILD)/gcc/_libgcc_done
 
 # libstdc++ is built without dependency tracking (no-dependencies in its
 # configure.ac), so its objects don't follow the headers they were compiled
-# against: a changed gthread header leaves calls to functions that libgcc no
-# longer has.  When one of these changes, drop libstdc++'s build, and
-# all-target configures and builds it again.
+# against, nor the compiler that compiled them: a changed gthread header leaves
+# calls to functions that libgcc no longer has, and a new compiler leaves code
+# it would no longer generate.  When one of these changes, drop libstdc++'s
+# build, the default multilib's and every other multilib's under it, and
+# all-target configures and builds them again.
 LIBSTDCXX_HEADERS := $(wildcard \
 	$(PROJECTS)/gcc/libgcc/gthr-amigaos.h \
 	$(PROJECTS)/gcc/gcc/config/m68k/benaphore.h \
 	$(PROJECTS)/aros-stuff/pthreads/pthread.h) \
 	$(BUILD)/newlib/_done
 
-$(BUILD)/gcc/_libstdcxx_headers: $(LIBSTDCXX_HEADERS)
-	rm -rf $(BUILD)/gcc/$(TARGET)/libstdc++-v3
+$(BUILD)/gcc/_libstdcxx_headers: $(LIBSTDCXX_HEADERS) $(BUILD)/gcc/_done
+	if [ -d $(BUILD)/gcc/$(TARGET) ]; then \
+	  find $(BUILD)/gcc/$(TARGET) -maxdepth 4 -type d -name libstdc++-v3 -prune -exec rm -rf {} +; \
+	fi
 	@mkdir -p $(dir $@)
 	@touch $@
 
