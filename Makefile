@@ -1715,6 +1715,11 @@ $(BUILD)/clib2/_done: $(PROJECTS)/clib2/LICENSE $(shell find 2>/dev/null $(PROJE
 	@rsync -a --no-group --delete $(PROJECTS)/clib2/library/include/ $(BUILD)/clib2/include/
 	@cd $(BUILD)/clib2 && find * -name lib\*.a -delete
 	$(L0)"make clib2"$(L1) $(MAKE) -C $(BUILD)/clib2 -f GNUmakefile.68k$(L2)
+	@# -m68881 adds the libm881 flavor to the library search, so -lm looks for libm020/libm881/libm.a
+	@# before falling back to the soft-float libm.a.  clib2 builds the FPU one as libm881.a.
+	@for dir in $(BUILD)/clib2/lib/libm020 $(BUILD)/clib2/lib/libb/libm020 $(BUILD)/clib2/lib/libb32/libm020; do \
+	  mkdir -p $$dir/libm881 && cp $$dir/libm881.a $$dir/libm881/libm.a || exit 1; \
+	done
 	@mkdir -p $(PREFIX)/$(TARGET)/clib2
 	@rsync -a --no-group --delete $(BUILD)/clib2/include $(PREFIX)/$(TARGET)/clib2
 	@rsync -a --no-group --delete $(BUILD)/clib2/lib $(PREFIX)/$(TARGET)/clib2
