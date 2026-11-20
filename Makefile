@@ -2212,10 +2212,33 @@ check-c++: $(MIN_IF_MISSING) $(BOARD_PREREQ)
 	grep -q '^# of expected passes' $(CXXTESTSUITE)/g++.sum
 	! grep -qE '^(FAIL|ERROR|XPASS)' $(CXXTESTSUITE)/g++.sum
 
-# shellcheck the build's own shell scripts
+# The build's own scripts, listed rather than globbed: a glob would also
+# check a file that isn't committed, and with the wrong tool.
+SHELL_SCRIPTS = \
+	scripts/checkout \
+	scripts/libc-test \
+	scripts/manifest \
+	scripts/release-reviewers \
+	scripts/release-tag \
+	scripts/sdk-clean \
+	scripts/sdk-download \
+	scripts/sdk-install \
+	scripts/sdk-patch \
+	scripts/update-module \
+	.github/scripts/override-repos.sh \
+	.github/scripts/pr-status.sh \
+	.github/scripts/toolchain-cache.sh
+PYTHON_SCRIPTS = \
+	.github/scripts/ci-command.py
+
 .PHONY: check-shell
 check-shell:
-	shellcheck scripts/* .github/scripts/*.sh
+	shellcheck $(SHELL_SCRIPTS)
+
+# Needs ruff, which check does not: it is not part of check.
+.PHONY: check-python
+check-python:
+	ruff check $(PYTHON_SCRIPTS)
 
 # A libpython dependency would tie the gdb in a release to the build machine's distro
 .PHONY: check-gdb-libpython
