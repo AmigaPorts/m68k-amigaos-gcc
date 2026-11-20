@@ -25,12 +25,12 @@ The executables built with `-Os` for the 68000, stripped, in bytes:
 
 | runtime | empty | hello | `%f` | date | minigzip |
 |---|---:|---:|---:|---:|---:|
-| `-mcrt=nix20` | 1924 | 5412 | 14684 | 8164 | 66628 |
-| `-mcrt=nix13` | 2128 | 5620 | 14920 | 8168 | 66992 |
-| `-mcrt=library` | 2044 | 2460 | 11672 | 2628 | 54180 |
-| `-mcrt=newlib` | 13644 | 17212 | 53696 | 50004 | 124680 |
-| `-mcrt=clib2` | 15340 | 15780 | 30968 | 21708 | 80784 |
-| `-mcrt=ixemul` | 4340 | 4388 | 4460 | 12368 | 55344 |
+| `-mcrt=nix20` | 1880 | 5420 | 14476 | 8104 | 66060 |
+| `-mcrt=nix13` | 2100 | 5644 | 14792 | 8208 | 66500 |
+| `-mcrt=library` | 1880 | 2292 | 11260 | 2460 | 53192 |
+| `-mcrt=newlib` | 5668 | 14556 | 50588 | 46932 | 120812 |
+| `-mcrt=clib2` | 15344 | 15780 | 30888 | 21716 | 79388 |
+| `-mcrt=ixemul` | 4340 | 4388 | 4460 | 12368 | 54620 |
 
 - empty: `int main(void) { return 0; }`, the startup code alone
 - hello: `puts("hello, world")`, which adds stdio
@@ -250,8 +250,8 @@ needs `workbench.library`.
 `long double` math. newlib's own testsuite runs with `make check-newlib`, and
 the gcc testsuites have newlib boards.
 
-**Weaknesses:** larger executables: the startup code pulls in stdio,
-`malloc()` and `strstr()` even for an empty program.
+**Weaknesses:** larger executables: the startup code links `malloc()` even
+into an empty program, and stdio adds about 9 KB.
 
 **Known bugs:** [the open newlib issues](https://github.com/AmigaPorts/m68k-amigaos-gcc/issues?q=is%3Aissue%20is%3Aopen%20label%3Anewlib).
 

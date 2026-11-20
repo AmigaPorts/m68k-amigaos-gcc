@@ -9,8 +9,8 @@ library functions it calls. Then come the options that change the code.
 
 [C runtimes](runtimes.md#size) lists the size of the same programs with each
 runtime. libnix (`-mcrt=nix20`, or `-mcrt=nix13` for Kickstart 1.3) makes the
-smallest: an empty program is under 2 KB, against 13 to 15 KB with newlib or
-clib2. `-mcrt=library` keeps most of libnix in `libnix4.library`, shared by
+smallest: an empty program is under 2 KB, against about 6 KB with newlib and
+15 KB with clib2. `-mcrt=library` keeps most of libnix in `libnix4.library`, shared by
 the programs that use it.
 
 ## Options
