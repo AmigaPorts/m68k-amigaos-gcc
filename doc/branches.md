@@ -15,35 +15,51 @@ binutils:
 
 ## Switching modules
 
-The **Makefile** provides some targets to switch to an older state
-for all modules. To rebuild a release, see [releng.md](releng.md).
+The Makefile has targets that switch all the modules to an older state. To
+rebuild a release, see [releng.md](releng.md).
 
-### Switching amiga-gcc to a given date
-Use make to switch all modules to a given date. You may also add the time
+### Switching all modules to a given date
+
+`make v date=` switches every module to its state at a date, or at a date
+and time:
+
 ```
 make v date=2021-04-01
 ```
-### Switching amiga-gcc back to the branches
-Run make to switch all modules back to the branch
+
+### Switching all modules back to their branches
+
+`make v` without arguments switches every module back to its branch:
+
 ```
 make v
 ```
-A module on another branch, such as a pull request's, stays there with a
-warning; `make branch` moves it.
-After `make v ref=...`, restore the branches in `.repos` first:
-`cp default-repos .repos`, then `make branch` for any module that was not
-on its default branch.
-### Show the current commit for all submodules
-This lists each module with its remote, its commit, and the branch or tag
-it is on, as in `.manifest`. Useful if you switched to a given date to show
-what's where.
+
+A module on another branch, such as that of a pull request, stays there
+with a warning; `make branch` moves it. After `make v ref=...`, the branches
+in `.repos` must be restored first: `cp default-repos .repos`, then
+`make branch` for any module that was not on its default branch.
+
+### Showing the current commit of all modules
+
+`make b` lists each module with its remote, its commit, and the branch or
+tag it is on, as in `.manifest`. After a switch to a given date, it shows
+the state of each module.
+
 ```
 make b
 ```
-### Switch a module to a different branch
-You can switch modules to different branches. E.g.
+
+### Switching a module to a different branch
+
+`make branch` switches one module to another branch:
+
 ```
 make branch mod=binutils branch=devel1
 ```
-The default branches and repositories are in the file **default-repos**, the local state is managed in the file **.repos**.
-The archives the build downloads, with their checksums, are in the file **default-archives**.
+
+| file | contents |
+|---|---|
+| `default-repos` | the default branches and repositories |
+| `.repos` | the local state |
+| `default-archives` | the archives the build downloads, with their checksums |

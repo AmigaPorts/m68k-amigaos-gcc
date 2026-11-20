@@ -17,7 +17,7 @@ A program links one C runtime, chosen with `-mcrt=`:
 **Important:** pass the same `-mcrt=` when compiling and when linking. It
 picks the headers when compiling, and the startup code and libraries when
 linking, so an object compiled for one runtime and linked with another
-breaks quietly.
+fails at run time, without a diagnostic from the linker.
 
 ## Size
 
@@ -143,8 +143,8 @@ ls -l *-nix20 *-nix13 *-library *-newlib *-clib2 *-ixemul
 [^stkinit]: only if the program also references `__stkinit`: see [libnix](#libnix).
 
 The minimum stack is checked at startup: if the program gets less than the
-variable says, it moves to a larger stack. Nothing checks or extends the
-stack while the program runs: the compiler has no `-mstackcheck` or
+variable says, it moves to a larger stack. The stack is neither checked nor
+extended while the program runs: the compiler has no `-mstackcheck` or
 `-mstackextend`.
 
 Threads are AmigaOS processes that share the program's console and current
@@ -170,7 +170,8 @@ Two rules that AmigaOS can't enforce:
   `THREADS=amigaos`, both give a thread its own `thread_local` and
   `_Thread_local` variables, and free them, running their destructors, when
   it ends. A task started with a plain
-  `CreateNewProc()` must not use them: it can find another thread's.
+  `CreateNewProc()` must not use them: it may access the variables of
+  another thread.
 
 The details are in each runtime's section below.
 

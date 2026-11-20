@@ -2,15 +2,16 @@ Part of the [Amiga GCC Development Manual](devel.md).
 
 # Packaging the toolchain
 
-This packages the PREFIX folder into a redistributable archive:
+These targets archive the toolchain installed in `PREFIX` for
+redistribution:
 
 ```
 make package      # builds a .tar.xz archive
 make package-lha  # builds a .lha archive
 ```
 Native builds use the build machine's OS and architecture in the filename.
-Cross builds use `HOST`, so their filenames identify the system on which the tools
-will run rather than the build machine.
+Cross builds use `HOST`, so their filenames identify the system on which the
+tools run rather than the build machine.
 
 ## Nix package
 
