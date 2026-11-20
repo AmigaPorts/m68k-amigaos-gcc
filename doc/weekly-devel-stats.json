@@ -1,0 +1,190 @@
+{
+ "weeks": [
+  {
+   "week": "2026-08-10",
+   "prs": 11,
+   "added": 1992,
+   "deleted": 80
+  },
+  {
+   "week": "2026-08-17",
+   "prs": 21,
+   "added": 2586,
+   "deleted": 434
+  },
+  {
+   "week": "2026-08-24",
+   "prs": 52,
+   "added": 5126,
+   "deleted": 9082
+  },
+  {
+   "week": "2026-08-31",
+   "prs": 31,
+   "added": 1340,
+   "deleted": 2332
+  },
+  {
+   "week": "2026-09-07",
+   "prs": 17,
+   "added": 1234,
+   "deleted": 160
+  },
+  {
+   "week": "2026-09-14",
+   "prs": 13,
+   "added": 595,
+   "deleted": 51
+  },
+  {
+   "week": "2026-09-21",
+   "prs": 20,
+   "added": 1485,
+   "deleted": 709
+  },
+  {
+   "week": "2026-09-28",
+   "prs": 21,
+   "added": 1692,
+   "deleted": 417
+  },
+  {
+   "week": "2026-10-05",
+   "prs": 40,
+   "added": 5471,
+   "deleted": 3108
+  },
+  {
+   "week": "2026-10-12",
+   "prs": 71,
+   "added": 4264,
+   "deleted": 6208
+  },
+  {
+   "week": "2026-10-19",
+   "prs": 108,
+   "added": 12693,
+   "deleted": 2431
+  },
+  {
+   "week": "2026-10-26",
+   "prs": 114,
+   "added": 26096,
+   "deleted": 7661
+  },
+  {
+   "week": "2026-11-02",
+   "prs": 63,
+   "added": 21362,
+   "deleted": 2077
+  },
+  {
+   "week": "2026-11-09",
+   "prs": 111,
+   "added": 13549,
+   "deleted": 10677
+  }
+ ],
+ "rcs": [
+  {
+   "rc": 5,
+   "date": "2026-08-24T16:14:14-04:00"
+  },
+  {
+   "rc": 6,
+   "date": "2026-08-27T07:11:33-04:00"
+  },
+  {
+   "rc": 7,
+   "date": "2026-09-01T05:01:22-04:00"
+  },
+  {
+   "rc": 8,
+   "date": "2026-09-02T19:16:53-04:00"
+  },
+  {
+   "rc": 9,
+   "date": "2026-09-04T18:03:23-04:00"
+  },
+  {
+   "rc": 10,
+   "date": "2026-09-17T20:55:12+09:00"
+  },
+  {
+   "rc": 11,
+   "date": "2026-09-24T23:24:22+08:00"
+  },
+  {
+   "rc": 12,
+   "date": "2026-09-29T22:27:48+08:00"
+  },
+  {
+   "rc": 13,
+   "date": "2026-09-30T22:33:12+08:00"
+  },
+  {
+   "rc": 14,
+   "date": "2026-10-07T20:30:37+09:00"
+  },
+  {
+   "rc": 15,
+   "date": "2026-10-10T21:22:42+09:00"
+  },
+  {
+   "rc": 16,
+   "date": "2026-10-13T17:16:39+09:00"
+  },
+  {
+   "rc": 17,
+   "date": "2026-10-17T18:04:13+09:00"
+  },
+  {
+   "rc": 18,
+   "date": "2026-10-20T17:16:40+09:00"
+  },
+  {
+   "rc": 19,
+   "date": "2026-10-25T12:30:05+09:00"
+  },
+  {
+   "rc": 20,
+   "date": "2026-10-26T10:53:32+09:00"
+  },
+  {
+   "rc": 21,
+   "date": "2026-10-29T04:08:09+09:00"
+  },
+  {
+   "rc": 22,
+   "date": "2026-10-31T21:24:58+09:00"
+  },
+  {
+   "rc": 23,
+   "date": "2026-11-04T01:11:01+09:00"
+  },
+  {
+   "rc": 24,
+   "date": "2026-11-11T02:26:47+09:00"
+  },
+  {
+   "rc": 25,
+   "date": "2026-11-16T19:09:43+09:00"
+  }
+ ],
+ "excluded": [
+  "m68k-amigaos-gcc#55 Remove the unused sys-include snapshot",
+  "binutils-gdb#47 amiga-2.47: cherry-pick all recent amiga-2.46 merges, including ppc-amigaos",
+  "binutils-gdb#43 Add the AmigaOS 4 (ppc-amigaos) target",
+  "binutils-gdb#40 Merge binutils 2.46.1",
+  "clib2#7 Bring in sodero/clib2: C99/C11 math, complex, uchar and wide character functions, math fixes",
+  "gcc#129 Add the AmigaOS 4 (ppc-amigaos) target",
+  "gcc#92 Merge GCC 16.2.1 (releases/gcc-16)",
+  "gcc#16 Bebbo's amiga16.1",
+  "lha#2 Add the generated autotools files",
+  "newlib-cygwin#15 Merge sourceware newlib main: the twctype.c and UTF-8.exp test fixes",
+  "newlib-cygwin#10 Merge upstream newlib-cygwin main",
+  "sfdc#3 Merge upstream",
+  "sfdc#2 Sync with bebbo's sfdc master",
+  "vasm#2 Import vasm 2.0c through 2.0f, preserving AmigaPorts patches"
+ ]
+}

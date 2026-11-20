@@ -10,3 +10,11 @@ Working on the toolchain itself. The
 - [Changes](changes.md): making, reviewing and merging changes.
 - [Continuous integration](ci.md): testing pull requests on GitHub Actions.
 - [Release engineering](releng.md): making and rebuilding releases.
+
+## Weekly Development Stats
+
+![PRs merged and lines added and deleted per week, with the release candidates marked](weekly-devel-stats.svg)
+
+The [data](weekly-devel-stats.json) was extracted by
+[scripts/devel-weekly-stats](../scripts/devel-weekly-stats) and graphed by
+[scripts/devel-weekly-chart](../scripts/devel-weekly-chart).
