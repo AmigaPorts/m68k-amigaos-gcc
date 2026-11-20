@@ -73,6 +73,16 @@ case " $cflags " in
 *" -m6802"* | *" -m6803"* | *" -m6804"* | *" -m6806"*) sim+=(--cpu 68020) ;;
 esac
 
+# Tests expected to fail.  They fail the run if they pass, so that the list
+# shrinks when they get fixed.
+xfail=
+# volamos 0.21.0's CPU core (m68k-rs 0.17) raises UNDERFLOW for tiny extended
+# results, as the 68040 and 68060 FPSP do, where libc-test's vectors (made on
+# x87) expect none.  Not yet checked on real hardware.
+if [ "$group $crt" = "math clib2" ] && [[ " $cflags " == *" -m68881 "* ]]; then
+	xfail="atan2l exp2l"
+fi
+
 # The other group's results stay; the helpers are rebuilt, as the flags may differ.
 rm -rf "${out:?}/$group" "$out/common"
 mkdir -p "$out"
@@ -109,11 +119,20 @@ else
 	done
 fi
 
-failed=$(sed -n "s|^FAIL .*/$group/\([^ ]*\)\.exe .*|\1|p" "$report")
+failed=$(sed -n "s|^FAIL .*/$group/\([^ ]*\)\.exe .*|\1|p" "$report" | paste -sd' ' -)
 timed_out=$(sed -n "s|^FAIL .*/$group/\([^ ]*\)\.exe \[timed out.*|\1|p" "$report")
+unexpected=() expected=() xpassed=()
+for t in $failed; do
+	if [[ " $xfail " == *" $t "* ]]; then expected+=("$t"); else unexpected+=("$t"); fi
+done
+for t in $xfail; do
+	[[ " $failed " == *" $t "* ]] || xpassed+=("$t")
+done
 echo "----- libc-test $group $crt $cflags -----"
-echo "$tests tests, $(echo -n "$failed" | grep -c '') failed:"
-echo "$failed" | paste -sd' ' -
+echo "$tests tests, ${#unexpected[@]} failed:"
+echo "${unexpected[*]}"
+[ ${#expected[@]} -eq 0 ] || echo "expected failures: ${expected[*]}"
+[ ${#xpassed[@]} -eq 0 ] || echo "expected to fail, but passed: ${xpassed[*]}"
 [ -z "$timed_out" ] || echo "timed out after ${LIBC_TEST_TIMEOUT:-120} s: $(echo "$timed_out" | paste -sd' ' -)"
 echo "results: $report, and <test>.err for each test"
-[ -z "$failed" ]
+[ ${#unexpected[@]} -eq 0 ] && [ ${#xpassed[@]} -eq 0 ]
