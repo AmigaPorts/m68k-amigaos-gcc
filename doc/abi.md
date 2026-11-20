@@ -94,7 +94,7 @@ ULONG hook_func(struct Hook *h __asm("a0"), APTR obj __asm("a2"), APTR msg __asm
 ```
 
 In base-relative code it also needs `__saveds`, because the OS calls it
-with someone else's a4.
+with its own a4, not the program's.
 
 ## Calling AmigaOS libraries
 
@@ -116,7 +116,8 @@ with `exg`.
 The caller and the function have to agree, so every caller must see the
 function's own prototype: a call through a prototype without `__regargs`
 passes the arguments on the stack, where a register function doesn't look
-for them, and the program reads garbage. The compiler warns when a pointer
+for them, and the function reads garbage from its registers. The compiler
+warns when a pointer
 to a function is converted to a pointer to a function with another
 convention:
 

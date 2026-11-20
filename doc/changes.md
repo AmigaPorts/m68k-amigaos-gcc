@@ -53,12 +53,12 @@ The full analysis, measurements and alternatives go in the PR.
   unrelated cleanup, so that a reviewer, a bisect or `git revert` can take
   one without the other.
 
-Subjects like "fix", "update", "more fixes", "WIP" or "review comments" say
-nothing about the change.
+Subjects such as "fix bugs", "update math library" or "address review
+comments" do not sufficiently describe what changed.
 
 Fold fixups into the commit they fix before merging, rather than keeping
-"fix typo in previous commit". To push fixes, use `git commit --amend`
-and `git push --force-with-lease` to achieve this.
+"fix typo in previous commit": `git commit --amend` and
+`git push --force-with-lease` do this.
 
 ## Code reviews
 

@@ -14,7 +14,7 @@ recommended choice for native Amiga programs is libnix (`-mcrt=nix20`). The
 **Important:** pass the same `-mcrt=` when compiling and when linking. It
 picks the headers when compiling, and the startup code and libraries when
 linking, so an object compiled for one runtime and linked with another
-breaks quietly.
+fails at run time, without a diagnostic from the linker.
 
 ## Addressing data
 
@@ -34,9 +34,9 @@ Base-relative code is smaller and faster than absolute code. The whole
 program, libraries included, must use one data model: the driver links the
 matching variant of each runtime library.
 
-A function that is called with someone else's a4, such as a hook, an
-interrupt handler or a callback passed to the OS, must load its own a4 before
-it touches data:
+A function that is called from outside the program, such as a hook, an
+interrupt handler or a callback passed to the OS, runs with the caller's a4,
+and must load its own before it touches data:
 
 | option | loads a4 in |
 |---|---|
