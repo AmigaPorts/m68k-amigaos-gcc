@@ -78,7 +78,7 @@ usage = (f"Usage: `/ci <platform> [<module>=<branch>...] [make <target>... [VAR=
          f"Platforms: `{' '.join(platforms)}`")
 # The modules a <module>=<branch> word can name: default-repos, at the top of
 # the sparse checkout.
-modules = re.findall(r"^([a-z0-9-]+)\s", (Path(__file__).parent.parent.parent / "default-repos").read_text(), re.M)
+modules = re.findall(r"^([a-z0-9-]+)\s", (Path(__file__).parent.parent.parent / "default-repos").read_text(), re.MULTILINE)
 
 # One job per /ci line.
 jobs = []

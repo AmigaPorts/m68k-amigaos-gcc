@@ -44,8 +44,9 @@ sources.
 | `check-binutils` | the gas and ld tests for the Amiga hunk format |
 | `check-sfdc` | sfdc's tests, and what it writes for a link library compiled with the cross compiler |
 | `check-multilib` | the multilib list against the driver's |
-| `check-shell` | shellcheck on `scripts/` and `.github/scripts/` |
+| `check-shell` | shellcheck on the shell scripts of `scripts/` and `.github/scripts/` |
 | `check` | the pre-release test: all of the above on the boards marked in [Tested configurations](#tested-configurations), with `check-libc-test` only on clib2 at `-O2`: both groups, and the math one with `-m68020-60 -m68881` too |
+| `check-python` | [ruff](https://docs.astral.sh/ruff/) on the Python scripts of `scripts/` and `.github/scripts/`. Not part of `check`: it needs ruff installed |
 
 Run the gcc testsuite targets one at a time, not together in one `make -j`
 or in two shells on the same build tree: they share `gcc.sum`.
