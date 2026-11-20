@@ -2260,7 +2260,8 @@ check-rust: $(BOARD_PREREQ)
 # needs THREADS=amigaos.
 CHECK_EXAMPLES := \
 	check-examples-library \
-	check-examples-pthreads
+	check-examples-pthreads \
+	check-examples-wbstartup
 ifeq ($(THREADS),amigaos)
 CHECK_EXAMPLES += check-examples-cxx_thread
 endif
