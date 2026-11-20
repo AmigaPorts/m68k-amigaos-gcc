@@ -1,0 +1,57 @@
+#!/usr/bin/env -S uv run --script
+# /// script
+# dependencies = ["matplotlib"]
+# ///
+"""Chart the PRs and lines changed per week from devel-weekly-stats, with the rcs marked."""
+
+import datetime
+import json
+import sys
+
+import matplotlib
+
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+
+
+def main():
+    if len(sys.argv) != 3 or sys.argv[1].startswith("-"):
+        sys.exit("Usage: devel-weekly-chart stats.json chart.svg")
+    with open(sys.argv[1]) as f:
+        stats = json.load(f)
+    weeks = stats["weeks"]
+    rcs = [(r["rc"], datetime.datetime.fromisoformat(r["date"])) for r in stats["rcs"]]
+
+    # A week's point sits mid-week, among that week's rcs.
+    mids = [datetime.datetime.fromisoformat(w["week"]).replace(tzinfo=datetime.UTC)
+            + datetime.timedelta(days=3, hours=12) for w in weeks]
+    fig, ax1 = plt.subplots(figsize=(12, 5.5))
+    ax2 = ax1.twinx()
+    pr_color = "#2a6fdb"
+    for _, date in rcs:
+        ax1.axvline(date, color="#999999", linewidth=0.6, alpha=0.4)
+    ax1.plot(mids, [w["prs"] for w in weeks], color=pr_color, marker="o",
+             linewidth=2, label="PRs merged per week")
+    for key, color, marker in (("added", "#1a9e77", "^"), ("deleted", "#d62728", "v")):
+        ax2.plot(mids, [w[key] for w in weeks], color=color, marker=marker,
+                 linewidth=2, label=f"lines {key} per week")
+    ax1.set_ylabel("PRs merged per week", color=pr_color)
+    ax2.set_ylabel("lines per week, without imports and moves")
+    ax1.tick_params(axis="y", colors=pr_color)
+    ax1.set_ylim(bottom=0)
+    ax2.set_ylim(bottom=0)
+    ax2.yaxis.set_major_formatter(matplotlib.ticker.FuncFormatter(lambda v, _: f"{v:,.0f}"))
+    ax1.set_xticks([d for _, d in rcs], [f"rc{rc} ({d:%b %d})" for rc, d in rcs],
+                   rotation=90, fontsize=8)
+    ax1.grid(axis="y", alpha=0.25)
+    for ax in (ax1, ax2):
+        ax.spines["top"].set_visible(False)
+    h1, l1 = ax1.get_legend_handles_labels()
+    h2, l2 = ax2.get_legend_handles_labels()
+    ax1.legend(h1 + h2, l1 + l2, loc="upper center", frameon=False)
+    fig.tight_layout()
+    fig.savefig(sys.argv[2])
+
+
+if __name__ == "__main__":
+    main()
