@@ -35,15 +35,15 @@ first, each taking at least 4 bytes, and removed by the caller. This is what
 code compiled without any of the options below does, and what C runtimes,
 libraries and other compilers expect unless their headers say otherwise.
 
-`__stdargs`, or `__attribute__((stkparm))`, keeps a function on the stack
-also in code compiled with `-mregparm`. The runtimes' headers declare their
-functions this way, so they keep working when a program uses register
-arguments.
+`__stdargs`, or `[[gnu::stkparm]]`, keeps the arguments of a
+function on the stack, also in code compiled with `-mregparm`. The runtimes'
+headers declare their functions this way, so they keep working when a
+program uses register arguments.
 
 ## Register arguments
 
-`-mregparm` on the command line, or `__regargs` (`__attribute__((regparm(2)))`)
-on a function, passes the first arguments in registers:
+`-mregparm` on the command line, or `__regargs` (`[[gnu::regparm(2)]]`) on a
+function, passes the first arguments in registers:
 
 - up to two integers in d0 and d1;
 - up to two pointers in a0 and a1;
@@ -52,9 +52,10 @@ on a function, passes the first arguments in registers:
   of the other kind;
 - the rest go on the stack.
 
-`-mregparm=N` and `regparm(N)` allow N of each kind. `-msasregparm` puts an
-integer or pointer that finds its own kind full on the stack, as SAS/C's
-`__regargs` does. Register arguments make code about 3% smaller and up to
+`-mregparm=N` and `[[gnu::regparm(N)]]` allow N of each kind. `-msasregparm` puts an
+integer or pointer on the stack when the registers of its own kind are
+exhausted, as SAS/C's `__regargs` does. Register arguments make code about
+3% smaller and up to
 10% faster on call-heavy code ([Benchwork](https://github.com/codewiz/benchwork/blob/main/results/regparm.md)).
 
 ## Arguments in named registers

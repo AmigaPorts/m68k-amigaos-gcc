@@ -57,12 +57,16 @@ struct IntuitionBase *IntuitionBase;
 
 int main()
 {
-	IntuitionBase = (struct IntuitionBase *)OpenLibrary("intuition.library", 39);
-	if (!IntuitionBase)
-		return 20;
-	// ...
-	CloseLibrary((struct Library *)IntuitionBase);
-	return 0;
+    IntuitionBase = (struct IntuitionBase *)OpenLibrary("intuition.library", 39);
+
+    if (IntuitionBase == nullptr) {
+        return 20;
+    }
+
+    // ...
+
+    CloseLibrary((struct Library *)IntuitionBase);
+    return 0;
 }
 ```
 
@@ -109,9 +113,9 @@ the three calls:
 
 void draw_corner(struct GfxBase *GfxBase, struct RastPort *rp)
 {
-	Move(rp, 0, 0);
-	Draw(rp, 10, 0);
-	Draw(rp, 10, 10);
+    Move(rp, 0, 0);
+    Draw(rp, 10, 0);
+    Draw(rp, 10, 10);
 }
 ```
 
@@ -124,13 +128,13 @@ base:
 #include <proto/bsdsocket.h>
 
 struct MyLibBase {
-	struct Library lib;
-	struct Library *SocketBase;
+    struct Library lib;
+    struct Library *SocketBase;
 };
 
 LONG my_close(struct MyLibBase *lb, LONG sock)
 {
-	return CloseSocket(sock);
+    return CloseSocket(sock);
 }
 ```
 
@@ -222,7 +226,7 @@ const UWORD LibRevision = 0;
 // in the registers of the .sfd file
 bool HelloSetGreeting(REG(a0, const char *s))
 {
-	// ... keep a copy of s
+    // ... keep a copy of s
 }
 
 // ... __UserLibInit(), __UserLibCleanup() and HelloGetGreeting()
@@ -257,16 +261,16 @@ struct ExecBase *SysBase;
 static struct SignalSemaphore lock;
 static char *greeting;
 
-LONG __stdargs __UserLibInit(struct Library *lib, REG(a4, APTR dataseg))
+LONG __stdargs __UserLibInit(struct Library *lib, [[maybe_unused]] REG(a4, APTR dataseg))
 {
-	SysBase = ((__LIB)lib)->SysBase;
-	InitSemaphore(&lock);
-	return 0;
+    SysBase = ((__LIB)lib)->SysBase;
+    InitSemaphore(&lock);
+    return 0;
 }
 
-void __stdargs __UserLibCleanup(REG(a4, APTR dataseg))
+void __stdargs __UserLibCleanup([[maybe_unused]] REG(a4, APTR dataseg))
 {
-	FreeVec(greeting);
+    FreeVec(greeting);
 }
 ```
 

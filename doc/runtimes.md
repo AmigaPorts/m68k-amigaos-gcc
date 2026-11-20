@@ -44,34 +44,53 @@ libnix's floating-point `printf()` comes from libm, and so is linked into
 the program even with `-mcrt=library`. newlib has no `fcntl()`, which zlib
 calls, so its minigzip is linked with a stub.
 
-To reproduce the table, write the four small programs:
+To reproduce the table, write the four small programs, and a stub for
+newlib:
 
 ```c
-/* empty.c */
-int main(void) { return 0; }
-
-/* hello.c */
-#include <stdio.h>
-int main(void) { puts("hello, world"); return 0; }
-
-/* printf-f.c */
-#include <stdio.h>
-int main(int argc, char **argv) { printf("%f\n", argc * 3.14159); return 0; }
-
-/* date.c */
-#include <stdio.h>
-#include <time.h>
+// empty.c
 int main(void)
 {
-	char buf[64];
-	time_t t = time(NULL);
-	strftime(buf, sizeof(buf), "%c", localtime(&t));
-	puts(buf);
-	return 0;
+    return 0;
 }
 
-/* fcntl-stub.c, for newlib */
-int fcntl(int fd, int cmd, ...) { return -1; }
+// hello.c
+#include <stdio.h>
+
+int main(void)
+{
+    puts("hello, world");
+    return 0;
+}
+
+// printf-f.c
+#include <stdio.h>
+
+int main(int argc, char **argv)
+{
+    printf("%f\n", argc * 3.14159);
+    return 0;
+}
+
+// date.c
+#include <stdio.h>
+#include <time.h>
+
+int main(void)
+{
+    char buf[64];
+    const time_t t = time(nullptr);
+
+    strftime(buf, sizeof(buf), "%c", localtime(&t));
+    puts(buf);
+    return 0;
+}
+
+// fcntl-stub.c, for newlib
+int fcntl(int fd, int cmd, ...)
+{
+    return -1;
+}
 ```
 
 and build them, and minigzip from the zlib sources, with each runtime; `-s`
@@ -258,10 +277,10 @@ The math functions are only those of C89. There are no `float` or
 `long double` variants, nothing from C99 math or `<fenv.h>`, and none of
 C11 and C23. Also missing: `strtof()`, `getline()`, `strtok_r()`,
 `localtime_r()`, `getopt_long()`, `getaddrinfo()` and the wide character
-functions. `printf()` doesn't know `%a`, `%zu`, `%jd` and `%Lf`.
+functions. `printf()` doesn't support `%a`, `%zu`, `%jd` and `%Lf`.
 
 **C++ and OS support:** constructors don't run, neither C++ global
-constructors nor C `__attribute__((constructor))` functions
+constructors nor C `[[gnu::constructor]]` functions
 ([#234](https://github.com/AmigaPorts/m68k-amigaos-gcc/issues/234)), and
 `<cstdio>` doesn't compile, so most C++ programs don't work. Kickstart 2.04
 and later.

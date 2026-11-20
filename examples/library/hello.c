@@ -4,7 +4,6 @@
 #include <exec/types.h>
 #include <proto/exec.h>
 #include <libinit.h>
-#include <stdbool.h>
 #include <stddef.h>
 #include <string.h>
 
@@ -30,9 +29,9 @@ static char *greeting;
 /// returns: return 0 on success, anything else to fail the load.
 LONG __stdargs __UserLibInit(struct Library *lib, [[maybe_unused]] REG(a4, APTR dataseg))
 {
-	SysBase = ((__LIB)lib)->SysBase;
-	InitSemaphore(&lock);
-	return 0;
+    SysBase = ((__LIB)lib)->SysBase;
+    InitSemaphore(&lock);
+    return 0;
 }
 
 /// Called once, when the library is expunged, after the last `CloseLibrary()`
@@ -40,7 +39,7 @@ LONG __stdargs __UserLibInit(struct Library *lib, [[maybe_unused]] REG(a4, APTR 
 /// close: the next opener expects the greeting still there.
 void __stdargs __UserLibCleanup([[maybe_unused]] REG(a4, APTR dataseg))
 {
-	FreeVec(greeting);
+    FreeVec(greeting);
 }
 
 /// Keeps a copy of `s`, in memory of the library's own: the caller's string
@@ -50,20 +49,22 @@ void __stdargs __UserLibCleanup([[maybe_unused]] REG(a4, APTR dataseg))
 /// `hello_lib.sfd` names, and runs on the caller's task.
 bool HelloSetGreeting(REG(a0, const char *s))
 {
-	size_t size = strlen(s) + 1;
-	char *copy = AllocVec(size, MEMF_ANY);
+    size_t size = strlen(s) + 1;
+    char *copy = AllocVec(size, MEMF_ANY);
 
-	if (!copy)
-		return false;
-	memcpy(copy, s, size);
+    if (copy == nullptr) {
+        return false;
+    }
 
-	ObtainSemaphore(&lock);
-	char *old = greeting;
-	greeting = copy;
-	ReleaseSemaphore(&lock);
+    memcpy(copy, s, size);
 
-	FreeVec(old);
-	return true;
+    ObtainSemaphore(&lock);
+    char *old = greeting;
+    greeting = copy;
+    ReleaseSemaphore(&lock);
+
+    FreeVec(old);
+    return true;
 }
 
 /// Copies the greeting last set, or "Hello", into the caller's `buffer` of
@@ -72,10 +73,10 @@ bool HelloSetGreeting(REG(a0, const char *s))
 /// `HelloSetGreeting()` of another program.  Returns the greeting's length.
 size_t HelloGetGreeting(REG(a0, char *buffer), REG(d0, size_t size))
 {
-	ObtainSemaphore(&lock);
-	size_t len = strlcpy(buffer, greeting ? greeting : "Hello", size);
-	ReleaseSemaphore(&lock);
-	return len;
+    ObtainSemaphore(&lock);
+    size_t len = strlcpy(buffer, greeting ? greeting : "Hello", size);
+    ReleaseSemaphore(&lock);
+    return len;
 }
 
 /// The jump table after the standard vectors, in the order of `hello_lib.sfd`:
