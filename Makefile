@@ -2235,7 +2235,7 @@ PYTHON_SCRIPTS = \
 check-shell:
 	shellcheck $(SHELL_SCRIPTS)
 
-# Needs ruff, which check does not: it is not part of check.
+# Kept out of check, so that the release tests don't require ruff.
 .PHONY: check-python
 check-python:
 	ruff check $(PYTHON_SCRIPTS)
