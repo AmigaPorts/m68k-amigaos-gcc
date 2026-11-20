@@ -43,7 +43,7 @@ until the user closes it. The program sets it with a global variable:
 | runtime | variable | default |
 |---|---|---|
 | libnix (`-mcrt=nix20`), newlib | `char *__stdiowin` | `"CON://///AUTO/CLOSE/WAIT"` |
-| libnix for Kickstart 1.3 (`-mcrt=nix13`) | `char *__stdiowin` | none: stdio goes nowhere |
+| libnix for Kickstart 1.3 (`-mcrt=nix13`) | `char *__stdiowin` | none: stdio is discarded |
 | clib2 | `char *__stdio_window_specification` | a window named after the program |
 
 ## Tool types

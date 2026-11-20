@@ -145,8 +145,9 @@ A module repository (AmigaPorts/gcc and AmigaPorts/libnix today) has two
 small workflows that call this repository's: `ci-label.yml` for the labels
 and `ci-command.yml` for `/ci` comments. Labels and `/ci` comments on its
 pull requests build this repository's `master` with the module's pull
-request, as merged into its base, swapped in for the module. That swap is the `repos` input,
-`module=URL#ref`. For example, `gcc=https://github.com/AmigaPorts/gcc.git#refs/pull/131/merge`.
+request, as merged into its base, swapped in for the module. That swap is
+the `repos` input, `module=URL#ref`. For example,
+`gcc=https://github.com/AmigaPorts/gcc.git#refs/pull/131/merge`.
 A gcc pull request builds the toolchain for its own branch: `amiga6` builds
 gcc 6, `amiga16.2` builds 16.2.
 
@@ -169,5 +170,4 @@ Pushing a `v*` tag runs `release.yml`. It builds every module at the
 if a module lacks that tag. It runs `make check` on arm64 Linux as a release
 gate, in a build of its own, builds the Linux, macOS, AmigaOS and Windows
 packages, and publishes them as a GitHub release, with the tag message as the
-release notes. Making a
-release is in [releng.md](releng.md).
+release notes. [releng.md](releng.md) describes how to make a release.

@@ -15,17 +15,18 @@ sudo apt install make curl gcc g++ flex bison gettext rsync libreadline-dev
 ```
 
 ### macOS
-Install Homebrew (https://brew.sh/) or any other package manager first. The compiler will be installed together with XCode. Once XCode and Homebrew are up install the required packages:
+The compiler is installed with Xcode. The other packages come from
+[Homebrew](https://brew.sh/), or from another package manager:
 
 ```
 brew install bash bison coreutils curl flex gettext \
   gnu-sed gnu-tar grep make wget xz
 ```
 
-Apple ships old or BSD versions of many of these tools. Put the Homebrew GNU
-versions first on `PATH` under their plain names, so the build machinery does
-not need BSD workarounds (add these lines to your shell profile to make them
-permanent):
+Apple ships old or BSD versions of many of these tools. The Homebrew GNU
+versions must come first on `PATH` under their plain names, so that the
+build needs no BSD workarounds. These lines in the shell profile make the
+setting permanent:
 
 ```
 export PATH="$(brew --prefix bison)/bin:$(brew --prefix flex)/bin:$PATH"
@@ -34,10 +35,13 @@ for pkg in coreutils gnu-sed gnu-tar grep make; do
 done
 ```
 
-**NOTE**
+Notes:
 
-* With the `PATH` above, `make` is Homebrew's GNU make 4.x; Apple's GNU Make 3.81 is known to produce link failures on the same machine and project, so use it for your own projects too
-* If you want `m68k-amigaos-gdb` then you have to build it with `gcc` rather than the default Apple toolchain, e.g. `brew install gcc@12` and then:
+* With the `PATH` above, `make` is Homebrew's GNU make 4.x. Apple's GNU Make
+  3.81 is known to produce link failures on the same machine and project, so
+  GNU make 4.x is recommended for other projects too.
+* `m68k-amigaos-gdb` must be built with `gcc` rather than the default Apple
+  toolchain, for example after `brew install gcc@12`:
 
 ```
 CC=gcc-12 CXX=g++-12 make all
@@ -45,8 +49,8 @@ CC=gcc-12 CXX=g++-12 make all
 
 ### Nix
 `nix develop` enters a shell with all build prerequisites, for the
-`make update` and `make all` steps below. To get the toolchain itself
-as a Nix package instead, see [Nix package](package.md#nix-package).
+`make update` and `make all` steps below. The toolchain itself is also
+available as a Nix package, see [Nix package](package.md#nix-package).
 
 ### Windows with msys2
 
@@ -54,9 +58,11 @@ as a Nix package instead, see [Nix package](package.md#nix-package).
 pacman -S curl git base-devel gcc flex rsync
 ```
 
-Also note that you **MUST** cd into an **absolute path** e.g. `cd /c/msys64/home/test/amiga-gcc/` before running make, or builds may fail, because some files aren't found correctly (that's a msys2 bug).
+`make` must be run from a directory entered by its absolute path, such as
+`cd /c/msys64/home/test/amiga-gcc/`: otherwise the build may fail to find
+some files, because of a bug in msys2.
 
-## Cloning and Downloading Sources
+## Cloning and downloading the sources
 
 ```
 git clone https://github.com/AmigaPorts/m68k-amigaos-gcc
@@ -64,15 +70,15 @@ cd m68k-amigaos-gcc
 make update
 ```
 
-The default configuration builds GCC 16.2. Use `make branch` as described
-under [Version management](branches.md) if you need a different GCC
-branch.
+The default configuration builds GCC 16.2. `make branch` selects another GCC
+branch, as described under [Version management](branches.md).
 
-Use `make help` to see which targets can be built.
+`make help` lists the targets.
 
-## Install Prefix
+## Install prefix
 
-The build performs the installation automatically, there is no separate `make install` step.
+The build installs the toolchain as it goes: there is no separate
+`make install` step.
 
 The first build must set the installation directory with `PREFIX=<path>`,
 which must be writable for the user doing the build:
@@ -82,16 +88,17 @@ make all PREFIX=$HOME/m68k-amigaos-gcc
 ```
 
 The build tree remembers that prefix, so later invocations in the same
-checkout need no `PREFIX=` unless you want another one.
+checkout need no `PREFIX=`, except to change it.
 
 ## Building
 
-You can use `-j$(nproc)` to speed up the build:
+`-j$(nproc)` runs the build in parallel:
 
 ```
 time make all -j$(nproc)
 ```
-A full bootstrap takes roughly 5 to 15 minutes on current Linux hardware, dominated by multilib phases.
+A full bootstrap takes roughly 5 to 15 minutes on current Linux hardware,
+most of it in the multilib phases.
 
 ## Thread model
 
@@ -110,5 +117,6 @@ The release binaries are built with the default. Both thread models need gcc
 builds with `THREADS=no`, and another value stops with an error.
 
 A build tree keeps the model it was configured with: building it with
-another `THREADS` stops with an error that names the tree. Use that
-`THREADS`, another `BUILD`, or `make clean-gcc` and `make clean-newlib`.
+another `THREADS` stops with an error that names the tree. The remedies are
+that `THREADS`, another `BUILD`, or `make clean-gcc` and
+`make clean-newlib`.

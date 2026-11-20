@@ -17,7 +17,7 @@ A program links one C runtime, chosen with `-mcrt=`:
 **Important:** pass the same `-mcrt=` when compiling and when linking. It
 picks the headers when compiling, and the startup code and libraries when
 linking, so an object compiled for one runtime and linked with another
-breaks quietly.
+fails at run time, without a diagnostic from the linker.
 
 ## Size
 
@@ -44,34 +44,53 @@ libnix's floating-point `printf()` comes from libm, and so is linked into
 the program even with `-mcrt=library`. newlib has no `fcntl()`, which zlib
 calls, so its minigzip is linked with a stub.
 
-To reproduce the table, write the four small programs:
+To reproduce the table, write the four small programs, and a stub for
+newlib:
 
 ```c
-/* empty.c */
-int main(void) { return 0; }
-
-/* hello.c */
-#include <stdio.h>
-int main(void) { puts("hello, world"); return 0; }
-
-/* printf-f.c */
-#include <stdio.h>
-int main(int argc, char **argv) { printf("%f\n", argc * 3.14159); return 0; }
-
-/* date.c */
-#include <stdio.h>
-#include <time.h>
+// empty.c
 int main(void)
 {
-	char buf[64];
-	time_t t = time(NULL);
-	strftime(buf, sizeof(buf), "%c", localtime(&t));
-	puts(buf);
-	return 0;
+    return 0;
 }
 
-/* fcntl-stub.c, for newlib */
-int fcntl(int fd, int cmd, ...) { return -1; }
+// hello.c
+#include <stdio.h>
+
+int main(void)
+{
+    puts("hello, world");
+    return 0;
+}
+
+// printf-f.c
+#include <stdio.h>
+
+int main(int argc, char **argv)
+{
+    printf("%f\n", argc * 3.14159);
+    return 0;
+}
+
+// date.c
+#include <stdio.h>
+#include <time.h>
+
+int main(void)
+{
+    char buf[64];
+    const time_t t = time(nullptr);
+
+    strftime(buf, sizeof(buf), "%c", localtime(&t));
+    puts(buf);
+    return 0;
+}
+
+// fcntl-stub.c, for newlib
+int fcntl(int fd, int cmd, ...)
+{
+    return -1;
+}
 ```
 
 and build them, and minigzip from the zlib sources, with each runtime; `-s`
@@ -124,8 +143,8 @@ ls -l *-nix20 *-nix13 *-library *-newlib *-clib2 *-ixemul
 [^stkinit]: only if the program also references `__stkinit`: see [libnix](#libnix).
 
 The minimum stack is checked at startup: if the program gets less than the
-variable says, it moves to a larger stack. Nothing checks or extends the
-stack while the program runs: the compiler has no `-mstackcheck` or
+variable says, it moves to a larger stack. The stack is neither checked nor
+extended while the program runs: the compiler has no `-mstackcheck` or
 `-mstackextend`.
 
 Threads are AmigaOS processes that share the program's console and current
@@ -151,7 +170,8 @@ Two rules that AmigaOS can't enforce:
   `THREADS=amigaos`, both give a thread its own `thread_local` and
   `_Thread_local` variables, and free them, running their destructors, when
   it ends. A task started with a plain
-  `CreateNewProc()` must not use them: it can find another thread's.
+  `CreateNewProc()` must not use them: it may access the variables of
+  another thread.
 
 The details are in each runtime's section below.
 
@@ -258,10 +278,10 @@ The math functions are only those of C89. There are no `float` or
 `long double` variants, nothing from C99 math or `<fenv.h>`, and none of
 C11 and C23. Also missing: `strtof()`, `getline()`, `strtok_r()`,
 `localtime_r()`, `getopt_long()`, `getaddrinfo()` and the wide character
-functions. `printf()` doesn't know `%a`, `%zu`, `%jd` and `%Lf`.
+functions. `printf()` doesn't support `%a`, `%zu`, `%jd` and `%Lf`.
 
 **C++ and OS support:** constructors don't run, neither C++ global
-constructors nor C `__attribute__((constructor))` functions
+constructors nor C `[[gnu::constructor]]` functions
 ([#234](https://github.com/AmigaPorts/m68k-amigaos-gcc/issues/234)), and
 `<cstdio>` doesn't compile, so most C++ programs don't work. Kickstart 2.04
 and later.
