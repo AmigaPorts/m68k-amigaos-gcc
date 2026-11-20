@@ -14,7 +14,8 @@ make CC=/path/to/m68k-amigaos-gcc
 make check VOLAMOS=/path/to/volamos
 ```
 
-volamos can't start a program as Workbench does, nor read icons, so `make
-check` runs only the shell side. On AmigaOS, give `hello` a tool icon (for
-example a copy of a tool's `.info`), add `GREETING=Ciao` to its tool types in
-Workbench's Information window, and double-click it.
+volamos can't start a program as Workbench does, so `make check` runs only the
+shell side, where `hello` has no icon and keeps its default greeting. On
+AmigaOS, give `hello` a tool icon (for example a copy of a tool's `.info`), add
+`GREETING=Ciao` to its tool types in Workbench's Information window, and
+double-click it.
