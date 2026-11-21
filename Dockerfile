@@ -1,9 +1,11 @@
 FROM amigadev/docker-base:latest
-WORKDIR /root
+WORKDIR /root/amiga-gcc
 COPY ./ ./
 ARG PATHPREFIX="m68k-amigaos"
-ARG BINUTILS_BRANCH="amiga-2.46"
-ARG GCC_BRANCH="amiga6"
+ARG BINUTILS_BRANCH="amiga-2.47"
+ARG GCC_BRANCH="amiga16.2"
+# a release tag such as v16.2-rc21: every module is built at the tag release-tag made in it, and the branches are ignored
+ARG RELEASE_TAG=""
 
 RUN export DEBIAN_FRONTEND=noninteractive && \
     export HOST_ARCH=$(gcc -dumpmachine 2>/dev/null || dpkg-architecture -qDEB_HOST_GNU_TYPE) && \
@@ -13,18 +15,20 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
     echo "PREFIX:          ${PREFIX}" && \
     echo "BINUTILS_BRANCH: ${BINUTILS_BRANCH}" && \
     echo "GCC_BRANCH:      ${GCC_BRANCH}" && \
-    make branch mod=binutils branch=${BINUTILS_BRANCH} && \
-    make branch mod=gcc branch=${GCC_BRANCH} && \
+    echo "RELEASE_TAG:     ${RELEASE_TAG}" && \
+    if [ -n "${RELEASE_TAG}" ]; then \
+        make v ref=m68k-amigaos-gcc-${RELEASE_TAG}; \
+    else \
+        make branch mod=binutils branch=${BINUTILS_BRANCH} && \
+        make branch mod=gcc branch=${GCC_BRANCH}; \
+    fi && \
     make update && \
     make -j $(nproc) all && \
     make -j 4 all-sdk && \
-    curl --fail --location https://raw.githubusercontent.com/aros-development-team/AROS/master/compiler/include/devices/sana2.h --output sana2.h && \
-    curl --fail --location https://raw.githubusercontent.com/aros-development-team/AROS/master/compiler/include/devices/sana2specialstats.h --output sana2specialstats.h && \
-    mv -fv sana2.h sana2specialstats.h /opt/${PATHPREFIX}/m68k-amigaos/ndk-include/devices/ && \
+    make -j $(nproc) zlib libpng && \
     cd / && \
     rm -rf /root/amiga-gcc && \
     apt-get purge -y \
-    autoconf \
     bison \
     flex \
     g++ \

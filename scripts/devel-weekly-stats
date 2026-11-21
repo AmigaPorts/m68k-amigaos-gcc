@@ -1,0 +1,210 @@
+#!/usr/bin/python3
+"""PRs merged and lines changed per week, and the m68k-amigaos-gcc rc dates.
+
+Counts the merged PRs of m68k-amigaos-gcc and of every repo in default-repos per
+week, Monday to Sunday, from the commit the oldest rc tag points to (rc0, where
+the 16.2 work started) to the last full week. Upstream merges, imports and bulk
+file drops count as PRs but not toward the lines added and deleted, and neither
+do the lines that git's --color-moved finds moved.
+
+The lines come from the local clones in projects/. A PR's commits that a clone
+lacks are fetched by hash, with --shallow-since in a shallow clone; its branches
+are left alone. Writes JSON for devel-weekly-chart.
+"""
+
+import collections
+import concurrent.futures
+import datetime
+import json
+import pathlib
+import re
+import subprocess
+import sys
+import time
+
+VERSION = "16.2"
+# PRs left out of the lines: upstream merges by title, and these.
+UPSTREAM_TITLE = r"^(Merge|Import) "
+EXCLUDED_PRS = {
+    "binutils-gdb#43",  # the AmigaOS 4 target from adtools
+    "gcc#129",  # the AmigaOS 4 target from adtools
+    "clib2#7",  # sodero/clib2
+    "binutils-gdb#47",  # amiga-2.46 PRs cherry-picked into amiga-2.47
+    "gcc#16",  # bebbo's amiga16.1
+    "sfdc#2",  # bebbo's sfdc master
+    "lha#2",  # generated autotools files
+    "m68k-amigaos-gcc#55",  # deletes the unused sys-include snapshot
+}
+CHECKOUT = pathlib.Path(__file__).resolve().parent.parent
+
+
+def git(clone, *args):
+    return subprocess.run(["git", "-C", clone, *args], check=True,
+                          capture_output=True, text=True).stdout
+
+
+def has_commit(clone, rev):
+    return subprocess.run(["git", "-C", clone, "rev-parse", "-q", "--verify",
+                           f"{rev}^{{commit}}"], check=False, capture_output=True).returncode == 0
+
+
+def week_of(when):
+    """The Monday that starts when's week, in UTC."""
+    day = when.astimezone(datetime.UTC).date()
+    return day - datetime.timedelta(days=day.weekday())
+
+
+def rc_tags():
+    """[(rc number, tag date)] sorted by rc number."""
+    out = git(CHECKOUT, "for-each-ref", f"refs/tags/v{VERSION}-rc*",
+              "--format=%(refname:short) %(creatordate:iso-strict)")
+    tags = []
+    for line in out.splitlines():
+        name, date = line.split()
+        if m := re.fullmatch(rf"v{re.escape(VERSION)}-rc(\d+)", name):
+            tags.append((int(m.group(1)), datetime.datetime.fromisoformat(date)))
+    return sorted(tags)
+
+
+def repos():
+    """[(GitHub owner/name, local clone)] of the toolchain and its modules."""
+    origin = git(CHECKOUT, "remote", "get-url", "origin").strip()
+    out = [(re.sub(r"^.*github\.com[:/]|\.git$", "", origin), CHECKOUT)]
+    for line in (CHECKOUT / "default-repos").read_text().splitlines():
+        fields = line.split()
+        if len(fields) >= 2 and "github.com/" in fields[1]:
+            out.append((re.sub(r"^.*github\.com/|\.git$", "", fields[1]),
+                        CHECKOUT / "projects" / fields[0]))
+    return out
+
+
+# Only the commit count and the last headline: asking gh pr list for the
+# commits makes GitHub refuse the query for its size.
+PR_QUERY = """
+query($q: String!, $endCursor: String) {
+  search(query: $q, type: ISSUE, first: 100, after: $endCursor) {
+    pageInfo { hasNextPage endCursor }
+    nodes { ... on PullRequest {
+      number title mergedAt additions deletions
+      mergeCommit { oid }
+      commits(last: 1) { totalCount nodes { commit { messageHeadline } } }
+    } }
+  }
+}"""
+
+
+def merged_prs(repo, since):
+    cmd = ["gh", "api", "graphql", "--paginate", "-f", f"query={PR_QUERY}",
+           "-f", f"q=repo:{repo} is:pr is:merged merged:>={since:%Y-%m-%d}",
+           "--jq", ".data.search.nodes[]"]
+    for attempt in range(3):
+        r = subprocess.run(cmd, check=False, capture_output=True, text=True)
+        if r.returncode == 0:
+            return [json.loads(line) for line in r.stdout.splitlines()]
+        print(f"{repo}: {r.stderr.strip()}", file=sys.stderr)
+        time.sleep(10 * (attempt + 1))
+    sys.exit(f"{repo}: giving up on the GitHub query")
+
+
+def fetch(clone, since, oids):
+    """Fetch commits by hash, with history back to since in a shallow clone."""
+    shallow = git(clone, "rev-parse", "--is-shallow-repository").strip() == "true"
+    # A week of slack, for PRs branched before since.
+    opts = [f"--shallow-since={since - datetime.timedelta(days=7):%Y-%m-%d}"] if shallow else []
+    print(f"fetching {len(oids)} commits in {clone}", file=sys.stderr)
+    subprocess.run(["git", "-C", clone, "-c", "submodule.recurse=false", "fetch", "-q",
+                    "--no-recurse-submodules", *opts, "origin", *oids], check=False)
+
+
+def pr_base(clone, pr):
+    """The commit a PR's changes apply to, from how it was merged."""
+    oid = pr["mergeCommit"]["oid"]
+    parents, subject = git(clone, "log", "-1", "--format=%P%x00%s", oid).rstrip("\n").split("\0", 1)
+    n = pr["commits"]["totalCount"]
+    if len(parents.split()) == 2:  # merge commit
+        return f"{oid}^1"
+    if n > 1 and subject == pr["commits"]["nodes"][0]["commit"]["messageHeadline"]:  # rebased
+        return f"{oid}~{n}"
+    return f"{oid}^"  # squashed, or a single commit
+
+
+def changed_lines(clone, pr):
+    """Lines a PR added and deleted, less the moved ones; GitHub's if git can't tell."""
+    base = has_commit(clone, pr["mergeCommit"]["oid"]) and pr_base(clone, pr)
+    if not base or not has_commit(clone, base):
+        print(f"{clone.name}#{pr['number']}: no {base}, counting moves too", file=sys.stderr)
+        return collections.Counter(added=pr["additions"], deleted=pr["deletions"])
+    # Changed lines come out red and green, moved ones blue and yellow.
+    out = subprocess.run(
+        ["git", "-C", clone, "-c", "color.diff.old=red", "-c", "color.diff.new=green",
+         "-c", "color.diff.oldMoved=blue", "-c", "color.diff.newMoved=yellow",
+         "--no-pager", "diff", "--no-ext-diff", "--no-textconv", "--find-renames", "-l0",
+         "--color=always", "--color-moved=blocks", "--color-moved-ws=ignore-all-space",
+         base, pr["mergeCommit"]["oid"]], check=True, capture_output=True).stdout
+    lines = out.splitlines()
+    return collections.Counter(added=sum(line.startswith(b"\x1b[32m+") for line in lines),
+                               deleted=sum(line.startswith(b"\x1b[31m-") for line in lines))
+
+
+def main():
+    if len(sys.argv) != 2 or sys.argv[1].startswith("-"):
+        sys.exit("Usage: devel-weekly-stats stats.json")
+
+    tags = rc_tags()
+    start = datetime.datetime.fromisoformat(
+        git(CHECKOUT, "log", "-1", "--format=%cI", f"v{VERSION}-rc{tags[0][0]}^{{commit}}").strip())
+    tags = tags[1:]  # rc0 only marks the start
+    first = week_of(start)
+    last = week_of(datetime.datetime.now(datetime.UTC)) - datetime.timedelta(weeks=1)
+    weeks = [first + datetime.timedelta(weeks=i) for i in range((last - first).days // 7 + 1)]
+    since = datetime.datetime.combine(first, datetime.time(), datetime.UTC)
+
+    prs = collections.Counter()
+    lines = collections.defaultdict(collections.Counter)
+    excluded = []
+    counted = []
+    for repo, clone in repos():
+        print(f"listing the PRs of {repo}", file=sys.stderr)
+        name = repo.split("/")[-1]
+        mine = []
+        for pr in merged_prs(repo, since):
+            week = week_of(datetime.datetime.fromisoformat(pr["mergedAt"]))
+            if week > last:
+                continue
+            prs[week] += 1
+            if re.search(UPSTREAM_TITLE, pr["title"]) or f"{name}#{pr['number']}" in EXCLUDED_PRS:
+                excluded.append(f"{name}#{pr['number']} {pr['title']}")
+            else:
+                mine.append((week, pr))
+        if not mine:
+            continue
+        # Fetch only what's missing: the merge commits, then the history to their bases.
+        missing = [pr["mergeCommit"]["oid"] for _, pr in mine
+                   if not has_commit(clone, pr["mergeCommit"]["oid"])]
+        if missing:
+            fetch(clone, since, missing)
+        missing = [pr["mergeCommit"]["oid"] for _, pr in mine
+                   if has_commit(clone, pr["mergeCommit"]["oid"])
+                   and not has_commit(clone, pr_base(clone, pr))]
+        if missing:
+            fetch(clone, since, missing)
+        counted += [(week, clone, pr) for week, pr in mine]
+
+    print(f"diffing {len(counted)} PRs", file=sys.stderr)
+    with concurrent.futures.ThreadPoolExecutor(8) as pool:
+        for (week, _, _), n in zip(counted, pool.map(lambda c: changed_lines(*c[1:]), counted),
+                                   strict=True):
+            lines[week] += n
+
+    with open(sys.argv[1], "w") as f:
+        json.dump({
+            "weeks": [{"week": str(w), "prs": prs[w], "added": lines[w]["added"],
+                       "deleted": lines[w]["deleted"]} for w in weeks],
+            "rcs": [{"rc": rc, "date": date.isoformat()} for rc, date in tags],
+            "excluded": excluded,
+        }, f, indent=1)
+        f.write("\n")
+
+
+if __name__ == "__main__":
+    main()

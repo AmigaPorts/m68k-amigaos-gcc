@@ -1,0 +1,16 @@
+# The archives the build downloads into download/: a name, the file it is
+# saved as, its sha256 and the URLs to try in order.  The Makefile and the
+# Nix package both read this table.
+gmp                                gmp-6.2.1.tar.bz2                                eae9326beb4158c386e39a356818031bd28f3124cf915f8c5b1dc4c7a36b4d7c  https://gcc.gnu.org/pub/gcc/infrastructure/gmp-6.2.1.tar.bz2
+mpc                                mpc-1.2.1.tar.gz                                 17503d2c395dfcf106b622dc142683c1199431d095367c6aacba6eec30340459  https://gcc.gnu.org/pub/gcc/infrastructure/mpc-1.2.1.tar.gz
+mpfr                               mpfr-4.1.0.tar.bz2                               feced2d430dd5a97805fa289fed3fc8ff2b094c02d05287fd6133e7f1f0ec926  https://gcc.gnu.org/pub/gcc/infrastructure/mpfr-4.1.0.tar.bz2
+ndk                                NDK3.2.lha                                       96cabd4ad683dced632e147bf86dee0f50dcb1254386216c25c362916a6409bb  https://aminet.net/dev/misc/NDK3.2.lha
+ixemul-sdk                         ixemul-80.2-m68k.lha                             5a4341e4d75dbfeb4a55167becb052fbe33d6e8cc067c4bca21a35c6623960c3  https://aminet.net/dev/lib/ixemul-80.2-m68k.lha
+vbcc-target-m68k-amigaos           vbcc_target_m68k-amigaos.lha                     ec734d7115359cdb5d1c70349284ecbd5712ef47e8bc28d4150117c6f8c73289  http://aminet.net/dev/c/vbcc_target_m68k-amiga.lha
+vbcc-target-m68k-kick13            vbcc_target_m68k-kick13.lha                      8815948604eb50ec8b82d4fd2c9d673f5ec59a6623778edfcb29a7df608ea711  http://aminet.net/dev/c/vbcc_target_m68k-kick13.lha
+zlib                               zlib-1.4.tar.gz                                  02dd159783677a749c04adbdd02b55b8a2bcc7e054f51b76b549199a916ad584  https://github.com/madler/zlib/releases/download/v1.4/zlib-1.4.tar.gz
+libpng                             libpng-1.6.58.tar.xz                             28eb403f51f0f7405249132cecfe82ea5c0ef97f1b32c5a65828814ae0d34775  https://sourceforge.net/projects/libpng/files/libpng16/1.6.58/libpng-1.6.58.tar.xz
+freetype                           freetype-2.12.1.tar.xz                           4766f20157cc4cf0cd292f80bf917f92d1c439b243ac3018debf6b9140c41a7f  https://downloads.sourceforge.net/project/freetype/freetype2/2.12.1/freetype-2.12.1.tar.xz
+volamos-x86_64-unknown-linux-musl  volamos-v0.21.0-x86_64-unknown-linux-musl.tar.gz 66a0d6bf64df858a9fa6fde28cddd23201404a0587c2354b0da7f2080f82048b  https://github.com/sidick/volamos/releases/download/v0.21.0/volamos-v0.21.0-x86_64-unknown-linux-musl.tar.gz
+volamos-aarch64-unknown-linux-musl volamos-v0.21.0-aarch64-unknown-linux-musl.tar.gz 7a67ed6c405d23202978a3c57f76892d8c647418d0bc6dbabdf3771861f0311e  https://github.com/sidick/volamos/releases/download/v0.21.0/volamos-v0.21.0-aarch64-unknown-linux-musl.tar.gz
+volamos-aarch64-apple-darwin       volamos-v0.21.0-aarch64-apple-darwin.tar.gz      57b8e7ca245e3e6cfc1fb82c0d32f7640efccfefabc4ade631b81cafd051851b  https://github.com/sidick/volamos/releases/download/v0.21.0/volamos-v0.21.0-aarch64-apple-darwin.tar.gz

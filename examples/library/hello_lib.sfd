@@ -1,0 +1,12 @@
+==id $Id: hello_lib.sfd 1.0 (30.10.2026) $
+==base _HelloBase
+==basetype struct Library *
+==libname hello.library
+==bias 30
+==public
+==include <exec/types.h>
+==include <stdbool.h>
+==include <stddef.h>
+bool HelloSetGreeting(const char *greeting) (a0)
+size_t HelloGetGreeting(char *buffer, size_t size) (a0,d0)
+==end

@@ -1,0 +1,10 @@
+#!/bin/bash
+# Remove the tree scripts/sdk-install unpacked an SDK into, so the next
+# install starts from the archive again.
+
+if [ $# -ne 1 ]; then
+	echo "usage: $0 <sdk>" >&2
+	exit 2
+fi
+
+rm -rf "build/$1"

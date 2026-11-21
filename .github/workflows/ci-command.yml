@@ -1,0 +1,106 @@
+# /ci comments on pull requests: .github/scripts/ci-command.py parses the
+# comment, and toolchain.yml runs once per /ci line.  How to use it: doc/ci.md.
+# A module repository calls this from its own ci-command.yml, with module set
+# to its name in .repos.  Like every issue_comment workflow, it runs from
+# the default branch.
+
+name: CI command
+
+on:
+  issue_comment:
+    types: [created]
+  workflow_call:
+    inputs:
+      # the caller's module name in .repos, empty for this repository
+      module:
+        type: string
+        default: ""
+
+jobs:
+  command:
+    name: Parse /ci
+    if: >-
+      github.event.issue.pull_request &&
+      (github.event.comment.body == '/ci' || startsWith(github.event.comment.body, '/ci '))
+    runs-on: ubuntu-24.04
+    permissions:
+      issues: write
+      pull-requests: write
+      statuses: write
+    outputs:
+      matrix: ${{ steps.parse.outputs.matrix }}
+      context: ${{ steps.parse.outputs.context }}
+      head: ${{ steps.parse.outputs.head }}
+      gcc_version: ${{ steps.parse.outputs.gcc_version }}
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      PR: ${{ github.event.issue.number }}
+      BODY: ${{ github.event.comment.body }}
+      COMMENT_ID: ${{ github.event.comment.id }}
+      ASSOCIATION: ${{ github.event.comment.author_association }}
+      MODULE: ${{ inputs.module }}
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+    steps:
+      # the parser and the platforms from this repository's master, also
+      # for a module repository, and never from the pull request
+      - uses: actions/checkout@v7
+        with:
+          repository: AmigaPorts/m68k-amigaos-gcc
+          ref: master
+          sparse-checkout: .github
+
+      - id: parse
+        shell: bash
+        run: printf '%s\n' "$BODY" | .github/scripts/ci-command.py 2>&1 | tee parse.log
+
+      # The script replies itself to a /ci it understands but can't run, with
+      # an ::error:: annotation; when it crashed instead, post its output.
+      - if: failure() && steps.parse.conclusion == 'failure'
+        run: |
+          grep -q '^::error::' parse.log && exit 0
+          printf '/ci crashed, see %s\n```\n%s\n```\n' "$RUN_URL" "$(tail -c 3000 parse.log)" | gh pr comment "$PR" --body-file -
+
+  build:
+    needs: command
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.command.outputs.matrix) }}
+    permissions:
+      contents: read
+    uses: AmigaPorts/m68k-amigaos-gcc/.github/workflows/toolchain.yml@master
+    with:
+      ci_label: ${{ matrix.label }}
+      make_args: ${{ matrix.make_args }}
+      gcc_version: ${{ needs.command.outputs.gcc_version || '16.2' }}
+      # GitHub's merge of the pull request into its base: this repository
+      # checks it out, a module builds it as its projects/<module>
+      checkout_repo: ${{ inputs.module == '' && github.repository || 'AmigaPorts/m68k-amigaos-gcc' }}
+      checkout_ref: ${{ inputs.module == '' && format('refs/pull/{0}/merge', github.event.issue.number) || 'master' }}
+      # and the /ci line's <module>=<branch> words
+      repos: >-
+        ${{ format('{0} {1}',
+                   inputs.module != ''
+                   && format('{0}={1}/{2}.git#refs/pull/{3}/merge', inputs.module, github.server_url, github.repository,
+                             github.event.issue.number)
+                   || '',
+                   matrix.repos) }}
+
+  report:
+    needs: [command, build]
+    if: always() && needs.command.result == 'success'
+    runs-on: ubuntu-24.04
+    permissions:
+      statuses: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      HEAD: ${{ needs.command.outputs.head }}
+      CONTEXT: ${{ needs.command.outputs.context }}
+      RESULT: ${{ needs.build.result }}
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+    steps:
+      - run: |
+          case $RESULT in success) state=success ;; *) state=failure ;; esac
+          gh api "repos/$GH_REPO/statuses/$HEAD" -f state=$state -f context="$CONTEXT" -f target_url="$RUN_URL" >/dev/null

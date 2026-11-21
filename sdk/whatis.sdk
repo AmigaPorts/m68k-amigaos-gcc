@@ -1,6 +1,7 @@
 Short: 	Shared lib that recognizes file types
 Version: 4.0
 Url: http://aminet.net/util/cli/WhatIs.lha
+Sha256: 6b34ef8804890157334d1345beba5600015ad606708b3182044ea297381fb0ca
 
 
 WhatIs/include/clib/whatis_protos.h

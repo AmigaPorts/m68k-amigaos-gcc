@@ -1,5 +1,5 @@
---- old/graphics/gfxbase.h	2022-02-03 11:59:08.000000000 +0100
-+++ new/graphics/gfxbase.h	2023-12-15 10:19:22.648814358 +0100
+--- a/Include_H/graphics/gfxbase.h	2022-02-03 11:59:08.000000000 +0100
++++ b/Include_H/graphics/gfxbase.h	2023-12-15 10:19:22.648814358 +0100
 @@ -116,6 +116,7 @@
  	UWORD	MonitorFlags;
  	UBYTE	ScanDoubledSprites;

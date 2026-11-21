@@ -1,7 +1,6 @@
-build*
+/build*
 projects
-download
-Output
+/download/
 *.log
 *.summary.txt
 .lock
@@ -9,5 +8,6 @@ Output
 .vscode
 .DS_Store
 .repos*
-tickets
-amiga
+.manifest
+result
+result-*

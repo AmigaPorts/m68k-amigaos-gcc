@@ -1,16 +1,7 @@
-# Build the whole m68k-amigaos toolchain, on dispatch, from release.yml,
-# or for a labelled pull request. Nothing builds on a plain push: label a
-# pull request here, or in a module repository whose toolchain-ci.yml
-# calls this workflow with its branch swapped in, with a ci-* tag. The
-# label picks what to build:
-#   ci-linux         - the Linux toolchain (plus the amigaos.exp testsuite)
-#   ci-linux-arm     - the same on an arm64 Linux runner
-#   ci-macos         - the macOS toolchain
-#   ci-amigaos       - the AmigaOS-hosted toolchain
-#   ci-mingw         - the MinGW-hosted toolchain
-#   ci-testsuite-c   - the Linux toolchain with the gcc C testsuite
-#   ci-testsuite-cxx - the Linux toolchain with the g++ testsuite (slow)
-# Re-add the label to rebuild after pushing new commits.
+# Builds and tests the whole toolchain, for a ci-* label on a pull request
+# here or in a module repository (its ci-label.yml), a /ci comment
+# (ci-command.yml), a dispatch, or a release (release.yml).  How to use it,
+# with the labels and what they build: doc/ci.md.
 
 name: Bootstrap toolchain
 
@@ -22,15 +13,18 @@ on:
         default: "16.2"
         required: true
       run_testsuite:
-        description: run the gcc testsuite under vamos
+        description: run the gcc testsuite under the simulator
         type: boolean
         default: false
       run_cxx_testsuite:
-        description: run the g++ testsuite under vamos (slow)
+        description: run the g++ testsuite under the simulator (slow)
         type: boolean
         default: false
+      simulator:
+        description: "simulator for the target testsuite: volamos or vamos"
+        default: volamos
       amitools_git:
-        description: pip source for amitools (vamos)
+        description: pip source for amitools (only used with simulator=vamos)
         default: git+https://github.com/AmigaPorts/amitools.git
       runner:
         description: runner label (e.g. papert for self-hosted)
@@ -38,10 +32,16 @@ on:
       repos:
         description: "module overrides, space separated: sfdc=branch or sfdc=URL#branch"
         default: ""
+      tag:
+        description: "release tag: build every module at m68k-amigaos-gcc-<tag> instead of its branch"
+        default: ""
       build_hosted:
         description: build AmigaOS and MinGW hosted toolchains
         type: boolean
         default: true
+      make_args:
+        description: "make targets to run instead of the default build and tests, e.g. check-c board=volamos/-mcrt=newlib"
+        default: ""
   # same inputs again: workflow_call, used by release.yml, does not
   # share the workflow_dispatch input declarations
   workflow_call:
@@ -55,13 +55,20 @@ on:
       run_cxx_testsuite:
         type: boolean
         default: false
+      simulator:
+        type: string
+        default: volamos
       amitools_git:
         type: string
         default: git+https://github.com/AmigaPorts/amitools.git
+      # empty, so a module repo's ci-* label picks the runner as here
       runner:
         type: string
-        default: ubuntu-24.04
+        default: ""
       repos:
+        type: string
+        default: ""
+      tag:
         type: string
         default: ""
       build_hosted:
@@ -77,32 +84,155 @@ on:
       checkout_ref:
         type: string
         default: ""
-  # the ci-* labels listed at the top of this file
+      # the ci-* label to build, as if the pull request had been labelled
+      # with it: set by ci-command.yml for a /ci comment
+      ci_label:
+        type: string
+        default: ""
+      # make arguments to run instead of the tests a label picks: the
+      # targets build what they need.  From /ci ... make ..., or a dispatch
+      make_args:
+        type: string
+        default: ""
+  # the ci-* labels in the refs job below; doc/ci.md describes them
   pull_request:
     types: [labeled]
 
 jobs:
-  build:
+  # What to build is decided once, here, and shared as the .repos of the
+  # build jobs below: each runs on its own runner with its own checkout, and
+  # a module branch could move between them.  A release pins every module to
+  # the tag that release-tag made in it, named after this repository's; a
+  # module without the tag fails the clone.
+  # The ci-* label, from the pull request event or a /ci comment, is
+  # resolved here too, and the jobs below read it as needs.refs.outputs.label:
+  # empty for a dispatch or a release, which build everything.  An unknown
+  # label (any other label put on a pull request) builds nothing.
+  # ci-command.yml takes its /ci targets from the double-quoted ci- labels
+  # here, on master: keep every other ci- name in this file unquoted.
+  refs:
+    name: Select module refs
     if: >-
-      github.event_name != 'pull_request' ||
-      contains(fromJSON('["ci-linux", "ci-linux-arm", "ci-macos", "ci-testsuite-c", "ci-testsuite-cxx"]'),
-               github.event.label.name)
+      (inputs.ci_label || github.event.label.name) == '' ||
+      contains(fromJSON('[
+                 "ci-linux",
+                 "ci-linux-x86",
+                 "ci-linux-arm",
+                 "ci-linux-gcc6",
+                 "ci-macos",
+                 "ci-amigaos",
+                 "ci-mingw",
+                 "ci-check-c",
+                 "ci-check-c-fpu",
+                 "ci-check-c-ixemul",
+                 "ci-check-c++",
+                 "ci-check-c++-baserel32",
+                 "ci-check-c-newlib",
+                 "ci-check-c++-newlib",
+                 "ci-check-newlib",
+                 "ci-check-threads"
+               ]'),
+               inputs.ci_label || github.event.label.name)
+    runs-on: ubuntu-24.04
+    # the ref the jobs below check out: a pull request builds GitHub's
+    # merge of it into its base, refs/pull/N/merge, which is the event's
+    # own ref for a label here and checkout_ref for a /ci comment
+    outputs:
+      label: ${{ inputs.ci_label || github.event.label.name }}
+      checkout_ref: ${{ inputs.checkout_ref || github.ref }}
+      # the pull request heads the pending status went to, if any
+      pr_heads: ${{ steps.pr-status.outputs.heads }}
+    env:
+      # the label first: gcc_version defaults to 16.2 for a module repo's call
+      GCC_VER: ${{ ((inputs.ci_label || github.event.label.name) == 'ci-linux-gcc6' && '6') || inputs.gcc_version || '16.2' }}
+      TAG: ${{ inputs.tag }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          repository: ${{ inputs.checkout_repo }}
+          ref: ${{ inputs.checkout_ref }}
+
+      - name: Record what is built
+        run: echo "Building $(git log -1 --format='%h %s')" >> "$GITHUB_STEP_SUMMARY"
+
+      # a dispatch shows as a check on the module pull requests it builds,
+      # and on this repository's own when it runs on one's branch; pr_status,
+      # the last job, reports how it ended
+      - name: Report the run on the pull requests
+        id: pr-status
+        if: github.event_name == 'workflow_dispatch' && github.repository == 'AmigaPorts/m68k-amigaos-gcc'
+        env:
+          REPOS: ${{ inputs.repos }}
+          REPO: ${{ github.repository }}
+          BRANCH: ${{ github.ref_name }}
+          SHA: ${{ github.sha }}
+          MAKE_ARGS: ${{ inputs.make_args }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          GH_TOKEN: ${{ secrets.PR_STATUS_TOKEN }}
+        run: .github/scripts/pr-status.sh pending
+
+
+      - name: Pin the module refs
+        run: |
+          if [ -z "$TAG" ]; then
+            make branch branch=amiga$GCC_VER mod=gcc
+          else
+            make v ref=m68k-amigaos-gcc-$TAG
+          fi
+          cat .repos
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: module-refs
+          path: .repos
+          include-hidden-files: true
+
+  build:
+    # each ci-* label starts its own run of this job: name it after the
+    # label, or a PR's checks list keeps only the latest of them
+    name: build (${{ needs.refs.outputs.label || github.event_name }}${{ inputs.make_args != '' && format(' make {0}', inputs.make_args) || '' }})
+    needs: refs
+    outputs:
+      package_filename: ${{ steps.package.outputs.filename }}
+    # every label but ci-mingw, which cross-builds from a container
+    if: needs.refs.outputs.label != 'ci-mingw'
+    # the testsuites run on arm64, whose 4 vCPUs build and test faster
     runs-on: >-
       ${{ inputs.runner
-          || (github.event.label.name == 'ci-macos' && 'macos-15')
-          || (github.event.label.name == 'ci-linux-arm' && 'ubuntu-24.04-arm')
+          || (needs.refs.outputs.label == 'ci-macos' && 'macos-15')
+          || (needs.refs.outputs.label == 'ci-linux-arm' && 'ubuntu-24.04-arm')
+          || (startsWith(needs.refs.outputs.label, 'ci-check') && 'ubuntu-24.04-arm')
           || 'ubuntu-24.04' }}
     timeout-minutes: 300
     env:
-      RUN_TESTSUITE: ${{ inputs.run_testsuite || github.event.label.name == 'ci-testsuite-c' }}
-      RUN_TESTSUITE_CXX: ${{ inputs.run_cxx_testsuite || github.event.label.name == 'ci-testsuite-cxx' }}
+      # What the job runs, as make arguments: a /ci comment's or a
+      # dispatch's, else the label's, else (a release, a dispatch without
+      # them, and the platform labels) the whole distribution and the fast
+      # tests, or make check with run_testsuite.  The gcc testsuites run on
+      # volamos, or on vamos for comparison (simulator=vamos)
+      SIMULATOR: ${{ inputs.simulator || 'volamos' }}
+      MAKE_ARGS: >-
+        ${{ inputs.make_args
+            || needs.refs.outputs.label == 'ci-check-c' && 'check-c'
+            || needs.refs.outputs.label == 'ci-check-c-fpu' && 'check-c board=volamos/-mcrt=nix20/-m68020-60/-m68881'
+            || needs.refs.outputs.label == 'ci-check-c-ixemul' && 'check-c board=volamos/-mcrt=ixemul/-m68020-60/-m68881'
+            || needs.refs.outputs.label == 'ci-check-c-newlib' && 'check-c board=volamos/-mcrt=newlib'
+            || needs.refs.outputs.label == 'ci-check-c++' && 'check-c++'
+            || needs.refs.outputs.label == 'ci-check-c++-baserel32' && 'check-c++ board=volamos/-mcrt=nix20/-m68020-60/-fbaserel32'
+            || needs.refs.outputs.label == 'ci-check-c++-newlib' && 'check-c++ board=volamos/-mcrt=newlib'
+            || needs.refs.outputs.label == 'ci-check-newlib' && 'check-newlib'
+            || needs.refs.outputs.label == 'ci-check-threads' && 'THREADS=amigaos check-gcc-amigaos check-libnix check-libpthread check-newlib'
+            || format('all all-sdk vbcc vlink zlib libpng check-gdb-libpython package {0}{1}{2}',
+                      inputs.run_testsuite && 'check' || 'check-multilib check-binutils check-sfdc check-gcc-amigaos check-libnix check-libpthread',
+                      inputs.run_cxx_testsuite && ' check-c++' || '',
+                      (inputs.simulator || 'volamos') == 'vamos' && ' board=vamos' || '') }}
       AMITOOLS_GIT: ${{ inputs.amitools_git || 'git+https://github.com/AmigaPorts/amitools.git' }}
       # not GCC_VERSION: the Makefile reads that from gcc's BASE-VER
-      # (16.2.0b) for gcc's own lib/gcc/<target>/<version> layout
-      GCC_VER: ${{ inputs.gcc_version || '16.2' }}
-      # aminet.net picks a random mirror per download, some broken or
-      # slow; pin one that is fast and healthy from the CI runners
-      AMINET_MIRROR: http://nl.aminet.net
+      # (16.2.1b) and derives the lib/gcc/<target>/<version> directory (16)
+      GCC_VER: ${{ (needs.refs.outputs.label == 'ci-linux-gcc6' && '6') || inputs.gcc_version || '16.2' }}
+      # mirrors to try, in order, before aminet.net itself; see
+      # https://wiki.aminet.net/Mirrors (some serve the tree under /aminet)
+      AMINET_MIRROR: http://us4.aminet.net/aminet http://de4.aminet.net
     steps:
       # empty repository/ref check out this repo at the triggering event's
       # ref (the normal PR, dispatch and release paths); a module caller
@@ -110,9 +240,10 @@ jobs:
       - uses: actions/checkout@v7
         with:
           repository: ${{ inputs.checkout_repo }}
-          ref: ${{ inputs.checkout_ref }}
+          ref: ${{ needs.refs.outputs.checkout_ref }}
           # the Makefile stamps the tools with git describe --tags
           fetch-depth: 0
+
 
       # PREFIX reaches every make invocation through the environment
       - name: Set prefix
@@ -127,8 +258,9 @@ jobs:
           sudo rm -f /etc/apt/sources.list.d/google-chrome*.list
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
-            autoconf automake bison build-essential ca-certificates curl flex \
+            bison build-essential ca-certificates ccache curl flex \
             gettext git rsync xz-utils
+          echo /usr/lib/ccache >> $GITHUB_PATH
 
       # Apple ships old or BSD versions of most build tools; put the brew
       # GNU ones first on PATH under their plain names (gnubin) so the
@@ -136,19 +268,48 @@ jobs:
       - name: Install build dependencies (macOS)
         if: runner.os == 'macOS'
         run: |
-          brew install autoconf automake bison coreutils flex gettext \
+          brew install bison ccache coreutils flex gettext \
             gnu-sed gnu-tar grep make xz
+          echo "$(brew --prefix ccache)/libexec" >> $GITHUB_PATH
           echo "$(brew --prefix bison)/bin" >> $GITHUB_PATH
           echo "$(brew --prefix flex)/bin" >> $GITHUB_PATH
           for pkg in coreutils gnu-sed gnu-tar grep make; do
             echo "$(brew --prefix $pkg)/libexec/gnubin" >> $GITHUB_PATH
           done
 
+      # runners of one label differ in CPU, so record it to compare timings
       - name: Set build parallelism
-        run: echo "NPROC=$(nproc 2>/dev/null || sysctl -n hw.ncpu)" >> $GITHUB_ENV
+        run: |
+          nproc=$(nproc 2>/dev/null || sysctl -n hw.ncpu)
+          echo "NPROC=$nproc" >> $GITHUB_ENV
+          cpu=$(lscpu 2>/dev/null | sed -n 's/^Model name: *//p' | head -1)
+          cpu=${cpu:-$(sysctl -n machdep.cpu.brand_string 2>/dev/null)}
+          echo "CPU: $cpu, $nproc vCPUs" | tee -a $GITHUB_STEP_SUMMARY
 
-      - name: Select gcc branch
-        run: make branch branch=amiga$GCC_VER mod=gcc
+      # ccache for the host compiles of binutils and gcc, through the
+      # wrappers the install steps put first on PATH.  The key is unique per
+      # run, so every run saves its cache; the prefix restores the newest
+      # one.  Runs on a branch can restore the caches of master's runs.
+      - name: Set up ccache
+        run: |
+          echo "CCACHE_DIR=$HOME/.ccache" >> $GITHUB_ENV
+          # each run saves its own, and a repository keeps 10 GB of caches
+          echo "CCACHE_MAXSIZE=1G" >> $GITHUB_ENV
+          echo "CCACHE_BASEDIR=$GITHUB_WORKSPACE" >> $GITHUB_ENV
+          # by content: each build makes the same compilers afresh
+          echo "CCACHE_COMPILERCHECK=content" >> $GITHUB_ENV
+
+      - name: Restore ccache
+        uses: actions/cache@v6
+        with:
+          path: ~/.ccache
+          key: ccache-${{ runner.os }}-${{ runner.arch }}-${{ env.GCC_VER }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: ccache-${{ runner.os }}-${{ runner.arch }}-${{ env.GCC_VER }}-
+
+      - name: Download the module refs
+        uses: actions/download-artifact@v8
+        with:
+          name: module-refs
 
       # build with a pull request from another module's repo: each word in
       # repos is module=branch, or module=URL#branch for a fork
@@ -163,100 +324,144 @@ jobs:
 
       # provenance for the whole build, independent of the testsuite
       - name: Record module revisions
-        run: sh .github/scripts/module-revisions.sh >> $GITHUB_STEP_SUMMARY
+        run: scripts/manifest --markdown >> $GITHUB_STEP_SUMMARY
 
-      - name: Build toolchain
-        run: make -j $NPROC all
-
-      # modest -j: downloads are network bound, and more jobs just garble the log
-      - name: Install SDKs
-        run: make -j4 all-sdk
-
-      # vbcc/vlink/vasm plus the vbcc target archives and vc.config
-      - name: Build vbcc toolchain
-        run: make -j $NPROC vbcc vlink
-
-      # target libraries, one copy per multilib
-      - name: Build zlib and libpng
-        run: make -j $NPROC zlib libpng
-
-      # release tarballs are named after the tag (16.2-rc4), which
-      # versions the whole distribution rather than just gcc
-      - name: Package
+      # /ci make runs reuse the toolchain a run with the same Makefile,
+      # patches and thread model built, and rebuild only the modules whose
+      # commit changed: see .github/scripts/toolchain-cache.sh.  The Makefile
+      # refuses a tree built with another THREADS.  Releases and the default
+      # runs always build from scratch.
+      - name: Toolchain cache key
+        id: tc
+        if: inputs.make_args != '' && !startsWith(github.ref, 'refs/tags/')
         run: |
-          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
-            make package \
-              PACKAGE=m68k-amigaos-gcc-${GITHUB_REF_NAME#v}-$(uname -m)-$(uname -s | tr '[:upper:]' '[:lower:]').tar.xz
-          else
-            make package
-          fi
+          echo "build=$(make -s print-BUILD)" >> $GITHUB_OUTPUT
+          threads=$(make -s print-THREADS $(printf '%s\n' $MAKE_ARGS | grep '^THREADS='))
+          echo "prefix=toolchain-${{ runner.os }}-${{ runner.arch }}-$GCC_VER-$threads-${{ hashFiles('Makefile', 'patches/**', 'default-archives', '.github/workflows/toolchain.yml', '.github/scripts/toolchain-cache.sh') }}-" >> $GITHUB_OUTPUT
+          echo "modules=$(scripts/manifest | awk 'NR > 1 { print $1, $2, $3 }' | sha256sum | cut -c1-16)" >> $GITHUB_OUTPUT
 
+      # with the downloaded archives and the trees unpacked from them, which
+      # would otherwise come back newer than the build and rebuild the NDK's
+      # dependents: newlib, libnix, libgcc
+      - name: Restore the toolchain
+        id: tc-restore
+        if: steps.tc.outputs.prefix
+        uses: actions/cache/restore@v6
+        with:
+          path: |
+            ${{ steps.tc.outputs.build }}
+            ${{ env.PREFIX }}
+            download
+            projects/NDK*
+            projects/gmp-*
+            projects/mpc-*
+            projects/mpfr-*
+          key: ${{ steps.tc.outputs.prefix }}${{ steps.tc.outputs.modules }}
+          restore-keys: ${{ steps.tc.outputs.prefix }}
+
+      - name: Reuse the restored toolchain
+        if: steps.tc-restore.outputs.cache-matched-key != ''
+        run: .github/scripts/toolchain-cache.sh prepare "${{ steps.tc.outputs.build }}" "$PREFIX" download projects/NDK* projects/gmp-* projects/mpc-* projects/mpfr-*
+
+      # the restored stamps hide changes from MIN_IF_MISSING, so build min
+      # explicitly: nothing on an exact hit, the changed modules otherwise.
+      # With the make arguments' variables, as the targets below: a THREADS
+      # there configures gcc, which this builds and the cache keeps.
+      - name: make min
+        if: steps.tc.outputs.prefix
+        run: |
+          vars=()
+          while IFS= read -r w; do
+            case $w in *=*) vars+=("$w") ;; esac
+          done < <(python3 -c 'import shlex, sys; [print(w) for w in shlex.split(sys.argv[1])]' "$MAKE_ARGS")
+          make -j $NPROC min ${vars[@]+"${vars[@]}"}
+
+      - name: Save the toolchain
+        if: steps.tc.outputs.prefix && steps.tc-restore.outputs.cache-hit != 'true'
+        run: .github/scripts/toolchain-cache.sh record "${{ steps.tc.outputs.build }}"
+
+      - name: Upload the toolchain to the cache
+        if: steps.tc.outputs.prefix && steps.tc-restore.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: |
+            ${{ steps.tc.outputs.build }}
+            ${{ env.PREFIX }}
+            download
+            projects/NDK*
+            projects/gmp-*
+            projects/mpc-*
+            projects/mpfr-*
+          key: ${{ steps.tc.outputs.prefix }}${{ steps.tc.outputs.modules }}
+
+      - name: Install testsuite dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get install -y --no-install-recommends dejagnu shellcheck
+
+      - name: Install testsuite dependencies (macOS)
+        if: runner.os == 'macOS'
+        run: brew install dejagnu shellcheck
+
+      - name: Install amitools (vamos)
+        if: env.SIMULATOR == 'vamos'
+        run: |
+          if [ "$RUNNER_OS" = Linux ]; then
+            sudo apt-get install -y --no-install-recommends python3-dev python3-venv
+          fi
+          python3 -m venv $HOME/amitools-venv
+          $HOME/amitools-venv/bin/pip install "amitools[vamos] @ $AMITOOLS_GIT"
+          echo "$HOME/amitools-venv/bin" >> "$GITHUB_PATH"
+
+      # One make per target, in order, stopping at the first that fails;
+      # the gcc testsuites share gcc.sum, so they must not run in parallel.
+      # VAR=value words go to every target.
+      - name: make ${{ env.MAKE_ARGS }}
+        run: |
+          # split as a shell would, so that a quoted VAR="a b" keeps its spaces
+          vars=() targets=()
+          while IFS= read -r w; do
+            case $w in *=*) vars+=("$w") ;; *) targets+=("$w") ;; esac
+          done < <(python3 -c 'import shlex, sys; [print(w) for w in shlex.split(sys.argv[1])]' "$MAKE_ARGS")
+          for t in "${targets[@]}"; do
+            make -j $NPROC "$t" ${vars[@]+"${vars[@]}"}
+          done
+
+      - name: Testsuite summaries
+        if: always()
+        run: |
+          { echo '```'; cat *.summary.txt 2>/dev/null || true; echo '```'; } >> $GITHUB_STEP_SUMMARY
+
+      - name: ccache statistics
+        if: always()
+        run: |
+          { echo '```'; ccache -s || true; echo '```'; } >> $GITHUB_STEP_SUMMARY
+
+      - name: Package name
+        id: package
+        run: echo "filename=$(make -s print-PACKAGE_FILENAME)" >> "$GITHUB_OUTPUT"
+
+      # a release build must have its tarball; other runs, such as the
+      # release's make check, only when they built one.  Not zipped: the
+      # artifact is the tarball itself, named after it
       - name: Upload toolchain tarball
         uses: actions/upload-artifact@v7
         with:
-          name: m68k-amigaos-gcc-${{ env.GCC_VER }}-${{ runner.os }}-${{ runner.arch }}
-          path: m68k-amigaos-gcc-*.tar.xz
-          compression-level: 0
-          if-no-files-found: error
+          path: ${{ steps.package.outputs.filename }}
+          archive: false
+          if-no-files-found: ${{ startsWith(github.ref, 'refs/tags/') && inputs.make_args == '' && 'error' || 'ignore' }}
 
+      # the configure logs too: a configure failure only says "see config.log"
       - name: Upload build logs on failure
         if: failure()
         uses: actions/upload-artifact@v7
         with:
           name: build-logs-${{ runner.os }}
-          path: log/
+          path: |
+            log/
+            build-*/*/config.log
+            build-*/gcc/*/*/config.log
+            build-*/newlib/newlib/config.log
           if-no-files-found: ignore
-
-      - name: Install testsuite dependencies (Linux)
-        if: runner.os == 'Linux'
-        run: sudo apt-get install -y --no-install-recommends dejagnu python3-dev python3-venv
-
-      - name: Install testsuite dependencies (macOS)
-        if: runner.os == 'macOS'
-        run: brew install dejagnu
-
-      - name: Install amitools (vamos)
-        run: |
-          python3 -m venv $HOME/amitools-venv
-          $HOME/amitools-venv/bin/pip install "amitools[vamos] @ $AMITOOLS_GIT"
-
-      # gas and ld dump tests for the hunk target; they run on the build
-      # machine, no vamos needed
-      - name: Run the binutils testsuite
-        run: |
-          set +e
-          make check-binutils
-          rc=$?
-          { echo '```'; cat check-binutils-gas.summary.txt check-binutils-ld.summary.txt 2>/dev/null; echo '```'; } >> $GITHUB_STEP_SUMMARY
-          exit $rc
-
-      # fast, so it runs on every build
-      - name: Run the AmigaOS target testsuite
-        run: |
-          set +e
-          PATH="$HOME/amitools-venv/bin:$PATH" make -j $NPROC check-gcc-amigaos
-          rc=$?
-          { echo '```'; cat check-gcc-amigaos.summary.txt 2>/dev/null; echo '```'; } >> $GITHUB_STEP_SUMMARY
-          exit $rc
-
-      - name: Run the gcc C testsuite
-        if: env.RUN_TESTSUITE == 'true' && runner.os == 'Linux'
-        run: |
-          set +e
-          PATH="$HOME/amitools-venv/bin:$PATH" make -j $NPROC check-gcc-execute
-          rc=$?
-          { echo '```'; cat check-gcc-execute.summary.txt 2>/dev/null; echo '```'; } >> $GITHUB_STEP_SUMMARY
-          exit $rc
-
-      # much slower than the C testsuite, so it is opted into separately
-      - name: Run the g++ testsuite
-        if: env.RUN_TESTSUITE_CXX == 'true' && runner.os == 'Linux'
-        run: |
-          set +e
-          PATH="$HOME/amitools-venv/bin:$PATH" make -j $NPROC check-gcc-c++
-          rc=$?
-          { echo '```'; cat check-gcc-c++.summary.txt 2>/dev/null; echo '```'; } >> $GITHUB_STEP_SUMMARY
-          exit $rc
 
       - name: Upload testsuite results
         if: always()
@@ -264,64 +469,88 @@ jobs:
         with:
           name: testsuite-results-${{ runner.os }}
           path: |
-            build-*/gcc/gcc/testsuite/gcc/gcc-execute.sum
-            build-*/gcc/gcc/testsuite/gcc/gcc-execute.log
+            *.summary.txt
+            build-*/gcc/gcc/testsuite/gcc/gcc-execute*.sum
+            build-*/gcc/gcc/testsuite/gcc/gcc-execute*.log
             build-*/gcc/gcc/testsuite/gcc/gcc-amigaos.sum
             build-*/gcc/gcc/testsuite/gcc/gcc-amigaos.log
             build-*/gcc/gcc/testsuite/g++/g++.sum
             build-*/gcc/gcc/testsuite/g++/g++.log
+            build-*/newlib/newlib/testsuite/*/newlib.sum
+            build-*/newlib/newlib/testsuite/*/newlib.log
           if-no-files-found: ignore
 
   build_amigaos:
     name: Build AmigaOS hosted toolchain
     if: >-
-      (github.event_name == 'pull_request' && github.event.label.name == 'ci-amigaos') ||
-      (github.event_name != 'pull_request' && inputs.build_hosted)
+      needs.refs.outputs.label == 'ci-amigaos' ||
+      (needs.refs.outputs.label == '' && inputs.build_hosted && inputs.make_args == '')
+    # bootstrapped with the cross toolchain the build job just produced, so
+    # this exercises the branch's own compiler, assembler and linker rather
+    # than a container's copy, and the runner supplies the native compiler
+    needs: [refs, build]
     runs-on: ubuntu-24.04
     timeout-minutes: 300
-    container:
-      image: amigadev/crosstools:m68k-amigaos-gcc10
     defaults:
       run:
         shell: bash
     env:
       PREFIX: ${{ github.workspace }}/output/amigaos/m68k-amigaos-gcc-${{ inputs.gcc_version || '16.2' }}
       HOST: m68k-amigaos
-      BUILD_TRIPLET: x86_64-linux-gnu
-      HOST_RUNNER: vamos -C 68040 --
-      BUILD_CC: x86_64-linux-gnu-gcc -B/opt/build-binutils/
-      BUILD_CXX: x86_64-linux-gnu-g++ -B/opt/build-binutils/
-      CC_FOR_BUILD: x86_64-linux-gnu-gcc -B/opt/build-binutils/
-      CXX_FOR_BUILD: x86_64-linux-gnu-g++ -B/opt/build-binutils/
       GCC_VER: ${{ inputs.gcc_version || '16.2' }}
 
     steps:
       - uses: actions/checkout@v7
         with:
           repository: ${{ inputs.checkout_repo }}
-          ref: ${{ inputs.checkout_ref }}
+          ref: ${{ needs.refs.outputs.checkout_ref }}
           # the Makefile stamps the tools with git describe --tags
           fetch-depth: 0
 
-      - name: Prepare native build tools
+
+      - name: Install build dependencies
         run: |
-          mkdir -p /opt/build-binutils
-          for tool in as ld gcc g++ ar ranlib strip; do
-            ln -sf "/usr/bin/x86_64-linux-gnu-$tool" "/opt/build-binutils/$tool"
-          done
-          ln -sf /usr/bin/x86_64-linux-gnu-gcc /opt/build-binutils/cc
-          ln -sf /usr/bin/x86_64-linux-gnu-g++ /opt/build-binutils/c++
-          echo "/opt/build-binutils" >> "$GITHUB_PATH"
-          test "$($CC -dumpmachine)" = "$HOST"
-          test "$(x86_64-linux-gnu-gcc -dumpmachine)" = "$BUILD_TRIPLET"
-          command -v vamos
-          command -v lha
+          sudo rm -f /etc/apt/sources.list.d/google-chrome*.list
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            bison build-essential ca-certificates curl flex \
+            gettext git rsync xz-utils
+
+      - name: Download the cross toolchain
+        uses: actions/download-artifact@v8
+        with:
+          name: ${{ needs.build.outputs.package_filename }}
+
+      # make package archives from the parent of PREFIX, so the tarball's top
+      # directory is the prefix basename: unpacking it in $HOME restores the
+      # toolchain at the very path it was configured with, and nothing has to
+      # be relocatable
+      - name: Unpack it as the bootstrap toolchain
+        run: |
+          tar -xJf m68k-amigaos-gcc-*.tar.xz -C "$HOME"
+          boot="$HOME/m68k-amigaos-gcc-$GCC_VER"
+          test "$("$boot/bin/m68k-amigaos-gcc" -dumpmachine)" = "$HOST"
+          test -x "$boot/bin/lha"
+          # that prefix also carries unprefixed as/ld/ar, so name the host
+          # tools by prefix rather than putting its bin/ on PATH, which would
+          # shadow the runner's native binutils
+          echo "HOST_TOOL_PREFIX=$boot/bin/m68k-amigaos-" >> "$GITHUB_ENV"
+          echo "CC=$boot/bin/m68k-amigaos-gcc" >> "$GITHUB_ENV"
+          echo "CXX=$boot/bin/m68k-amigaos-g++" >> "$GITHUB_ENV"
+          # unpacking the NDK and vbcc archives, and writing the .lha
+          # package, both need a build-machine lha: this prefix has one
+          echo "LHA_FOR_BUILD=$boot/bin/lha" >> "$GITHUB_ENV"
+          echo "PACKAGE_LHA=$boot/bin/lha" >> "$GITHUB_ENV"
+
+      - name: Download the module refs
+        uses: actions/download-artifact@v8
+        with:
+          name: module-refs
 
       - name: Build AmigaOS hosted toolchain
         env:
           REPOS: ${{ inputs.repos }}
         run: |
-          make branch mod=gcc branch="amiga$GCC_VER"
           [ -z "$REPOS" ] || sh .github/scripts/override-repos.sh
           make update
           make gcc-prerequisites
@@ -329,14 +558,7 @@ jobs:
           make -j 4 all-sdk
 
       - name: Package AmigaOS hosted toolchain
-        run: |
-          package_version=$(cat projects/gcc/gcc/BASE-VER)
-          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
-            package_version="${GITHUB_REF_NAME#v}"
-          fi
-          archive="m68k-amigaos-gcc-${package_version}-m68k-amigaos.lha"
-          make package-lha PACKAGE="$GITHUB_WORKSPACE/$archive"
-          test -s "$archive"
+        run: make package-lha
 
       - name: Upload AmigaOS package
         uses: actions/upload-artifact@v7
@@ -357,45 +579,75 @@ jobs:
   build_mingw:
     name: Build MinGW hosted toolchain
     # best effort until the Canadian-cross path issues are fixed: a failure
-    # here must not block the release of the other platforms
-    continue-on-error: true
+    # here must not block the release of the other platforms, but with
+    # ci-mingw it is the build that was asked for, so it fails the run
+    continue-on-error: ${{ needs.refs.outputs.label != 'ci-mingw' }}
+    needs: refs
     if: >-
-      (github.event_name == 'pull_request' && github.event.label.name == 'ci-mingw') ||
-      (github.event_name != 'pull_request' && inputs.build_hosted)
+      needs.refs.outputs.label == 'ci-mingw' ||
+      (needs.refs.outputs.label == '' && inputs.build_hosted && inputs.make_args == '')
     runs-on: ubuntu-24.04
     timeout-minutes: 300
+    # The first Ubuntu with the UCRT MinGW compilers; no LTS has them yet
     container:
-      image: amigadev/crosstools:x86_64-w64-mingw32
+      image: ubuntu:26.10
     defaults:
       run:
         shell: bash
     outputs:
       package_version: ${{ steps.version.outputs.package_version }}
+      package_basename: ${{ steps.version.outputs.package_basename }}
     env:
       PREFIX: ${{ github.workspace }}/output/mingw/m68k-amigaos
       HOST: x86_64-w64-mingw32ucrt
       BUILD_TRIPLET: x86_64-linux-gnu
       HOST_RUNNER: wine
-      BUILD_CC: x86_64-linux-gnu-gcc -B/opt/build-binutils/
-      BUILD_CXX: x86_64-linux-gnu-g++ -B/opt/build-binutils/
-      CC_FOR_BUILD: x86_64-linux-gnu-gcc -B/opt/build-binutils/
-      CXX_FOR_BUILD: x86_64-linux-gnu-g++ -B/opt/build-binutils/
+      # the HOST tools, as a cross image would set them
+      CC: x86_64-w64-mingw32ucrt-gcc
+      CXX: x86_64-w64-mingw32ucrt-g++
+      AR: x86_64-w64-mingw32ucrt-ar
+      AS: x86_64-w64-mingw32ucrt-as
+      LD: x86_64-w64-mingw32ucrt-ld
+      RANLIB: x86_64-w64-mingw32ucrt-ranlib
+      BUILD_CC: ccache x86_64-linux-gnu-gcc -B/opt/build-binutils/
+      BUILD_CXX: ccache x86_64-linux-gnu-g++ -B/opt/build-binutils/
+      CC_FOR_BUILD: ccache x86_64-linux-gnu-gcc -B/opt/build-binutils/
+      CXX_FOR_BUILD: ccache x86_64-linux-gnu-g++ -B/opt/build-binutils/
       GCC_VER: ${{ inputs.gcc_version || '16.2' }}
+      # as in the build job; the target libraries are compiled by the m68k
+      # gcc this job builds and runs under wine, new each run, so uncached
+      CCACHE_DIR: ${{ github.workspace }}/.ccache
+      CCACHE_MAXSIZE: 1G
+      CCACHE_BASEDIR: ${{ github.workspace }}
 
     steps:
-      - uses: actions/checkout@v7
-        with:
-          repository: ${{ inputs.checkout_repo }}
-          ref: ${{ inputs.checkout_ref }}
-          # the Makefile stamps the tools with git describe --tags
-          fetch-depth: 0
-
-      - name: Install host runner
+      # before the checkout, which needs git for the history the Makefile
+      # describes; wine runs the HOST tools the build makes, lha unpacks
+      # the SDKs, curl downloads them and patch fixes them up, libtool
+      # runs file on the MinGW import libraries, and the native
+      # m68k-amigaos gcc the build uses links the system GMP, MPFR and MPC
+      - name: Install the cross compilers and build tools
         run: |
           export DEBIAN_FRONTEND=noninteractive
           apt-get update
-          apt-get install -y --no-install-recommends wine wine64
+          apt-get install -y --no-install-recommends \
+            bison build-essential ca-certificates ccache curl file flex \
+            g++-mingw-w64-ucrt64 gcc-mingw-w64-ucrt64 gettext git lhasa \
+            libgmp-dev libmpc-dev libmpfr-dev patch rsync wine wine64 \
+            xz-utils
           rm -rf /var/lib/apt/lists/*
+
+      - uses: actions/checkout@v7
+        with:
+          repository: ${{ inputs.checkout_repo }}
+          ref: ${{ needs.refs.outputs.checkout_ref }}
+          # the Makefile stamps the tools with git describe --tags
+          fetch-depth: 0
+
+      # the runner checked the tree out as its own user and the container
+      # runs as root: git refuses the repository without this
+      - name: Let git read the checkout
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
       - name: Prepare native build tools
         run: |
@@ -410,22 +662,38 @@ jobs:
           test "$(x86_64-linux-gnu-gcc -dumpmachine)" = "$BUILD_TRIPLET"
           command -v wine
           command -v lha
+          # the mingw compilers, through ccache from here on
+          echo "CC=ccache $CC" >> "$GITHUB_ENV"
+          echo "CXX=ccache $CXX" >> "$GITHUB_ENV"
+
+      - name: Restore ccache
+        uses: actions/cache@v6
+        with:
+          path: .ccache
+          key: ccache-mingw-${{ env.GCC_VER }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: ccache-mingw-${{ env.GCC_VER }}-
+
+      - name: Download the module refs
+        uses: actions/download-artifact@v8
+        with:
+          name: module-refs
 
       - name: Build MinGW hosted toolchain
         id: version
         env:
           REPOS: ${{ inputs.repos }}
         run: |
-          make branch mod=gcc branch="amiga$GCC_VER"
           [ -z "$REPOS" ] || sh .github/scripts/override-repos.sh
           make update
           make -j "$(nproc)" all
           make -j 4 all-sdk
-          package_version=$(cat projects/gcc/gcc/BASE-VER)
-          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
-            package_version="${GITHUB_REF_NAME#v}"
-          fi
-          echo "package_version=$package_version" >> "$GITHUB_OUTPUT"
+          echo "package_version=$(make -s print-PACKAGE_VERSION)" >> "$GITHUB_OUTPUT"
+          echo "package_basename=$(make -s print-PACKAGE_BASENAME)" >> "$GITHUB_OUTPUT"
+
+      - name: ccache statistics
+        if: always()
+        run: |
+          { echo '```'; ccache -s || true; echo '```'; } >> $GITHUB_STEP_SUMMARY
 
       - name: Test MinGW hosted compiler
         run: |
@@ -446,6 +714,11 @@ jobs:
             -flto -mcrt=nix20 -mcpu=68040 -mhard-float \
             "$smoke_src" -o "$smoke_out"
           test -s "$smoke_dir/smoke"
+          gdb_exe="$PREFIX/bin/m68k-amigaos-gdb.exe"
+          wine "$gdb_exe" --version || {
+            "$HOST-objdump" -p "$gdb_exe" | grep "DLL Name"
+            exit 1
+          }
 
       - name: Free build space
         run: |
@@ -488,19 +761,25 @@ jobs:
 
   package_windows:
     name: Create Windows installer
-    continue-on-error: true
-    needs: build_mingw
+    # best effort like build_mingw, except with ci-mingw
+    continue-on-error: ${{ needs.refs.outputs.label != 'ci-mingw' }}
+    needs: [refs, build_mingw]
     runs-on: windows-2025
     timeout-minutes: 30
     env:
       PACKAGE_VERSION: ${{ needs.build_mingw.outputs.package_version }}
-      PACKAGE_BASENAME: m68k-amigaos-gcc-${{ needs.build_mingw.outputs.package_version }}-x86_64-w64-mingw32ucrt
+      PACKAGE_BASENAME: ${{ needs.build_mingw.outputs.package_basename }}
 
     steps:
+      # this repo's setup/ files, also when a module repo calls this workflow
       - uses: actions/checkout@v7
+        with:
+          repository: ${{ inputs.checkout_repo }}
+          ref: ${{ needs.refs.outputs.checkout_ref }}
+
 
       - name: Download Windows toolchain tree
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: mingw-prefix-staging
           path: incoming
@@ -572,3 +851,27 @@ jobs:
           path: packages/*
           compression-level: 0
           if-no-files-found: error
+
+  # how the run ended, on the module pull requests the refs job marked as
+  # pending; MinGW counts only when ci-mingw asked for it
+  pr_status:
+    name: Report the result on the pull requests
+    needs: [refs, build, build_amigaos, build_mingw, package_windows]
+    if: always() && github.event_name == 'workflow_dispatch' && needs.refs.outputs.pr_heads != '' && github.repository == 'AmigaPorts/m68k-amigaos-gcc'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: .github/scripts
+
+      - name: Report the result
+        env:
+          HEADS: ${{ needs.refs.outputs.pr_heads }}
+          MAKE_ARGS: ${{ inputs.make_args }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          GH_TOKEN: ${{ secrets.PR_STATUS_TOKEN }}
+          STATE: >-
+            ${{ contains(needs.*.result, 'failure') && 'failure'
+                || contains(needs.*.result, 'cancelled') && 'error'
+                || 'success' }}
+        run: .github/scripts/pr-status.sh "$STATE"

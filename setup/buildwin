@@ -7,8 +7,8 @@ date
 #echo tar xzf amiga-gcc-src.tgz
 #tar xzf amiga-gcc-src.tgz
 
-cd amiga-gcc
-rm *.exe
+cd amiga-gcc || exit 1
+rm -f ./*.exe
 git pull
 if [ "$1" == "clean" ]; then
   make clean clean-prefix -j

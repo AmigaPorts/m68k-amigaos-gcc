@@ -1,0 +1,381 @@
+Part of the [Amiga GCC User's Manual](manual.md).
+
+# C runtimes
+
+A program links one C runtime, chosen with `-mcrt=`:
+
+| option | runtime | for |
+|---|---|---|
+| `-mcrt=nix20` | libnix | native Amiga programs, Kickstart 2.0 and later: the recommended choice, with the smallest executables |
+| `-mcrt=nix13` | libnix | the same for Kickstart 1.3, with the NDK 1.3 headers from `ndk13-include`; defines `__KICK13__` |
+| `-mcrt=library` | libnix | the same as `nix20`, in the shared `libnix4.library` |
+| `-mcrt=newlib` | newlib | the default without `-mcrt=`: portable code, with good POSIX and C99 compatibility and some C11 and C23 features, but larger executables |
+| `-mcrt=ixemul` | ixemul | Unix programs: `ixemul.library` emulates much of a Unix system |
+| `-mcrt=clib2` | clib2 | portable code that needs correct math: it passes musl's libc-test, with full precision `long double` and UTF-8 |
+| `-noixemul` | libnix | the same as `-mcrt=nix20`, under an older name: prefer `-mcrt=nix20` |
+
+**Important:** pass the same `-mcrt=` when compiling and when linking. It
+picks the headers when compiling, and the startup code and libraries when
+linking, so an object compiled for one runtime and linked with another
+fails at run time, without a diagnostic from the linker.
+
+## Size
+
+The executables built with `-Os` for the 68000, stripped, in bytes:
+
+| runtime | empty | hello | `%f` | date | minigzip |
+|---|---:|---:|---:|---:|---:|
+| `-mcrt=nix20` | 1880 | 5420 | 14476 | 8104 | 66060 |
+| `-mcrt=nix13` | 2100 | 5644 | 14792 | 8208 | 66500 |
+| `-mcrt=library` | 1880 | 2292 | 11260 | 2460 | 53192 |
+| `-mcrt=newlib` | 5668 | 14556 | 50588 | 46932 | 120812 |
+| `-mcrt=clib2` | 15344 | 15780 | 30888 | 21716 | 79388 |
+| `-mcrt=ixemul` | 4340 | 4388 | 4460 | 12368 | 54620 |
+
+- empty: `int main(void) { return 0; }`, the startup code alone
+- hello: `puts("hello, world")`, which adds stdio
+- `%f`: `printf("%f\n", x)`, which adds floating-point formatting
+- date: `strftime(buf, sizeof(buf), "%c", localtime(&t))`, which adds time zones and dates
+- minigzip: zlib 1.3.2's example program, a typical C program: file I/O through stdio and POSIX calls, `malloc()` and the string functions, plus about 50 KB of its own code
+
+`-mcrt=library` and `-mcrt=ixemul` keep most of the C library in a shared
+library, `libnix4.library` or `ixemul.library`, which these sizes leave out.
+libnix's floating-point `printf()` comes from libm, and so is linked into
+the program even with `-mcrt=library`. newlib has no `fcntl()`, which zlib
+calls, so its minigzip is linked with a stub.
+
+To reproduce the table, write the four small programs, and a stub for
+newlib:
+
+```c
+// empty.c
+int main(void)
+{
+    return 0;
+}
+
+// hello.c
+#include <stdio.h>
+
+int main(void)
+{
+    puts("hello, world");
+    return 0;
+}
+
+// printf-f.c
+#include <stdio.h>
+
+int main(int argc, char **argv)
+{
+    printf("%f\n", argc * 3.14159);
+    return 0;
+}
+
+// date.c
+#include <stdio.h>
+#include <time.h>
+
+int main(void)
+{
+    char buf[64];
+    const time_t t = time(nullptr);
+
+    strftime(buf, sizeof(buf), "%c", localtime(&t));
+    puts(buf);
+    return 0;
+}
+
+// fcntl-stub.c, for newlib
+int fcntl(int fd, int cmd, ...)
+{
+    return -1;
+}
+```
+
+and build them, and minigzip from the zlib sources, with each runtime; `-s`
+links them stripped:
+
+```shell
+curl -LO https://github.com/madler/zlib/releases/download/v1.3.2/zlib-1.3.2.tar.gz
+tar xzf zlib-1.3.2.tar.gz
+z=zlib-1.3.2
+for crt in nix20 nix13 library newlib clib2 ixemul; do
+  for p in empty hello printf-f date; do
+    m68k-amigaos-gcc -mcrt=$crt -Os -fomit-frame-pointer -s -o $p-$crt $p.c -lm
+  done
+  m68k-amigaos-gcc -mcrt=$crt -Os -fomit-frame-pointer -s -DZ_HAVE_UNISTD_H -I$z \
+    -o minigzip-$crt $z/test/minigzip.c \
+    $z/{adler32,crc32,deflate,inflate,inffast,inftrees,trees,zutil,gzlib,gzread,gzwrite,gzclose}.c \
+    $([ $crt = newlib ] && echo fcntl-stub.c)
+done
+ls -l *-nix20 *-nix13 *-library *-newlib *-clib2 *-ixemul
+```
+
+<!-- TODO: the speed of the runtimes. -->
+
+## Features
+
+| | libnix | newlib | ixemul | clib2 |
+|---|---|---|---|---|
+| minimum Kickstart | 2.0 (V36)[^nix13] | 2.0 (V36) | 2.04 (V37) | 2.04 (V37) |
+| C99 math | all functions | all functions, with `-lm` | only the C89 functions | all functions, with `-lm` |
+| `long double` math | computed in `double` | full precision[^ldio] | none | full precision |
+| `long long` | yes | yes | yes | yes |
+| C11 library | none | `quick_exit()` | none | none |
+| C23 library | `strdup()`, `strndup()` | `strdup()`, `strndup()`, `memccpy()`, `<stdbit.h>` | `strdup()`, `strndup()`, `memccpy()` | `strdup()`, `strndup()`, `memccpy()` |
+| POSIX files and directories | most | most | most | most |
+| `popen()`, `system()` | yes | no | yes | yes |
+| `fork()` | no | no | `vfork()` only | no |
+| sockets | `-lsocket` | no | `ixnet.library` | `-lnet` |
+| locale | `locale.library` | "C" | "C" | `locale.library` |
+| wide characters | no | yes | no | yes |
+| UTF-8 | no | no | no | yes[^utf8] |
+| threads | `-pthread` | `-pthread` | no | no |
+| stack overflow check | no | no | no | no |
+| minimum stack | `__stack`[^stkinit] | no | `__stack` | `__stack_size` |
+| C++ | yes | yes | mostly broken | yes |
+| Workbench startup | yes | yes | yes | yes |
+
+[^nix13]: 1.3 (V34) with `-mcrt=nix13`.
+[^ldio]: `printf()` and `scanf()` convert `long double` through `double`, so `%Lf` has only 17 significant digits.
+[^utf8]: when the locale name given to `setlocale()` contains `UTF-8`.
+[^stkinit]: only if the program also references `__stkinit`: see [libnix](#libnix).
+
+The minimum stack is checked at startup: if the program gets less than the
+variable says, it moves to a larger stack. The stack is neither checked nor
+extended while the program runs: the compiler has no `-mstackcheck` or
+`-mstackextend`.
+
+Threads are AmigaOS processes that share the program's console and current
+directory, and need OS 2.0. `-pthread` adds the POSIX threads library. The
+rest depends on the thread model the toolchain was built with (see
+[Thread model](build.md#thread-model)):
+
+| | `THREADS=no`, the default | `THREADS=amigaos` |
+|---|---|---|
+| C++'s `std::thread`, `std::mutex` | `<thread>` and `<mutex>` don't compile | need no option |
+| `thread_local`, `_Thread_local` | one per program | one per thread |
+| newlib's `malloc()` and stdio | not safe from several threads | safe |
+
+libnix's stdio isn't safe from several threads with either model.
+[examples/cxx_thread](../examples/cxx_thread/) and
+[examples/pthreads](../examples/pthreads/) say hello from four threads.
+
+Two rules that AmigaOS can't enforce:
+- **Every thread ends before `main()` returns.** Join it or let it finish:
+  the program's code is unloaded when it exits, and a thread still running
+  then crashes.
+- **Thread-local variables need `std::thread` or `pthread_create()`.** With
+  `THREADS=amigaos`, both give a thread its own `thread_local` and
+  `_Thread_local` variables, and free them, running their destructors, when
+  it ends. A task started with a plain
+  `CreateNewProc()` must not use them: it may access the variables of
+  another thread.
+
+The details are in each runtime's section below.
+
+## libnix
+
+**Standards:** C99, including all of the C99 math functions, and most of the
+POSIX file, directory and time functions: `open()`, `stat()`, `fstat()`,
+`opendir()`, `getcwd()`, `chdir()`, `mkdir()`, `rename()`, `access()`,
+`pipe()`, `dup2()`, `realpath()`, `gettimeofday()`, `clock_gettime()`,
+`nanosleep()`, `usleep()`, `popen()` and `system()`, `getenv()` and
+`setenv()`. Sockets, `select()` and `poll()` are in `libsocket.a`: link with
+`-lsocket`. Of C11 and C23, none of `<threads.h>`, `<uchar.h>`,
+`aligned_alloc()`, `quick_exit()`, `timespec_get()`, `memccpy()` or
+`strfromd()`. The headers are newlib's, so they also declare functions that
+libnix doesn't have.
+
+`long double` is 12 bytes with a 64-bit mantissa, but the `long double` math
+functions and `strtold()` compute in `double` precision. There is no wide
+character I/O, and `mbstowcs()` doesn't decode UTF-8. `setlocale()` opens
+`locale.library` locales. `-pthread` links a POSIX threads library.
+
+Its libraries are built for size (`-Os`), with two exceptions built for
+speed (`-O2`):
+
+- the string and memory functions (`mem*()`, `str*()`, `bcopy()` and
+  `bzero()`), which sit in their callers' inner loops;
+- the FPU libm, used with `-m68881`, as Amigas with an FPU usually have more
+  memory too. That includes the `printf()` and `scanf()` libm provides:
+  `printf()` with `-lm` is about 7 KB larger with `-m68881`.
+
+**C++ and OS support:** C++ works, with exceptions and the standard library;
+the g++ testsuite runs on libnix. Kickstart 2.0 and later, or 1.3 with
+`-mcrt=nix13`.
+
+**Strengths:** the smallest executables. The default board of the
+testsuites, so every compiler change is tested on it; its own tests run with
+`make check-libnix`.
+
+**Known bugs:** [the open libnix issues](https://github.com/AmigaPorts/m68k-amigaos-gcc/issues?q=is%3Aissue%20is%3Aopen%20label%3Alibnix).
+
+**Runtime settings:** a program changes these by defining the variable:
+
+| variable | default | effect |
+|---|---|---|
+| `unsigned long __stack` | none | the minimum stack size: a larger stack is allocated at startup if the program gets less. It takes effect only if the program also references `__stkinit`, for example with `void *keep_stkinit = __stkinit;` after declaring `extern void __stkinit(void);` |
+| `const char *__stdiowin` | `"CON://///AUTO/CLOSE/WAIT"` | the console window for a program started from Workbench; none with `-mcrt=nix13` |
+| `unsigned *__BUFSIZE` | 8192 | the buffer size of the files the program opens |
+
+## newlib
+
+**Standards:** newlib 4.6. Most of C99, and of C11 and C23
+`quick_exit()`, `strdup()`, `memccpy()`, `<stdbit.h>` and `<stdckdint.h>`;
+not `aligned_alloc()`, `timespec_get()`, `strfromd()`, `<threads.h>` or
+`<uchar.h>`. The math functions are in `libm.a`: link with `-lm`. The
+`long double` math functions compute in full 80-bit precision, but
+`printf()` and `scanf()` convert `long double` through `double`, so `%Lf`
+prints and reads only 17 significant digits.
+
+Of POSIX, most of the file, directory and time functions: `open()`,
+`stat()`, `lstat()`, `fstat()`, `opendir()`, `mkdir()`, `getcwd()`,
+`chdir()`, `link()`, `symlink()`, `utime()`, `gettimeofday()`, `sleep()`,
+`usleep()`, `getpid()`, and `kill()` for `SIGINT` and `SIGTERM`. None of the
+process, pipe and file descriptor functions: `fork()`, `exec*()`, `pipe()`,
+`popen()`, `dup()`, `fcntl()`, `access()`, `sigaction()` and
+`clock_gettime()` are missing, and `system()` fails with `ENOSYS`.
+`getenv()` doesn't see AmigaDOS variables.
+
+newlib is built without multibyte support: `setlocale()` accepts only "C",
+and a byte is a character, as in the ISO 8859-1 text of AmigaOS.
+
+**C++ and OS support:** C++ works, with exceptions and the standard library;
+the g++ testsuite runs on newlib too. Kickstart 2.0 and later. `uname()`
+needs `workbench.library`.
+
+**Strengths:** the widest standards coverage, and full precision
+`long double` math. newlib's own testsuite runs with `make check-newlib`, and
+the gcc testsuites have newlib boards.
+
+**Weaknesses:** larger executables: the startup code links `malloc()` even
+into an empty program, and stdio adds about 9 KB.
+
+**Known bugs:** [the open newlib issues](https://github.com/AmigaPorts/m68k-amigaos-gcc/issues?q=is%3Aissue%20is%3Aopen%20label%3Anewlib).
+
+**Runtime settings:** a program changes these by defining the variable:
+
+| variable | default | effect |
+|---|---|---|
+| `const char *__stdiowin` | `"CON://///AUTO/CLOSE/WAIT"` | the console window for a program started from Workbench |
+
+newlib has no setting for the stack size: set it with the `Stack` command
+or in the icon.
+
+## ixemul
+
+**Standards:** much of a 4.4BSD Unix system, emulated by `ixemul.library`:
+files and directories, `vfork()` and `exec*()`, `pipe()`, `select()`,
+`poll()`, signals with `sigaction()`, `termios`, users and groups, System V
+IPC, `glob()`, `regcomp()`, `popen()`, and sockets through `ixnet.library`
+and the TCP/IP stack. `fork()` fails with `ENOSYS`, and `mmap()` copies
+instead of mapping. Unix paths work: `/` lists the volumes, and `/Work/x` is
+`Work:x`.
+
+The math functions are only those of C89. There are no `float` or
+`long double` variants, nothing from C99 math or `<fenv.h>`, and none of
+C11 and C23. Also missing: `strtof()`, `getline()`, `strtok_r()`,
+`localtime_r()`, `getopt_long()`, `getaddrinfo()` and the wide character
+functions. `printf()` doesn't support `%a`, `%zu`, `%jd` and `%Lf`.
+
+**C++ and OS support:** constructors don't run, neither C++ global
+constructors nor C `[[gnu::constructor]]` functions
+([#234](https://github.com/AmigaPorts/m68k-amigaos-gcc/issues/234)), and
+`<cstdio>` doesn't compile, so most C++ programs don't work. Kickstart 2.04
+and later.
+
+**Strengths:** ports of Unix programs need few changes. The gcc C testsuite
+runs on it in `make check`.
+
+**Requirements:** programs need `ixemul.library` 80 or later at run time.
+`ixemul.library` comes in builds for each CPU, with and without FPU: code
+compiled with `-m68881` needs one of the FPU builds, because it expects
+floating point results in an FPU register. In `-m68881` code, floating point
+rounds toward zero at double precision, so results differ from the other
+runtimes.
+
+**Known bugs:** [the open ixemul issues](https://github.com/AmigaPorts/m68k-amigaos-gcc/issues?q=is%3Aissue%20is%3Aopen%20label%3Aixemul).
+
+**Runtime settings:** a program changes these by defining the variable:
+
+| variable | default | effect |
+|---|---|---|
+| `unsigned long __stack` | 16384 | the minimum stack size: a larger stack is allocated at startup if the program gets less; `ixstack` changes it in an executable |
+| `int ix_expand_cmd_line` | 1 | 0 turns off the expansion of wildcards in the arguments |
+| `char *ix_default_wb_window` | none | the console window for a program started from Workbench |
+
+The `ixprefs` program sets the options of `ixemul.library` itself, such as
+the translation of `/`, in `ENV:ixemul.prefs`. The environment variables
+`USER`, `HOME`, `UID`, `GID` and `TZ` stand in for the user database and
+the timezone.
+
+## clib2
+
+**Standards:** C99, with `<fenv.h>` and all of the math functions, the
+`long double` ones in full 80-bit precision; of C23, `strdup()`,
+`strndup()` and `memccpy()`. None of the C11 library: not
+`aligned_alloc()`, `quick_exit()`, `timespec_get()` or `<threads.h>`, and
+the `<uchar.h>` functions are stubs that return 0. The math functions are in
+`libm.a`: link with `-lm`, without which `printf()` and `scanf()` don't
+support floating point either.
+
+Most of the POSIX file and directory functions: `open()`, `stat()`,
+`fstat()`, `opendir()`, `getcwd()`, `chdir()`, `mkdir()`, `rename()`,
+`realpath()`, `fcntl()`, `dup2()`, `pipe()`, `mkstemp()`, `gettimeofday()`,
+`usleep()`, `popen()` and `system()`. Signals are `signal()`, `raise()` and
+`kill()`, with `SIGINT` from Ctrl-C. No `fork()`, `sigaction()`,
+`clock_gettime()` or threads. `-lunix` adds Unix path semantics, wildcard
+expansion of the arguments, `execvp()`, `getopt_long()` and `termios`.
+`-lnet` adds sockets through `bsdsocket.library`.
+
+`setlocale()` opens `locale.library` locales. A byte is a character, as in
+ISO 8859-1, unless the locale name given to `setlocale()` for `LC_CTYPE`
+contains `UTF-8`: then the multibyte and wide character functions use UTF-8.
+
+**C++ and OS support:** C++ works, with exceptions and the standard library;
+the g++ testsuite runs on clib2 too. Kickstart 2.04 and later.
+
+**Strengths:** correct math: musl's libc-test passes, and runs in
+`make check`. The most startup settings, listed below, Unix path semantics
+with `-lunix`, and sockets with `-lnet`.
+
+**Weaknesses:** larger executables than libnix: the startup code alone is
+about 15 KB.
+
+**Known bugs:** [the open clib2 issues](https://github.com/AmigaPorts/m68k-amigaos-gcc/issues?q=is%3Aissue%20is%3Aopen%20label%3Aclib2).
+
+**Runtime settings:** a program changes these by defining the variable:
+
+| variable | default | effect |
+|---|---|---|
+| `unsigned int __stack_size` | 0 | the minimum stack size: a larger stack is allocated at startup if the program gets less |
+| `int __priority` | 256: unchanged | the task priority, -128 to 127 |
+| `BOOL __detach` | `FALSE` | run in the background, detached from the shell |
+| `char *__process_name` | none | the name of the detached process |
+| `int __minimum_os_lib_version` | 0: 37 | the minimum version of `dos.library` and `utility.library`, if higher than 37 |
+| `char *__minimum_os_lib_error` | none | the message shown if they're older |
+| `char *__stdio_window_specification` | none | the console window for a program started from Workbench |
+| `BOOL __unix_path_semantics` | `TRUE` | Unix paths with `-lunix` |
+| `BOOL __expand_wildcard_args` | `TRUE` | expand wildcards in the arguments |
+| `BOOL __check_abort_enabled` | `TRUE` | stop the program on Ctrl-C |
+| `BOOL __open_locale` | `TRUE` | open the default locale at startup |
+| `BOOL __disable_dos_requesters` | `FALSE` | turn off the "please insert volume" requesters |
+
+## Consoles, files and pipes
+
+`fstat()` tells the kind of an AmigaDOS handle differently in each runtime:
+
+| handle | libnix | newlib | ixemul | clib2 |
+|---|---|---|---|---|
+| console, `NIL:` | `S_IFCHR` | `S_IFCHR` | `S_IFCHR` | `S_IFCHR` |
+| file | `S_IFREG` | `S_IFREG` | `S_IFREG` | `S_IFREG` |
+| `PIPE:` | `S_IFCHR` | `S_IFCHR` | `S_IFREG` | fails with `ENOSYS` |
+
+None of them returns `S_IFIFO`, not even ixemul for its own `pipe()`, which
+it reports as `S_IFCHR`. To tell a pipe from a console, use `isatty()`: it
+is true only for consoles. newlib's `isatty()` is true for file descriptors
+0, 1 and 2 whatever they are, and libnix's returns 2 instead of 1. With
+`-mcrt=nix13`, `fstat()` reports files and directories as `S_IFLNK`, and
+consoles as `S_IFDIR`.

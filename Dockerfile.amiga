@@ -17,7 +17,7 @@ RUN mkdir -p /opt/build-binutils && \
 COPY ./ ./
 
 ARG PATHPREFIX="m68k-amigaos-native"
-ARG BINUTILS_BRANCH="amiga-2.46"
+ARG BINUTILS_BRANCH="amiga-2.47"
 ARG GCC_BRANCH="amiga16.2"
 ARG NEWLIB_BRANCH="amiga"
 ARG MAKE_VERBOSE=""
@@ -27,7 +27,6 @@ ENV PATH="/opt/build-binutils:${PATH}" \
     HOST="m68k-amigaos" \
     BUILD_TRIPLET="x86_64-linux-gnu" \
     HOST_RUNNER="vamos -C 68040 --" \
-    NDK="3.2" \
     VERBOSE="${MAKE_VERBOSE}" \
     BUILD_CC="x86_64-linux-gnu-gcc -B/opt/build-binutils/" \
     BUILD_CXX="x86_64-linux-gnu-g++ -B/opt/build-binutils/"
@@ -48,7 +47,8 @@ RUN test "$(${CC} -dumpmachine)" = "${HOST}" && \
     make branch mod=gcc branch=${GCC_BRANCH} && \
     make branch mod=newlib-cygwin branch=${NEWLIB_BRANCH} && \
     make update && \
-    make gcc-prerequisites
+    make gcc-prerequisites && \
+    make volamos
 
 ARG BUILD_TARGET="all"
 ARG SDK_TARGET="all-sdk"

@@ -2,14 +2,15 @@
 # Apply module source overrides from the workflow's `repos` input to the
 # build tree. Each space-separated word in $REPOS is one of:
 #   module=branch     - select a branch on the module's default remote
-#   module=URL#ref    - build ref (a branch or an exact commit sha) from URL
+#   module=URL#ref    - build ref (a branch, a commit sha, or a pull
+#                       request's refs/pull/N/merge) from URL
 # Run after the gcc branch has been selected and before `make update`, so a
 # module=branch form is not overwritten by the gcc branch selection.
 set -e
 for spec in $REPOS; do
 	mod=${spec%%=*}
 	ref=${spec#*=}
-	grep -q "^$mod[[:blank:]]" .repos || { echo "unknown module: $mod"; exit 1; }
+	grep -q "^${mod}[[:blank:]]" .repos || { echo "unknown module: $mod"; exit 1; }
 	case "$ref" in
 	*"#"*)
 		# Fetch the exact ref into projects/<mod> and check it out, so

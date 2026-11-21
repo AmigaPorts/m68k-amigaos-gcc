@@ -16,17 +16,61 @@ if {![info exists SIM]} {
     set SIM volamos
 }
 setup_sim amigaos
-set_board_info sim,options "--cpu 68020 --stack 4096K --ram 11264K"
+# --sanitize: volamos checks guest memory accesses and fails the run on a
+# violation (exit status 99).  A runtest SANITIZE=0 leaves it out, and
+# sim_spawn below leaves it out for the -fstrub tests.
+# --cpu 68000: this board builds 68000 code, so run it on one, which traps
+# the misaligned word and long accesses a 68020 tolerates.
+# --dirty-heap: memory allocated without MEMF_CLEAR is filled with 0xA5, as
+# real hardware leaves it with garbage, so code that expects zeros fails.
+# --stack 1M: the tests that need more than 64K are
+#   - g++.dg/torture/pr119610.C, a 512 KB local array;
+#   - newlib's newlib.string/tstring.c, 365 KB of local buffers.
+# Threads take their creator's stack size, and with 4M the gthread tests
+# could not fit three of them in --ram.
+set volamos_options "--cpu 68000 --stack 1M --ram 11264K --dirty-heap"
+if {![info exists SANITIZE] || $SANITIZE} {
+    append volamos_options " --sanitize"
+}
 
-# No multilib options needed by default.
+# Options after the board name are added to every compile and link, as in
+# board=volamos/-mcrt=clib2/-m68020/-m68881, and volamos follows them: the
+# CPU, the FPU, and ixemul.library for -mcrt=ixemul.
 process_multilib_options ""
+set variant_flags [board_info $board multilib_flags]
+if {[regexp -- {-m(?:cpu=)?(680[2346]0)} $variant_flags -> cpu]} {
+    regsub -- {--cpu \S+} $volamos_options "--cpu $cpu" volamos_options
+}
+set variant_fpu [regexp -- {-m68881|-mhard-float} $variant_flags]
+if {$variant_fpu} {
+    append volamos_options " --fpu"
+}
+set variant_ixemul [string match "*-mcrt=ixemul*" $variant_flags]
+if {$variant_ixemul} {
+    set libs [expr {$variant_fpu ? "IXEMUL_FPU_LIBS" : "IXEMUL_LIBS"}]
+    if {![info exists ::env($libs)]} {
+        error "volamos: $libs (the ixemul.library directory) is not set"
+    }
+    append volamos_options " --libs-dir $::env($libs)"
+}
+set_board_info sim,options $volamos_options
+# Wall-clock limit for each program run; sim.exp's default is 240 s.  The
+# slowest tests take about 10 s, 40 s on a loaded machine, so a hang costs a
+# parallel slot 2 minutes rather than 4.
+set_board_info sim_time_limit 120
 
 set_board_info compiler "[find_gcc]"
-set_board_info cflags "-noixemul"
-set_board_info ldflags "-lpthread"
+# libnix unless a variant picks another runtime: two -mcrt= options conflict.
+if {[string match "*-mcrt=*" $variant_flags]} {
+    set_board_info cflags ""
+} else {
+    set_board_info cflags "-mcrt=nix20"
+}
 set_board_info ldscript "";
 
-set_board_info gcc,stack_size 4096
+# In bytes: the stack a test may use, which dg-require-stack-size checks and
+# STACK_SIZE sizes arrays by.  --stack, less 64K for the C runtime's frames.
+set_board_info gcc,stack_size [expr {1024 * 1024 - 64 * 1024}]
 set_board_info isremote 0
 set_board_info slow_simulator 0
 
@@ -35,4 +79,19 @@ set_board_info gdb,nosignals 1
 set_board_info gdb,cannot_call_functions 1
 
 set timeout 30
+
+# sim.exp's, without --sanitize for a test compiled with -fstrub: it scrubs
+# the stack a function used, then reads it back below the stack pointer on
+# purpose.  current_compiler_flags exists only in gcc's testsuite: calling
+# it elsewhere, as newlib's, would be a DejaGnu ERROR even inside a catch.
+proc sim_spawn { dest cmdline args } {
+    set sim [board_info $dest sim]
+    set simflags [board_info $dest sim,options]
+    if {[llength [info procs current_compiler_flags]]
+	&& ![catch {current_compiler_flags} flags]
+	&& [string match "*-fstrub*" $flags]} {
+	regsub -- { --sanitize} $simflags "" simflags
+    }
+    return [eval remote_spawn host \{ $sim $simflags $cmdline \} $args]
+}
 

@@ -6,22 +6,35 @@ on:
       - 'v*'
 
 jobs:
-  # Bootstrap the toolchain and run the gcc testsuite as a release gate.
-  # This invocation also creates the AmigaOS and Windows hosted packages.
+  # Bootstrap the toolchain and the AmigaOS and Windows hosted packages.
+  # Every module is built at the tag release-tag made in it, so the release
+  # is what was tagged even if a module's branch has moved since.
   build-linux:
     uses: ./.github/workflows/toolchain.yml
     with:
-      run_testsuite: true
+      tag: ${{ github.ref_name }}
 
-  # the testsuite only runs on Linux; the macOS build gates on compiling
+  # the testsuites only run on Linux; the macOS build gates on compiling
   build-macos:
     uses: ./.github/workflows/toolchain.yml
     with:
       runner: macos-15
       build_hosted: false
+      tag: ${{ github.ref_name }}
+
+  # make check, the pre-release test, in a build of its own: on arm64, which
+  # tests faster, and apart from the Linux build that goes on to the hosted
+  # toolchains and the installer
+  check:
+    uses: ./.github/workflows/toolchain.yml
+    with:
+      runner: ubuntu-24.04-arm
+      build_hosted: false
+      make_args: check
+      tag: ${{ github.ref_name }}
 
   release:
-    needs: [build-linux, build-macos]
+    needs: [build-linux, build-macos, check]
     runs-on: ubuntu-24.04
     permissions:
       contents: write
@@ -33,7 +46,7 @@ jobs:
           fetch-depth: 0
 
       - name: Download toolchain packages
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           pattern: m68k-amigaos-gcc-*
           merge-multiple: true
@@ -43,12 +56,11 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ github.ref_name }}
         run: |
-          # The tag's message body becomes the prose at the top of the
-          # release; write it with "git tag -a -e". The script appends the
-          # "What's Changed" PR list and the collapsed commit list, and can
-          # be run locally to preview the notes before pushing a tag.
+          # The tag's message body is the release body, written by hand
+          # across all the module repositories and tagged with
+          # "git tag -s -F notes.md --cleanup=verbatim".
           # --notes-file, so a tag message or commit subject can never be
           # read as workflow syntax the way a $GITHUB_OUTPUT heredoc can.
-          .github/scripts/gen-release-notes.sh "$TAG" > notes.md
+          git tag -l --format='%(contents:body)' "$TAG" > notes.md
           gh release create "$TAG" m68k-amigaos-gcc-* \
             --title "Release ${TAG#v}" --notes-file notes.md

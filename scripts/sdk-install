@@ -1,0 +1,303 @@
+#!/bin/bash
+# Install an SDK described by sdk/<sdk>.sdk into <prefix>, for make sdk-<sdk>.
+# scripts/sdk-clean removes what it unpacked.
+#
+# The tools come from the environment, under the names the Makefile gives
+# them; those left unset default to the ones installed in <prefix>:
+#   LHA_FOR_BUILD        lha, to unpack the archives (required)
+#   SFDC_FOR_BUILD       sfdc
+#   FD2SFD_FOR_BUILD     fd2sfd
+#   TARGET_CC_FOR_BUILD  the target compiler, for the stub libraries
+#   TARGET_AR_FOR_BUILD  the target ar
+#   EXEEXT               the executable suffix of <prefix>'s tools (.exe)
+#   HOST_RUNNER          the command that runs <prefix>'s compiler and ar
+#                        when they are built for another host, e.g. wine
+
+if [ $# -ne 2 ]; then
+	echo "usage: $0 <sdk> <prefix>" >&2
+	exit 2
+fi
+sdk=$1
+prefix=$2
+
+export PATH=$PATH:$prefix/bin
+sdk_descriptor="sdk/$sdk.sdk"
+
+run_host_tool()
+{
+	local -a runner=()
+	if [ -n "$HOST_RUNNER" ]; then
+		read -r -a runner <<< "$HOST_RUNNER"
+	fi
+	"${runner[@]}" "$@"
+}
+
+run_sfdc()
+{
+	"${SFDC_FOR_BUILD:-$prefix/bin/sfdc}" "$@"
+}
+
+run_fd2sfd()
+{
+	"${FD2SFD_FOR_BUILD:-$prefix/bin/fd2sfd${EXEEXT}}" "$@"
+}
+
+run_target_cc()
+{
+	if [ -n "$TARGET_CC_FOR_BUILD" ]; then
+		"$TARGET_CC_FOR_BUILD" "$@"
+	else
+		run_host_tool "$prefix/bin/m68k-amigaos-gcc${EXEEXT}" "$@"
+	fi
+}
+
+run_target_ar()
+{
+	if [ -n "$TARGET_AR_FOR_BUILD" ]; then
+		"$TARGET_AR_FOR_BUILD" "$@"
+	else
+		run_host_tool "$prefix/bin/m68k-amigaos-ar${EXEEXT}" "$@"
+	fi
+}
+
+if [ ! -e "$sdk_descriptor" ]; then
+	echo "sdk/$sdk.sdk not found"
+	exit 1
+fi
+
+sdk_trim()
+{
+	local sdk_trimmed_value=$1
+	sdk_trimmed_value=${sdk_trimmed_value#"${sdk_trimmed_value%%[![:space:]]*}"}
+	sdk_trimmed_value=${sdk_trimmed_value%"${sdk_trimmed_value##*[![:space:]]}"}
+	printf '%s' "$sdk_trimmed_value"
+}
+
+sdk_fallback_url=""
+sdk_sha256=""
+while IFS='' read -r sdk_metadata_line || [[ -n "$sdk_metadata_line" ]]; do
+	case $sdk_metadata_line in
+		FallbackUrl:*)
+			sdk_fallback_url=$(sdk_trim "${sdk_metadata_line#FallbackUrl:}")
+			;;
+		Sha256:*)
+			sdk_sha256=$(sdk_trim "${sdk_metadata_line#Sha256:}")
+			;;
+	esac
+done < "$sdk_descriptor"
+
+install_sdk()
+{
+	while IFS='' read -r line || [[ -n "$line" ]]; do
+		# a descriptor line is words separated by colons and blanks
+		# shellcheck disable=SC2206
+		a=(${line//:/ })
+		case ${a[0]} in
+			Short | Version | Author | Uploader | Type | Replaces | Architecture | FallbackUrl | Sha256)
+				echo "$line"
+				;;
+			Url)
+				file=$(basename "${a[2]}")
+				if [ "${a[1]}" == "git" ]; then
+					if [ ! -e "projects/$file" ]; then
+						pushd projects || exit 1
+						branch=()
+						if [ "${a[3]}" != "" ]; then
+							branch=(--branch "${a[3]}" --single-branch)
+						fi
+						git clone "${branch[@]}" "https:${a[2]}" || { rm -rf "$file"; exit 1; }
+						popd || exit 1
+					fi
+					pushd "projects/$file" || exit 1
+					git pull
+					popd || exit 1
+					mkdir -p "build/$sdk/"
+					rsync -r "projects/$file"/* "build/$sdk/"
+				else
+					archive="download/$file"
+					url=${a[1]}:${a[2]}
+					scripts/sdk-download --sha256 "$sdk_sha256" \
+						"$archive" "$url" ${sdk_fallback_url:+"$sdk_fallback_url"} || exit 1
+					# a re-downloaded archive (e.g. after a Sha256 bump)
+					# is newer than the tree extracted from the old one
+					if [ ! -e "build/$sdk" ] || [ -z "$(ls -A "build/$sdk")" ] || \
+						[ "$archive" -nt "build/$sdk" ]; then
+						rm -rf "build/$sdk"
+						mkdir -p "build/$sdk"
+						pushd "build/$sdk" || exit 1
+							"$LHA_FOR_BUILD" x "../../download/$file"
+							find . -type d -exec chmod +x {} \;
+						popd || exit 1
+					fi
+				fi
+			;;
+			fd2sfd)
+				fd=${a[1]}
+				proto=${a[2]}
+				file=$(basename "$fd")
+				name=${file%???}
+				mkdir -p "$prefix/m68k-amigaos/lib/sfd/"
+				run_fd2sfd -o "$prefix/m68k-amigaos/lib/sfd/$name.sfd" "$prefix/m68k-amigaos/lib/fd/$fd" "$prefix/m68k-amigaos/include/$proto" || exit 1
+			;;
+			clib)
+				sfd=${a[1]}
+				file=$(basename "$sfd")
+				name=${file%????}
+				mkdir -p "$prefix/m68k-amigaos/include/clib/"
+				run_sfdc --mode=clib --target=m68k-amigaos --output="$prefix/m68k-amigaos/include/clib/${name}_protos.h" "$prefix/m68k-amigaos/lib/sfd/$sfd" || exit 1
+			;;
+			sfdc)
+				sfd=${a[1]}
+				file=$(basename "$sfd")
+				name=${file%????}
+				mkdir -p "$prefix/m68k-amigaos/include/proto/"
+				rm "$prefix/m68k-amigaos/include/proto/$name.h"
+				run_sfdc --mode=proto --target=m68k-gcc-amigaos --output="$prefix/m68k-amigaos/include/proto/$name.h" "$prefix/m68k-amigaos/lib/sfd/$sfd" || exit 1
+				sed -i.bak -e 's/\(<clib\/.*>\)/\L\1/' -e 's/\(<defines\/.*>\)/\L\1/' -e 's/\(<inline\/.*>\)/\L\1/' -e 's/\(<pragmas\/.*>\)/\L\1/' "$prefix/m68k-amigaos/include/proto/$name.h"
+				rm "$prefix/m68k-amigaos/include/proto/$name.h.bak"
+				mkdir -p "$prefix/m68k-amigaos/include/inline/"
+				run_sfdc --mode=macros --target=m68k-gcc-amigaos --output="$prefix/m68k-amigaos/include/inline/$name.h" "$prefix/m68k-amigaos/lib/sfd/$sfd" || exit 1
+				# sfdc derives the proto include from the SFD basename, which
+				# need not match the proto/<name>.h generated above - fix it up
+				sed -i -e "s|#include <proto/.*\.h>|#include <proto/$name.h>|" "$prefix/m68k-amigaos/include/inline/$name.h"
+				run_sfdc --mode=macros --target=m68kvbcc-amigaos --output="$prefix/m68k-amigaos/include/inline/${name}_protos.h" "$prefix/m68k-amigaos/lib/sfd/$sfd" || exit 1
+				mkdir -p "$prefix/m68k-amigaos/include/lvo/"
+				run_sfdc --mode=lvo --target=m68k-amigaos --output="$prefix/m68k-amigaos/include/lvo/$name.i" "$prefix/m68k-amigaos/lib/sfd/$sfd" || exit 1
+				if [ "${a[2]}" != "" ] && [ "${a[3]}" != "" ]; then
+					echo "fixup names from ${a[2]} to ${a[3]}"
+					echo sed -i.bak -e "s/${a[2]}/${a[3]}/" "$prefix/m68k-amigaos/include/proto/$name.h"
+					sed -i.bak -e "s/${a[2]}/${a[3]}/" "$prefix/m68k-amigaos/include/proto/$name.h"
+					sed -i.bak -e "s/${a[2]}/${a[3]}/" "$prefix/m68k-amigaos/include/lvo/$name.i"
+					sed -i.bak -e "s/${a[2]}/${a[3]}/" "$prefix/m68k-amigaos/include/inline/$name.h"
+					sed -i.bak -e "s/${a[2]}/${a[3]}/" "$prefix/m68k-amigaos/include/inline/${name}_protos.h"
+					rm "$prefix/m68k-amigaos/include/proto/$name.h.bak" "$prefix/m68k-amigaos/include/lvo/$name.i.bak" "$prefix/m68k-amigaos/include/inline/$name.h.bak" "$prefix/m68k-amigaos/include/inline/${name}_protos.h.bak"
+				fi
+			;;
+			stubs)
+				sfd=${a[1]}
+				file=$(basename "$sfd")
+				name=${file%????}
+				run_sfdc --mode=autoopen --target=m68k-amigaos --output="build/$sdk/$name.c" "$prefix/m68k-amigaos/lib/sfd/$name.sfd" || exit 1
+				sed -i.bak -e 's/__inline//g' -e 's/: \"d0\",/:/g' "build/$sdk/$name.c" || exit 1
+				rm "build/$sdk/$name.c.bak"
+				echo "$prefix/bin/m68k-amigaos-gcc" -Os -mcrt=nix20 -fomit-frame-pointer "build/$sdk/$name.c" -c
+				run_target_cc -Os -mcrt=nix20 -fomit-frame-pointer "build/$sdk/$name.c" -c -o "build/$sdk/$name.o" || exit 1
+				echo "$prefix/bin/m68k-amigaos-ar" r "$prefix/m68k-amigaos/lib/libstubs.a" "build/$sdk/$name.o"
+				(
+					flock -x 200
+					run_target_ar r "$prefix/m68k-amigaos/lib/libstubs.a" "build/$sdk/$name.o" || exit 1
+				) 200>/tmp/amiga-gcc-libstubs-lock
+				rm -f /tmp/amiga-gcc-libstubs-lock
+			;;
+			lib)
+				sfd=${a[1]}
+				file=$(basename "$sfd")
+				name=${file%????}
+				run_sfdc --mode=stubs --target=m68k-amigaos --output="build/$sdk/lib$sdk.c" "$prefix/m68k-amigaos/lib/sfd/$name.sfd" || exit 1
+				sed -i.bak -e 's/__inline//g' -e 's/: \"d0\",/:/g' "build/$sdk/lib$sdk.c" || exit 1
+				rm "build/$sdk/lib$sdk.c.bak"
+				echo "$prefix/bin/m68k-amigaos-gcc" -Os -mcrt=nix20 -fomit-frame-pointer "build/$sdk/lib$sdk.c" -c
+				run_target_cc -Os -mcrt=nix20 -fomit-frame-pointer "build/$sdk/lib$sdk.c" -c -o "build/$sdk/lib$sdk.o" || exit 1
+				echo "$prefix/bin/m68k-amigaos-ar" r "$prefix/m68k-amigaos/lib/lib$sdk.a" "build/$sdk/lib$sdk.o"
+				run_target_ar r "$prefix/m68k-amigaos/lib/lib$sdk.a" "build/$sdk/lib$sdk.o" || exit 1
+			;;
+			liba)
+				sfd=${a[1]}
+				file=$(basename "$sfd")
+				name=${file%????}
+				run_sfdc --mode=stubs --target=m68k-amigaos --output="build/$sdk/lib$sdk.c" "$prefix/m68k-amigaos/lib/sfd/$name.sfd" || exit 1
+				sed -i.bak -e 's/__inline//g' -e 's/: \"d0\",/:/g' "build/$sdk/lib$sdk.c" || exit 1
+				rm "build/$sdk/lib$sdk.c.bak"
+			;;
+			libc)
+				echo "$prefix/bin/m68k-amigaos-gcc" -Os -mcrt=nix20 -fomit-frame-pointer "build/$sdk/lib$sdk.c" -c
+				run_target_cc -Os -mcrt=nix20 -fomit-frame-pointer "build/$sdk/lib$sdk.c" -c -o "build/$sdk/lib$sdk.o" || exit 1
+				echo "$prefix/bin/m68k-amigaos-ar" r "$prefix/m68k-amigaos/lib/lib$sdk.a" "build/$sdk/lib$sdk.o"
+				run_target_ar r "$prefix/m68k-amigaos/lib/lib$sdk.a" "build/$sdk/lib$sdk.o" || exit 1
+			;;
+
+			redirinc)
+				echo "creating redirecting header $prefix/m68k-amigaos/include/${a[1]}"
+				echo "#include \"${a[2]}\"" >"$prefix/m68k-amigaos/include/${a[1]}"
+			;;
+			sed)
+				x=${a[*]:2}
+				x=${x##\"}
+				x=${x%%\"}
+				echo applying: sed -i.bak -E \""$x"\" "$prefix/${a[1]}"
+				LC_CTYPE=C sed -i.bak -E "$x" "$prefix/${a[1]}"
+				rm "$prefix/${a[1]}.bak"
+			;;
+			symlink)
+				echo "creating symlink from $prefix/m68k-amigaos/${a[2]} to ${a[1]}"
+				rm -rf "$prefix/m68k-amigaos/${a[2]}"
+				ln -s "${a[1]}" "$prefix/m68k-amigaos/${a[2]}"
+			;;
+			stdargs)
+				echo "adding __stdargs to build/$sdk/${a[1]}"
+				LC_CTYPE=C sed -i.bak -E 's/(.*)__stdargs (.*)/\1\2/g' "build/$sdk/${a[1]}"
+				LC_CTYPE=C sed -i.bak -E 's/([a-zA-Z0-9_]*[[:blank:]]*.*[[:blank:]]+\*?[[:blank:]]*)([a-zA-Z0-9_]+)[[:blank:]]*\(/__stdargs \1\2(/g' "build/$sdk/${a[1]}"
+				rm "build/$sdk/${a[1]}.bak"
+			;;
+			patch)
+				patch=patches/$sdk/${a[1]}
+				echo "applying patch $patch to build/$sdk"
+				patch -N -p0 -r - -d "build/$sdk" < "$patch"
+			;;
+			patch1)
+				scripts/sdk-patch "build/$sdk" "${a[1]}" || exit 1
+			;;
+			copy)
+				source_file=${a[1]}
+				destination_file=${a[2]}
+				if [ -z "$source_file" ] || [ -z "$destination_file" ]; then
+					echo "copy requires a source and destination"
+					exit 1
+				fi
+				mkdir -p "$prefix/$(dirname "$destination_file")"
+				echo cp "build/$sdk/$source_file" "$prefix/$destination_file"
+				cp "build/$sdk/$source_file" "$prefix/$destination_file" || exit 1
+			;;
+			*)
+				if [ "$line" != "" ]; then
+					if [ "${a[1]}" == "=" ]; then
+						file=${a[2]}
+						line=${a[0]}
+						cp "build/$sdk/$line" "build/$sdk/$(dirname "$line")/$file"
+					else
+						file=$(basename "$line")
+					fi
+					dir=$(basename "$(dirname "$line")")
+					#lower-case the directory part
+					outdir=$(echo "$dir" | tr '[:upper:]' '[:lower:]')
+					if [[ $file == *.h ]] || [[ $file == *.i ]]; then
+						mkdir -p "$prefix/m68k-amigaos/include/$outdir"
+						echo cp "build/$sdk/$line" "$prefix/m68k-amigaos/include/$outdir/$file"
+						cp "build/$sdk/$line" "$prefix/m68k-amigaos/include/$outdir/$file"
+					elif [[ $file == *.guide ]]; then
+						mkdir -p "$prefix/m68k-amigaos/guide"
+						echo cp "build/$sdk/$line" "$prefix/m68k-amigaos/guide/$file"
+						cp "build/$sdk/$line" "$prefix/m68k-amigaos/guide/$file"
+					elif [[ $file == *.doc ]]; then
+						mkdir -p "$prefix/m68k-amigaos/doc"
+						echo cp "build/$sdk/$line" "$prefix/m68k-amigaos/doc/$file"
+						cp "build/$sdk/$line" "$prefix/m68k-amigaos/doc/$file"
+					elif [[ $file == *.sfd ]]; then
+						mkdir -p "$prefix/m68k-amigaos/lib/sfd"
+						echo cp "build/$sdk/$line" "$prefix/m68k-amigaos/lib/sfd/$file"
+						cp "build/$sdk/$line" "$prefix/m68k-amigaos/lib/sfd/$file"
+					elif [[ $file == *.fd ]]; then
+						mkdir -p "$prefix/m68k-amigaos/lib/fd"
+						echo cp "build/$sdk/$line" "$prefix/m68k-amigaos/lib/fd/$file"
+						cp "build/$sdk/$line" "$prefix/m68k-amigaos/lib/fd/$file"
+					elif [[ $file == *.a ]]; then
+						echo cp "build/$sdk/$line" "$prefix/m68k-amigaos/lib/$file"
+						cp "build/$sdk/$line" "$prefix/m68k-amigaos/lib/$file"
+					fi
+				fi
+			;;
+		esac
+	done < "$sdk_descriptor"
+}
+
+install_sdk

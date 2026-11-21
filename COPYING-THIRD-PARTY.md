@@ -2,21 +2,26 @@
 
 * amiga-netinclude: 'Roadshow' -- Amiga TCP/IP stack, Copyright (C) 2001-2016 by Olaf Barthel. Freely Distributable.
 * aros-stuff: libpthread, Copyright (C) 2014 Szilard Biro.
-* binutils: Free Software Foundation, GNU GENERAL PUBLIC LICENSE V2.
-* clib2: Copyright (c) 2002-2015 by Olaf Barthel.
+* binutils and gdb: Free Software Foundation, GNU GENERAL PUBLIC LICENSE V3.
+* clib2: Copyright (c) 2002-2015 by Olaf Barthel, BSD 3-Clause License.
 * fd2pragma: Dirk Stoecker, public domain.
 * fd2sfd: Martin Blom et al, GNU GENERAL PUBLIC LICENSE V2.
-* gcc: Free Software Foundation, GNU GENERAL PUBLIC LICENSE V2.
+* freetype: David Turner, Robert Wilhelm, Werner Lemberg et al, the FreeType License or GNU GENERAL PUBLIC LICENSE V2, at your choice.
+* gcc: Free Software Foundation, GNU GENERAL PUBLIC LICENSE V3; libgcc, libstdc++ and the other runtime libraries with the GCC Runtime Library Exception 3.1.
 * ira: Tim Ruehsen, Ilkka Lehtoranta, Frank Wille, Nicolas Bastien. Freeware.
 * ixemul: Markus Wild, Rafael W. Luebbert, Leonard Norrgard, Jeff Shepherd, Matthias Fleischer, Hans Verkuil. GNU GENERAL PUBLIC LICENSE V2.
+* lha: LHa for UNIX, Masaru Oki, Tsugio Okamoto, Koji Arai et al, the redistribution terms in its man/lha.man.
+* libc-test: the libc-test authors, MIT License. Used only by the test targets, not installed.
 * libdebug: ?, GNU GENERAL PUBLIC LICENSE V2.
 * libnix: Matthias Fleischer, Gunther Nikl. Public Domain.
+* libpng: Cosmin Truta, Glenn Randers-Pehrson et al, the PNG Reference Library License version 2.
 * NDK3.2: Hyperion, unknown license...
-* newlib: Free Software Foundation, GNU GENERAL PUBLIC LICENSE V2.
+* newlib: Red Hat and others, a collection of BSD-style licenses (see COPYING.NEWLIB in its sources).
 * sfdc: Martin Blom, GNU GENERAL PUBLIC LICENSE V2.
 * vasm: copyright in 2002-2022 by Volker Barthelmann, free for non-commercial purposes.
 * vbcc: copyright in 1995-2022 by Volker Barthelmann, free for non-commercial purposes.
 * vlink: copyright 1995-2022 by Frank Wille, free for non-commercial purposes.
+* zlib: Jean-loup Gailly and Mark Adler, the zlib License.
 
 There are also libraries (SDKs) which can be downloaded and installed. These
 libraries can all be built from source. All of these libraries are provided
