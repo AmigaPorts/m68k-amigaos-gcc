@@ -7,15 +7,19 @@ all: hello
 hello: hello.c
 	$(CC) $(CFLAGS) -o $@ $<
 
-# Runs the program from a shell under volamos, which can't start it the
-# way Workbench does: without an icon the greeting is the default, and an
-# argument replaces it.  volamos checks every memory access.  Starting the
-# program as Workbench does is https://github.com/sidick/volamos/issues/345.
+# Runs the program under volamos, from a shell and as Workbench starts it,
+# where a project file selected with it comes in the WBStartup message, with
+# a lock on its directory: Work:, this one.  volamos doesn't read icons, so the
+# greeting is the default; from a shell an argument replaces it.  volamos
+# checks every memory access.
 check: all
 	$(VOLAMOS) --sanitize hello > check.out
 	grep -x "Hello, Shell!" check.out
 	$(VOLAMOS) --sanitize hello Ciao > check.out
 	grep -x "Ciao, Shell!" check.out
+	$(VOLAMOS) --sanitize --workbench -V Work:. hello hello.c > check.out
+	grep -x "Hello, Workbench!" check.out
+	grep -x "project: hello.c" check.out
 
 clean:
 	rm -f hello check.out
