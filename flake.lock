@@ -68,23 +68,6 @@
         "type": "github"
       }
     },
-    "fd2pragma": {
-      "flake": false,
-      "locked": {
-        "lastModified": 1787771677,
-        "narHash": "sha256-jsLs8z2DVwwnSLUWEYte2X6+HDx0dnP6GtQj0ZZanUc=",
-        "owner": "AmigaPorts",
-        "repo": "fd2pragma",
-        "rev": "bcffac5c89295baf1db033addc984312b4b4a722",
-        "type": "github"
-      },
-      "original": {
-        "owner": "AmigaPorts",
-        "ref": "master",
-        "repo": "fd2pragma",
-        "type": "github"
-      }
-    },
     "fd2sfd": {
       "flake": false,
       "locked": {
@@ -226,7 +209,6 @@
         "aros-stuff": "aros-stuff",
         "binutils": "binutils",
         "clib2": "clib2",
-        "fd2pragma": "fd2pragma",
         "fd2sfd": "fd2sfd",
         "gcc": "gcc",
         "ira": "ira",

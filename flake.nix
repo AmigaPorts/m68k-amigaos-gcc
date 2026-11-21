@@ -19,10 +19,6 @@
       url = "github:AmigaPorts/clib2/master";
       flake = false;
     };
-    fd2pragma = {
-      url = "github:AmigaPorts/fd2pragma/master";
-      flake = false;
-    };
     fd2sfd = {
       url = "github:AmigaPorts/fd2sfd/master";
       flake = false;
