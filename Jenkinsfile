@@ -186,7 +186,7 @@ node('master') {
 	def isPullRequest = env.CHANGE_ID?.trim();
 	def branchName = isPullRequest ? env.CHANGE_TARGET : env.BRANCH_NAME;
 
-	if (branchName != 'master' && branchName != 'staging') {
+	if (branchName != 'master' && branchName != 'staging' && !env.TAG_NAME) {
 		return;
 	}
 	
