@@ -385,27 +385,30 @@ NDK_FOLDER_NAME_FD   := NDK3.2/FD
 NDK_FOLDER_NAME_SFD  := NDK3.2/SFD
 NDK_FOLDER_NAME_LIBS := NDK3.2/lib
 
+# libstdc++ and libsupc++ are built at -Os, as libnix: libstdc++'s t-amigaos
+# brings the multilibs with an FPU back to -O2.  gcc 6 has no such hook, so
+# it keeps building them with the C flags.
+CXXFLAGS_FOR_TARGET ?= $(if $(filter 6.%,$(GCC_VERSION)),$(CFLAGS_FOR_TARGET),-Os)
+
+# $(E) is the environment of gcc's configure: the original one, exactly, in a
+# native build, and the flags for the host the toolchain runs on in a hosted
+# one (HOST=...).
 ifeq (,$(strip $(HOST)))
-CFLAGS ?= -O2
-CXXFLAGS ?= $(CFLAGS)
-BUILD_CFLAGS ?= $(CFLAGS)
-BUILD_CXXFLAGS ?= $(CXXFLAGS)
-CFLAGS_FOR_TARGET ?= $(strip -O2 $(GCC6_OMIT_FRAME_POINTER))
-CXXFLAGS_FOR_TARGET ?= $(CFLAGS_FOR_TARGET)
-
-# Preserve the original native configure environment exactly.
-E:=CFLAGS="$(CFLAGS)" CXXFLAGS="$(CXXFLAGS)" CFLAGS_FOR_BUILD="$(CFLAGS)" CXXFLAGS_FOR_BUILD="$(CXXFLAGS)"  CFLAGS_FOR_TARGET="$(CFLAGS_FOR_TARGET)" CXXFLAGS_FOR_TARGET="$(CFLAGS_FOR_TARGET)"
+  CFLAGS ?= -O2
+  CXXFLAGS ?= $(CFLAGS)
+  BUILD_CFLAGS ?= $(CFLAGS)
+  BUILD_CXXFLAGS ?= $(CXXFLAGS)
+  CFLAGS_FOR_TARGET ?= $(strip -O2 $(GCC6_OMIT_FRAME_POINTER))
+  E := CFLAGS="$(CFLAGS)" CXXFLAGS="$(CXXFLAGS)" CFLAGS_FOR_BUILD="$(CFLAGS)" CXXFLAGS_FOR_BUILD="$(CXXFLAGS)"  CFLAGS_FOR_TARGET="$(CFLAGS_FOR_TARGET)" CXXFLAGS_FOR_TARGET="$(CXXFLAGS_FOR_TARGET)"
 else
-CFLAGS ?= -Os $(HOST_CPU_FLAGS) $(HOST_CRT_FLAGS)
-CXXFLAGS ?= $(CFLAGS) $(HOST_CXX_ABI_FLAGS) $(HOST_CXX_FLAGS)
-LDFLAGS ?= $(HOST_LINK_FLAGS)
-BUILD_CFLAGS ?= -O2
-BUILD_CXXFLAGS ?= $(BUILD_CFLAGS)
-BUILD_LDFLAGS ?=
-CFLAGS_FOR_TARGET ?= $(strip -O2 $(GCC6_OMIT_FRAME_POINTER))
-CXXFLAGS_FOR_TARGET ?= $(CFLAGS_FOR_TARGET)
-
-E:=CFLAGS="$(CFLAGS)" CXXFLAGS="$(CXXFLAGS)" LDFLAGS="$(LDFLAGS)" CFLAGS_FOR_BUILD="$(BUILD_CFLAGS)" CXXFLAGS_FOR_BUILD="$(BUILD_CXXFLAGS)" LDFLAGS_FOR_BUILD="$(BUILD_LDFLAGS)" CFLAGS_FOR_TARGET="$(CFLAGS_FOR_TARGET)" CXXFLAGS_FOR_TARGET="$(CXXFLAGS_FOR_TARGET)"
+  CFLAGS ?= -Os $(HOST_CPU_FLAGS) $(HOST_CRT_FLAGS)
+  CXXFLAGS ?= $(CFLAGS) $(HOST_CXX_ABI_FLAGS) $(HOST_CXX_FLAGS)
+  LDFLAGS ?= $(HOST_LINK_FLAGS)
+  BUILD_CFLAGS ?= -O2
+  BUILD_CXXFLAGS ?= $(BUILD_CFLAGS)
+  BUILD_LDFLAGS ?=
+  CFLAGS_FOR_TARGET ?= $(strip -O2 $(GCC6_OMIT_FRAME_POINTER))
+  E := CFLAGS="$(CFLAGS)" CXXFLAGS="$(CXXFLAGS)" LDFLAGS="$(LDFLAGS)" CFLAGS_FOR_BUILD="$(BUILD_CFLAGS)" CXXFLAGS_FOR_BUILD="$(BUILD_CXXFLAGS)" LDFLAGS_FOR_BUILD="$(BUILD_LDFLAGS)" CFLAGS_FOR_TARGET="$(CFLAGS_FOR_TARGET)" CXXFLAGS_FOR_TARGET="$(CXXFLAGS_FOR_TARGET)"
 endif
 
 # gcc's thread model for C++ thread_local, std::thread, the static-local
@@ -517,6 +520,8 @@ endif
 help:
 	@echo "make help                display this help"
 	@echo "make info                print prefix and other flags"
+	@echo "make print-<var>         prints a make var (e.g. print-TARGET"
+	@echo
 	@echo "make all                 build and install all"
 	@echo "make min                 build only the compiler and its runtimes (no gdb, gprof, libnix4.library)"
 	@echo "make <target>            builds a target: binutils, gcc, gprof, fd2sfd, fd2pragma, ira, sfdc, vasm, vbcc, vlink, libnix, ixemul, libgcc, clib2, libdebug, libpthread, ndk, ndk13"
