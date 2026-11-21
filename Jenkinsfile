@@ -64,7 +64,7 @@ def buildStep(buildConf, DOCKER_ROOT, DOCKERIMAGE, DOCKERTAG, PLATFORM, DOCKERFI
 	def tag = '';
 	def isPullRequest = env.CHANGE_ID?.trim();
 	def branchName = isPullRequest ? env.CHANGE_TARGET : env.BRANCH_NAME;
-	def publish = shouldPublish(branchName, isPullRequest);
+	def publish = shouldPublish(branchName, isPullRequest) || env.TAG_NAME;
 	def buildVersion = '';
 
 	try {
@@ -73,12 +73,6 @@ def buildStep(buildConf, DOCKER_ROOT, DOCKERIMAGE, DOCKERTAG, PLATFORM, DOCKERFI
 		if (branchName == 'master') {
 			buildenv = 'production';
 			tag = "${DOCKERTAG}";
-		} else if (branchName == 'gcc10') {
-			buildenv = 'production';
-			tag = "${DOCKERTAG}";
-			if (!isPullRequest) {
-				env.BRANCH_NAME = "master";
-			}
 		} else if (branchName == 'dev') {
 			buildenv = 'development';
 			tag = "${DOCKERTAG}-dev";
@@ -88,6 +82,9 @@ def buildStep(buildConf, DOCKER_ROOT, DOCKERIMAGE, DOCKERTAG, PLATFORM, DOCKERFI
 		}
 
 		buildVersion = "-${buildConf.GCCBranch.replace('amiga', 'gcc')}-${buildConf.BinutilsBranch.replace('amiga', 'binutils')}";
+		if(env.TAG_NAME) {
+			buildVersion = "-${env.TAG_NAME}${buildVersion}";
+		}
 
 		def buildArgs = "--build-arg BUILDENV=${buildenv} --build-arg PATHPREFIX=${buildConf.PathPrefix} --build-arg GCC_BRANCH=${buildConf.GCCBranch} --build-arg BINUTILS_BRANCH=${buildConf.BinutilsBranch} --network=host --pull -f ${DOCKERFILE} .";
 		docker.withRegistry("https://index.docker.io/v1/", "dockerhub") {
@@ -119,7 +116,7 @@ def buildManifest(buildConf, DOCKER_ROOT, DOCKERIMAGE, DOCKERTAG, DOCKERFILE, PL
 	def tag = '';
 	def isPullRequest = env.CHANGE_ID?.trim();
 	def branchName = isPullRequest ? env.CHANGE_TARGET : env.BRANCH_NAME;
-	def publish = shouldPublish(branchName, isPullRequest);
+	def publish = shouldPublish(branchName, isPullRequest) || env.TAG_NAME;
 	def buildVersion = "";
 
 	try {
@@ -132,16 +129,22 @@ def buildManifest(buildConf, DOCKER_ROOT, DOCKERIMAGE, DOCKERTAG, DOCKERFILE, PL
 
 		checkout scm;
 
-		if (branchName == 'master' || branchName == 'gcc10') {
+		if (branchName == 'master') {
 			buildenv = 'production';
 			tag = "${DOCKERTAG}";
 		} else if (branchName == 'dev') {
 			buildenv = 'development';
 			tag = "${DOCKERTAG}-dev";
+		} else {
+			buildenv = 'production';
+			tag = "${DOCKERTAG}";
 		}
 
 		buildVersion = "-${buildConf.GCCBranch.replace('amiga', 'gcc')}-${buildConf.BinutilsBranch.replace('amiga', 'binutils')}";
-
+		if(env.TAG_NAME) {
+			buildVersion = "-${env.TAG_NAME}${buildVersion}";
+		}
+		
 		docker.withRegistry("https://index.docker.io/v1/", "dockerhub") {
 			stage("Building ${DOCKERIMAGE}:${tag} manifest...") {
 				sh('docker version');
@@ -166,7 +169,7 @@ def buildManifest(buildConf, DOCKER_ROOT, DOCKERIMAGE, DOCKERTAG, DOCKERFILE, PL
 					parameters: [
 						string(name: 'BUILD_IMAGE', value: String.valueOf(BUILD_PARAM)),
 						string(name: 'BUILD_VERSION', value: String.valueOf(buildVersion)),
-						booleanParam(name: 'IS_MAIN_IMAGE', value: buildConf.MainImage)
+						booleanParam(name: 'IS_MAIN_IMAGE', value: buildConf.MainImage && env.TAG_NAME)
 					]
 				);
 			}
