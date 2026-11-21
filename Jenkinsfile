@@ -164,7 +164,7 @@ def buildManifest(buildConf, DOCKER_ROOT, DOCKERIMAGE, DOCKERTAG, DOCKERFILE, PL
 		BUILD_NEXT.each { v ->
 			branches["Build ${v}"] = { 
 				build(
-					job: "${v}",
+					job: "${v}/master",
 					wait: false,
 					parameters: [
 						string(name: 'BUILD_IMAGE', value: String.valueOf(BUILD_PARAM)),
