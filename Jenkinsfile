@@ -29,7 +29,7 @@ def notifyFailure(labels, target) {
 
 @NonCPS
 def shouldPublish(branchName, isPullRequest) {
-	return !isPullRequest && ['master', 'gcc10', 'dev'].contains(branchName)
+	return !isPullRequest && ['master', 'dev'].contains(branchName)
 }
 
 @NonCPS
@@ -58,13 +58,14 @@ def killall_jobs() {
 	echo "Done killing"
 }
 
-def buildStep(buildConf, DOCKER_ROOT, DOCKERIMAGE, DOCKERTAG, DOCKERFILE, BUILD_NEXT, BUILD_PARAM) {
+def buildStep(buildConf, DOCKER_ROOT, DOCKERIMAGE, DOCKERTAG, PLATFORM, DOCKERFILE, BUILD_NEXT, BUILD_PARAM) {
 	def labels = jobLabels(env.JOB_NAME)
 	def buildenv = '';
 	def tag = '';
 	def isPullRequest = env.CHANGE_ID?.trim();
 	def branchName = isPullRequest ? env.CHANGE_TARGET : env.BRANCH_NAME;
-	def publish = shouldPublish(branchName, isPullRequest);
+	def publish = shouldPublish(branchName, isPullRequest) || env.TAG_NAME;
+	def buildVersion = '';
 
 	try {
 		checkout scm;
@@ -72,12 +73,6 @@ def buildStep(buildConf, DOCKER_ROOT, DOCKERIMAGE, DOCKERTAG, DOCKERFILE, BUILD_
 		if (branchName == 'master') {
 			buildenv = 'production';
 			tag = "${DOCKERTAG}";
-		} else if (branchName == 'gcc10') {
-			buildenv = 'production';
-			tag = "${DOCKERTAG}";
-			if (!isPullRequest) {
-				env.BRANCH_NAME = "master";
-			}
 		} else if (branchName == 'dev') {
 			buildenv = 'development';
 			tag = "${DOCKERTAG}-dev";
@@ -86,15 +81,20 @@ def buildStep(buildConf, DOCKER_ROOT, DOCKERIMAGE, DOCKERTAG, DOCKERFILE, BUILD_
 			tag = "${DOCKERTAG}";
 		}
 
+		buildVersion = "-${buildConf.GCCBranch.replace('amiga', 'gcc')}-${buildConf.BinutilsBranch.replace('amiga', 'binutils')}";
+		if(env.TAG_NAME) {
+			buildVersion = "-${env.TAG_NAME}${buildVersion}";
+		}
+
 		def buildArgs = "--build-arg BUILDENV=${buildenv} --build-arg PATHPREFIX=${buildConf.PathPrefix} --build-arg GCC_BRANCH=${buildConf.GCCBranch} --build-arg BINUTILS_BRANCH=${buildConf.BinutilsBranch} --network=host --pull -f ${DOCKERFILE} .";
 		docker.withRegistry("https://index.docker.io/v1/", "dockerhub") {
 			def customImage
-			stage("Building ${DOCKERIMAGE}:${tag}...") {
-				customImage = docker.build("${DOCKER_ROOT}/${DOCKERIMAGE}:${tag}", buildArgs);
+			stage("Building ${DOCKERIMAGE}:${tag}${buildVersion}_${PLATFORM}...") {
+				customImage = docker.build("${DOCKER_ROOT}/${DOCKERIMAGE}:${tag}${buildVersion}_${PLATFORM}", buildArgs);
 			}
 
 			if (!publish) {
-				stage("Skipping publication of ${DOCKERIMAGE}:${tag}") {
+				stage("Skipping publication of ${DOCKERIMAGE}:${tag}${buildVersion}_${PLATFORM}") {
 					echo "Unpublished branch or PR build completed; no image will be pushed.";
 				}
 			} else {
@@ -105,18 +105,20 @@ def buildStep(buildConf, DOCKER_ROOT, DOCKERIMAGE, DOCKERTAG, DOCKERFILE, BUILD_
 		}
 
 	} catch(err) {
-		notifyFailure(labels, "${DOCKER_ROOT}/${DOCKERIMAGE}:${tag}")
+		notifyFailure(labels, "${DOCKER_ROOT}/${DOCKERIMAGE}:${tag}${buildVersion}_${PLATFORM}")
 		throw err
 	}
 }
 
-def buildManifest(DOCKER_ROOT, DOCKERIMAGE, DOCKERTAG, DOCKERFILE, PLATFORMS, BUILD_NEXT, BUILD_PARAM) {
-	def labels = jobLabels(env.JOB_NAME)
-	def buildenv = ''
-	def tag = ''
-	def isPullRequest = env.CHANGE_ID?.trim()
-	def branchName = isPullRequest ? env.CHANGE_TARGET : env.BRANCH_NAME
-	def publish = shouldPublish(branchName, isPullRequest)
+def buildManifest(buildConf, DOCKER_ROOT, DOCKERIMAGE, DOCKERTAG, DOCKERFILE, PLATFORMS, BUILD_NEXT, BUILD_PARAM) {
+	def labels = jobLabels(env.JOB_NAME);
+	def buildenv = '';
+	def tag = '';
+	def isPullRequest = env.CHANGE_ID?.trim();
+	def branchName = isPullRequest ? env.CHANGE_TARGET : env.BRANCH_NAME;
+	def publish = shouldPublish(branchName, isPullRequest) || env.TAG_NAME;
+	def buildVersion = "";
+
 	try {
 		if (!publish) {
 			stage("Skipping ${DOCKERIMAGE}:${DOCKERTAG} manifest publication") {
@@ -127,38 +129,55 @@ def buildManifest(DOCKER_ROOT, DOCKERIMAGE, DOCKERTAG, DOCKERFILE, PLATFORMS, BU
 
 		checkout scm;
 
-		if (branchName == 'master' || branchName == 'gcc10') {
+		if (branchName == 'master') {
 			buildenv = 'production';
 			tag = "${DOCKERTAG}";
 		} else if (branchName == 'dev') {
 			buildenv = 'development';
 			tag = "${DOCKERTAG}-dev";
+		} else {
+			buildenv = 'production';
+			tag = "${DOCKERTAG}";
 		}
 
+		buildVersion = "-${buildConf.GCCBranch.replace('amiga', 'gcc')}-${buildConf.BinutilsBranch.replace('amiga', 'binutils')}";
+		if(env.TAG_NAME) {
+			buildVersion = "-${env.TAG_NAME}${buildVersion}";
+		}
+		
 		docker.withRegistry("https://index.docker.io/v1/", "dockerhub") {
 			stage("Building ${DOCKERIMAGE}:${tag} manifest...") {
 				sh('docker version');
 				def platformsString = "";
 				PLATFORMS.each { p ->
-					sh("docker pull ${DOCKER_ROOT}/${DOCKERIMAGE}:${tag}_${p}");
-					platformsString = "${platformsString} ${DOCKER_ROOT}/${DOCKERIMAGE}:${tag}_${p}"
+					sh("docker pull ${DOCKER_ROOT}/${DOCKERIMAGE}:${tag}${buildVersion}_${p}");
+					platformsString = "${platformsString} ${DOCKER_ROOT}/${DOCKERIMAGE}:${tag}${buildVersion}_${p}"
 				}
 				
-				sh("docker manifest create ${DOCKER_ROOT}/${DOCKERIMAGE}:${tag} ${platformsString}");
-				sh("docker manifest push ${DOCKER_ROOT}/${DOCKERIMAGE}:${tag}");
+				sh("docker manifest create ${DOCKER_ROOT}/${DOCKERIMAGE}:${tag}${buildVersion} ${platformsString}");
+				sh("docker manifest push ${DOCKER_ROOT}/${DOCKERIMAGE}:${tag}${buildVersion}");
 			}
 		}
+
 		def branches = [:]
 
 		BUILD_NEXT.each { v ->
 			branches["Build ${v}"] = { 
-				build(job: "${v}/${env.BRANCH_NAME}", wait: true, parameters: [string(name: 'BUILD_IMAGE', value: String.valueOf(BUILD_PARAM))]);
+				build(
+					job: "${v}/master",
+					wait: false,
+					parameters: [
+						string(name: 'BUILD_IMAGE', value: String.valueOf(BUILD_PARAM)),
+						string(name: 'BUILD_VERSION', value: String.valueOf(buildVersion)),
+						booleanParam(name: 'IS_MAIN_IMAGE', value: buildConf.MainImage && env.TAG_NAME)
+					]
+				);
 			}
 		}
 
 		parallel branches;
 	} catch(err) {
-		notifyFailure(labels, "${DOCKER_ROOT}/${DOCKERIMAGE}:${tag}")
+		notifyFailure(labels, "${DOCKER_ROOT}/${DOCKERIMAGE}:${tag}${buildVersion}")
 		throw err
 	}
 }
@@ -167,7 +186,7 @@ node('master') {
 	def isPullRequest = env.CHANGE_ID?.trim();
 	def branchName = isPullRequest ? env.CHANGE_TARGET : env.BRANCH_NAME;
 
-	if (branchName != 'master' && branchName != 'staging') {
+	if (branchName != 'master' && branchName != 'staging' && !env.TAG_NAME) {
 		return;
 	}
 	
@@ -187,14 +206,14 @@ node('master') {
 	def project = readJSON file: "JenkinsEnv.json";
 
 	project.builds.each { v ->
-		branches["Build ${v.DockerRoot}/${v.DockerImage}:${v.DockerTag}"] = {
+		branches["Build ${v.DockerRoot}/${v.DockerImage}:${v.DockerTag}-${v.GCCBranch.replace('amiga', 'gcc')}-${v.BinutilsBranch.replace('amiga', 'binutils')}"] = {
 			def platforms = [:];
 
 			v.Platforms.each { p -> 
-				platforms["Build ${v.DockerRoot}/${v.DockerImage}:${v.DockerTag}_${p}"] = {
+				platforms["Build ${v.DockerRoot}/${v.DockerImage}:${v.DockerTag}-${v.GCCBranch.replace('amiga', 'gcc')}-${v.BinutilsBranch.replace('amiga', 'binutils')}_${p}"] = {
 					stage("Build ${p} version") {
 						node(p) {
-							buildStep(v, v.DockerRoot, v.DockerImage, "${v.DockerTag}_${p}", v.Dockerfile, [], v.BuildParam);
+							buildStep(v, v.DockerRoot, v.DockerImage, v.DockerTag, p, v.Dockerfile, [], v.BuildParam);
 						}
 					}
 				}
@@ -204,7 +223,7 @@ node('master') {
 
 			stage('Build multi-arch manifest') {
 				node() {
-					buildManifest(v.DockerRoot, v.DockerImage, v.DockerTag, v.Dockerfile, v.Platforms, v.BuildIfSuccessful, v.BuildParam);
+					buildManifest(v, v.DockerRoot, v.DockerImage, v.DockerTag, v.Dockerfile, v.Platforms, v.BuildIfSuccessful, v.BuildParam);
 				}
 			}
 		}
