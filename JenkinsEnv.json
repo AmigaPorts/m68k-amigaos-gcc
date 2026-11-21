@@ -16,25 +16,7 @@
             "PathPrefix": "m68k-amigaos",
             "BinutilsBranch": "amiga-2.46",
             "GCCBranch": "amiga16.2",
-			"MainImage": true
-        },
-        {
-            "DockerRoot": "amigadev",
-            "DockerImage": "m68k-amigaos",
-            "DockerTag": "latest",
-            "Dockerfile": "Dockerfile",
-            "Platforms": [
-                "amd64",
-                "arm64"
-            ],
-            "BuildIfSuccessful": [
-                "AmigaDev/docker-amiga-gcc/version-granularity"
-            ],
-            "BuildParam": "m68k-amigaos",
-            "PathPrefix": "m68k-amigaos",
-            "BinutilsBranch": "amiga-2.46",
-            "GCCBranch": "amiga16.2",
-			"MainImage": false
+            "MainImage": true
         }
     ]
 }
