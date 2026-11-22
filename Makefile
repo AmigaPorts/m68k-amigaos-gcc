@@ -1992,13 +1992,15 @@ ifeq (,$(board))
 board = volamos
 endif
 
-# The board's own baseboards/*.exp defaults its simulator (vamos/volamos)
-# unless overridden; forward SIM= to runtest only when the caller set one,
-# e.g. `make check SIM=/path/to/wrapper`.
+# SIM= runs every check under another simulator, such as a local volamos
+# build: `make check SIM=/path/to/volamos`.  Without it, the checks run the
+# volamos in $(PREFIX)/bin, installing it first, and a board's
+# baseboards/*.exp picks its own simulator (vamos/volamos).
 RUNTEST_SIM = $(if $(SIM), SIM=$(SIM))
+SIM_BIN = $(or $(SIM),$(VOLAMOS))
+SIM_PREREQ = $(if $(SIM),,$(VOLAMOS))
 
-# A volamos board installs volamos first, unless SIM= names another binary.
-BOARD_PREREQ = $(if $(and $(filter volamos%,$(board)),$(if $(SIM),,y)),$(VOLAMOS))
+BOARD_PREREQ = $(if $(filter volamos%,$(board)),$(SIM_PREREQ))
 
 # min builds every runtime but clib2, so a clib2 board builds it if missing, with the libdebug it links.
 BOARD_PREREQ += $(if $(findstring -mcrt=clib2,$(board)),$(call if-missing,$(BUILD)/clib2/_done $(BUILD)/libdebug/_done,clib2 libdebug))
@@ -2126,9 +2128,9 @@ check-gcc-amigaos: $(MIN_IF_MISSING) $(BOARD_PREREQ)
 # current one, where they may create files and popen starts itself: volamos's
 # own default, SYS:, is shared by all its runs.
 .PHONY: check-libnix
-check-libnix: $(MIN_IF_MISSING) $(VOLAMOS)
+check-libnix: $(MIN_IF_MISSING) $(SIM_PREREQ)
 	set -o pipefail; $(MAKE) --no-print-directory -B -C $(PROJECTS)/libnix/test check-target \
-	  CROSS_CC=$(PREFIX)/bin/$(TARGET)-gcc SIM=$(VOLAMOS) \
+	  CROSS_CC=$(PREFIX)/bin/$(TARGET)-gcc SIM=$(SIM_BIN) \
 	  SIMFLAGS="--stack 4K --sanitize --dirty-heap -V TESTS:$(PROJECTS)/libnix/test/build --cwd TESTS:" \
 	  2>&1 | tee $@.summary.txt
 
@@ -2143,11 +2145,11 @@ check-sfdc: $(MIN_IF_MISSING) $(BUILD)/sfdc/_done
 # Build libpthread's regression programs for each multilib, check what they
 # link, and run under volamos the ones that pass there.
 .PHONY: check-libpthread
-check-libpthread: $(BUILD)/libpthread/_done $(VOLAMOS)
+check-libpthread: $(BUILD)/libpthread/_done $(SIM_PREREQ)
 	set -o pipefail; if grep -q '^check:' $(BUILD)/libpthread/Makefile.m68k-amigaos; then \
 	  $(MAKE) --no-print-directory -C $(BUILD)/libpthread -f Makefile.m68k-amigaos check \
 	    CC=$(PREFIX)/bin/$(TARGET)-gcc CXX=$(PREFIX)/bin/$(TARGET)-g++ \
-	    AR=$(PREFIX)/bin/$(TARGET)-ar SIM=$(VOLAMOS); \
+	    AR=$(PREFIX)/bin/$(TARGET)-ar SIM=$(SIM_BIN); \
 	  else echo 'SKIP: aros-stuff does not yet have the pthread check target'; fi \
 	  2>&1 | tee $@.summary.txt
 
@@ -2174,7 +2176,7 @@ newlib-check-dir = $(NEWLIBTESTSUITE)/$(call newlib-board-dir,$(1))/$(subst /,_,
 NEWLIB_CHECKS = $(foreach b,$(NEWLIB_BOARDS),$(foreach e,$(NEWLIB_EXPS),$(call newlib-check-dir,$(b),$(e))/newlib.sum))
 
 .PHONY: newlib-site-exp $(NEWLIB_CHECKS)
-newlib-site-exp: $(MIN_IF_MISSING) $(VOLAMOS)
+newlib-site-exp: $(MIN_IF_MISSING) $(SIM_PREREQ)
 	@rm -f $(BUILD)/newlib/newlib/site.exp
 	@$(MAKE) --no-print-directory -C $(BUILD)/newlib/newlib site.exp build_alias=`$(BUILD_CC) -dumpmachine` >/dev/null
 
@@ -2186,7 +2188,7 @@ $(call newlib-check-dir,$(1),$(2))/newlib.sum: newlib-site-exp
 	mkdir -p $$(@D)
 	cp $(BUILD)/newlib/newlib/site.exp $$(@D)/site.exp
 	cd $$(@D) && DEJAGNU_TMPDIR=$$(@D) runtest --tool newlib --srcdir $(NEWLIB_TESTSRC) --target_board=$(1) \
-	  --outdir $$(@D) CC_FOR_TARGET=$(PREFIX)/bin/$(TARGET)-gcc $(2) >runtest.out 2>&1 || true
+	  --outdir $$(@D) CC_FOR_TARGET=$(PREFIX)/bin/$(TARGET)-gcc$(RUNTEST_SIM) $(2) >runtest.out 2>&1 || true
 endef
 $(foreach b,$(NEWLIB_BOARDS),$(foreach e,$(NEWLIB_EXPS),$(eval $(call newlib-check-rule,$(b),$(e)))))
 
@@ -2269,10 +2271,10 @@ endif
 .PHONY: check-examples $(CHECK_EXAMPLES)
 check-examples: $(CHECK_EXAMPLES)
 
-$(CHECK_EXAMPLES): $(MIN_IF_MISSING) $(VOLAMOS)
+$(CHECK_EXAMPLES): $(MIN_IF_MISSING) $(SIM_PREREQ)
 	$(L0)"check example $(@:check-examples-%=%)"$(L1)$(MAKE) -C examples/$(@:check-examples-%=%) check \
 	  CC=$(PREFIX)/bin/$(TARGET)-gcc CXX=$(PREFIX)/bin/$(TARGET)-g++ \
-	  SFDC=$(SFDC_FOR_BUILD) VOLAMOS=$(VOLAMOS)$(L2)
+	  SFDC=$(SFDC_FOR_BUILD) VOLAMOS=$(SIM_BIN)$(L2)
 
 # libc-test, musl's testsuite: its groups of tests (math, and functional for
 # printf, scanf, strto*, fnmatch, qsort and the string functions) on one C
@@ -2295,9 +2297,9 @@ $(PROJECTS)/libc-test/Makefile: | repos-current
 
 # + for the jobserver: libc-test's make, which the script runs, shares this one's -j
 .PHONY: check-libc-test
-check-libc-test: $(PROJECTS)/libc-test/Makefile $(MIN_IF_MISSING) $(LIBC_TEST_PREREQ) $(VOLAMOS)
+check-libc-test: $(PROJECTS)/libc-test/Makefile $(MIN_IF_MISSING) $(LIBC_TEST_PREREQ) $(SIM_PREREQ)
 	+set -o pipefail; rm -f $@.summary.txt; rc=0; for group in $(libc-test-group); do \
-	  LIBC_TEST_TIMEOUT=$(libc-test-timeout) scripts/libc-test --group $$group $(PROJECTS)/libc-test \
+	  LIBC_TEST_TIMEOUT=$(libc-test-timeout) SIM=$(SIM_BIN) scripts/libc-test --group $$group $(PROJECTS)/libc-test \
 	    $(BUILD)/libc-test/$(libc-test-crt)$(subst $() ,,$(libc-test-cflags)) \
 	    $(PREFIX) $(libc-test-crt) $(libc-test-cflags) | tee -a $@.summary.txt || rc=1; \
 	done; exit $$rc

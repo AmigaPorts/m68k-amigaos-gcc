@@ -13,8 +13,9 @@
 # jobserver of the make that calls this script, with three changes: a config.mak
 # for the flags; RUN_TEST runs each test with this script's --run mode, in place
 # of runtest.exe, which needs fork(); and libtest.a has only the helpers these
-# groups need, as the others need POSIX headers.  Prints the failures, a test
-# that does not build among them, and exits with status 1 if there are any.
+# groups need, as the others need POSIX headers.  The tests run under $SIM, or
+# the volamos in <prefix>/bin.  Prints the failures, a test that does not build
+# among them, and exits with status 1 if there are any.
 #
 #   scripts/libc-test --run <volamos> [volamos options...] <test.exe>
 #
@@ -96,7 +97,7 @@ fi
 
 make -k -C "$src" B="$out" \
 	CC="$bin/m68k-amigaos-gcc -mcrt=$crt" AR="$bin/m68k-amigaos-ar" RANLIB="$bin/m68k-amigaos-ranlib" \
-	RUN_TEST="$(realpath "$0") --run $bin/volamos ${sim[*]}" \
+	RUN_TEST="$(realpath "$0") --run ${SIM:-$bin/volamos} ${sim[*]}" \
 	common.OBJS="$out/common/mtest.o $out/common/print.o $out/common/rand.o" \
 	"${targets[@]}" >"$out.$group.log" 2>&1
 [ "$group" = math ] || cat "${targets[@]}" >"$report" 2>/dev/null
