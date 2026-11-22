@@ -2034,7 +2034,8 @@ MIN_IF_MISSING = $(call if-missing,$(BUILD)/gcc/_libgcc_done $(BUILD)/ixemul/_do
 # a4-relative data in one run, and volamos/-mcrt=newlib/-m68060 newlib, the
 # soft-float 68020 multilib and code for the 68060, which lacks some 68020
 # instructions.  libc-test passes on clib2: both groups, and the math one with
-# an FPU too.
+# an FPU too, but for atan2l, an expected failure until volamos is fixed (see
+# scripts/libc-test).
 .PHONY: check
 check:
 	$(MAKE) --no-print-directory check-shell

@@ -76,11 +76,12 @@ esac
 # Tests expected to fail.  They fail the run if they pass, so that the list
 # shrinks when they get fixed.
 xfail=
-# volamos 0.21.0's CPU core (m68k-rs 0.17) raises UNDERFLOW for tiny extended
-# results, as the 68040 and 68060 FPSP do, where libc-test's vectors (made on
-# x87) expect none.  Not yet checked on real hardware.
+# atan2l: m68k-rs 0.17, volamos 0.21's and 0.22's CPU core, raises UNDERFLOW
+# for 2^-16383, the smallest normal extended value, where the 68882 and the
+# 68040 and 68060 FPSP don't; fixed by benletchford/m68k-rs#265, not yet in a
+# volamos release.
 if [ "$group $crt" = "math clib2" ] && [[ " $cflags " == *" -m68881 "* ]]; then
-	xfail="atan2l exp2l"
+	xfail="atan2l"
 fi
 
 # The other group's results stay; the helpers are rebuilt, as the flags may differ.
@@ -121,9 +122,15 @@ fi
 
 failed=$(sed -n "s|^FAIL .*/$group/\([^ ]*\)\.exe .*|\1|p" "$report" | paste -sd' ' -)
 timed_out=$(sed -n "s|^FAIL .*/$group/\([^ ]*\)\.exe \[timed out.*|\1|p" "$report")
+# Only a test's own failure, status 1, is expected: not a crash or a timeout.
+status1=$(sed -n "s|^FAIL .*/$group/\([^ ]*\)\.exe \[status 1\]$|\1|p" "$report" | paste -sd' ' -)
 unexpected=() expected=() xpassed=()
 for t in $failed; do
-	if [[ " $xfail " == *" $t "* ]]; then expected+=("$t"); else unexpected+=("$t"); fi
+	if [[ " $xfail " == *" $t "* && " $status1 " == *" $t "* ]]; then
+		expected+=("$t")
+	else
+		unexpected+=("$t")
+	fi
 done
 for t in $xfail; do
 	[[ " $failed " == *" $t "* ]] || xpassed+=("$t")
