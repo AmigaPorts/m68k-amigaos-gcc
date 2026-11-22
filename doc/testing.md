@@ -33,8 +33,8 @@ sources.
 
 | target | what |
 |---|---|
-| `check-gcc-c` | gcc's `execute.exp` under the simulator |
 | `check-gcc-amigaos` | gcc's AmigaOS target tests (`amigaos.exp`) |
+| `check-gcc-c` | gcc's `execute.exp` under the simulator |
 | `check-gcc-c++` | the whole g++ testsuite (slow) |
 | `check-gcc-rust` | the gccrs testsuite, for a toolchain built with `ADDLANG=rust`. It only reports, as its standing failures are test bugs on this target |
 | `check-newlib` | newlib's own testsuite, on both newlib boards |
@@ -63,8 +63,8 @@ make check SIM=~/src/volamos/target/release/volamos
 ## Boards
 
 A board is a `baseboards/*.exp` file: the compiler flags the tests are built
-with and the simulator that runs them. `board=` picks one for `check-gcc-c`,
-`check-gcc-amigaos` and `check-gcc-c++`, and defaults to `volamos`, which runs
+with and the simulator that runs them. `board=` picks one for `check-gcc-amigaos`,
+`check-gcc-c` and `check-gcc-c++`, and defaults to `volamos`, which runs
 the tests on a 68000 under volamos.
 
 Options after `volamos` and a slash are added to every compile and link, so
@@ -145,7 +145,7 @@ name to see why it failed.
 ## Running a few tests
 
 To rerun some tests, call the check target of gcc's own build tree with a
-filter, as `check-gcc-c` and `check-gcc-amigaos` do. Outside the top
+filter, as `check-gcc-amigaos` and `check-gcc-c` do. Outside the top
 Makefile it needs the boards (`DEJAGNU`) and the installed tools on the
 `PATH`. Run `make check-gcc-c` once first: it links the installed libnix into the gcc build tree, where
 the tests look for it.

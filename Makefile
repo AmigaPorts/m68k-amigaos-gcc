@@ -527,7 +527,7 @@ help:
 	@echo "make package-lha         package the prefix folder as an .lha archive"
 	@echo "make volamos             install the volamos simulator used by the testsuite"
 	@echo "make check               run the pre-release tests (doc/testing.md)"
-	@echo "make check-<suite>       run one testsuite: gcc-c, gcc-c++, gcc-amigaos, newlib, libnix, libc-test, examples, ..."
+	@echo "make check-<suite>       run one testsuite: gcc-amigaos, gcc-c, gcc-c++, newlib, libnix, libc-test, examples, ..."
 	@echo "make update              perform git pull for all targets"
 	@echo "make update-<target>     perform git pull for the given target"
 	@echo "make sdk-<sdk>           install the sdk <sdk> (sdk/<sdk>.sdk)"
@@ -2084,6 +2084,17 @@ check-binutils-ld: $(call if-missing,$(BUILD)/binutils/_done,binutils)
 	@grep -qE '^PASS' $(BUILD)/binutils/ld/ld.sum
 	@! grep -qE '^(FAIL|ERROR|XPASS|UNRESOLVED)' $(BUILD)/binutils/ld/ld.sum
 
+# A no-op on gcc branches that predate amigaos.exp, such as amiga6.
+.PHONY: check-gcc-amigaos
+check-gcc-amigaos: $(MIN_IF_MISSING) $(BOARD_PREREQ)
+	@ln -sfn $(PREFIX)/$(TARGET)/libnix $(BUILD)/gcc/$(TARGET)/libnix
+	$(L0)"check amigaos.exp"$(L1)$(MAKE) -C $(BUILD)/gcc check-gcc-c "RUNTESTFLAGS=--target_board=$(board) gcc.target/m68k/amigaos/amigaos.exp$(RUNTEST_SIM)"$(L2)
+	@cp -f $(TESTSUITE)/gcc.sum $(TESTSUITE)/gcc-amigaos.sum; cp -f $(TESTSUITE)/gcc.log $(TESTSUITE)/gcc-amigaos.log
+	@{ echo '----- amigaos.exp -----'; grep '^# of' $(TESTSUITE)/gcc-amigaos.sum || echo '(no tests run)'; grep -E '^(FAIL|ERROR|XPASS)' $(TESTSUITE)/gcc-amigaos.sum || true; } | tee $@.summary.txt
+	@echo "results: $(TESTSUITE)/gcc-amigaos.{sum,log}"
+	@test ! -f $(PROJECTS)/gcc/gcc/testsuite/gcc.target/m68k/amigaos/amigaos.exp || grep -q '^# of expected passes' $(TESTSUITE)/gcc-amigaos.sum
+	@! grep -qE '^(FAIL|ERROR|XPASS)' $(TESTSUITE)/gcc-amigaos.sum
+
 # check-gcc-c runs all of execute.exp, and the gcc.dg tests that need the C library's C99
 # math functions (c99_runtime, or HAVE_C99_RUNTIME from builtins-config.h), which only
 # some of the C libraries have. Override check-gcc-c-exp to run other tests, as runtest
@@ -2115,17 +2126,6 @@ check-gcc-c: $(MIN_IF_MISSING) $(BOARD_PREREQ)
 	echo "results: $(TESTSUITE)/gcc-execute$(check-gcc-c-board).{sum,log}"
 	grep -q '^# of expected passes' $(TESTSUITE)/gcc-execute$(check-gcc-c-board).sum
 	! grep -qE '^(FAIL|ERROR|XPASS)' $(TESTSUITE)/gcc-execute$(check-gcc-c-board).sum
-
-# A no-op on gcc branches that predate amigaos.exp, such as amiga6.
-.PHONY: check-gcc-amigaos
-check-gcc-amigaos: $(MIN_IF_MISSING) $(BOARD_PREREQ)
-	@ln -sfn $(PREFIX)/$(TARGET)/libnix $(BUILD)/gcc/$(TARGET)/libnix
-	$(L0)"check amigaos.exp"$(L1)$(MAKE) -C $(BUILD)/gcc check-gcc-c "RUNTESTFLAGS=--target_board=$(board) gcc.target/m68k/amigaos/amigaos.exp$(RUNTEST_SIM)"$(L2)
-	@cp -f $(TESTSUITE)/gcc.sum $(TESTSUITE)/gcc-amigaos.sum; cp -f $(TESTSUITE)/gcc.log $(TESTSUITE)/gcc-amigaos.log
-	@{ echo '----- amigaos.exp -----'; grep '^# of' $(TESTSUITE)/gcc-amigaos.sum || echo '(no tests run)'; grep -E '^(FAIL|ERROR|XPASS)' $(TESTSUITE)/gcc-amigaos.sum || true; } | tee $@.summary.txt
-	@echo "results: $(TESTSUITE)/gcc-amigaos.{sum,log}"
-	@test ! -f $(PROJECTS)/gcc/gcc/testsuite/gcc.target/m68k/amigaos/amigaos.exp || grep -q '^# of expected passes' $(TESTSUITE)/gcc-amigaos.sum
-	@! grep -qE '^(FAIL|ERROR|XPASS)' $(TESTSUITE)/gcc-amigaos.sum
 
 # libnix's own target tests (test/Makefile check-target): built from the
 # libnix sources with the installed cross compiler and run under volamos
