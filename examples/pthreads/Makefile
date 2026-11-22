@@ -11,6 +11,12 @@ all: hello
 hello: hello.c
 	$(CC) $(CFLAGS) -s -o $@ $<
 
+# Not in all or check: it needs THREADS=amigaos, and it only tests something
+# where tasks are switched at the end of a time slice, which volamos doesn't
+# do.  Always newlib, whose errno, strtok() and stdio it checks.
+pthreads-torture: pthreads-torture.c
+	$(CC) -O2 -mcrt=newlib -pthread -Wall -Wextra -s -o $@ $<
+
 # Runs the program under volamos, which checks every memory access: out of
 # bounds, after free, and below the stack pointer.
 check: all
@@ -18,6 +24,6 @@ check: all
 	grep -x "All 4 threads are done" check.out
 
 clean:
-	rm -f hello check.out
+	rm -f hello pthreads-torture pthreads-torture.out check.out
 
 .PHONY: all check clean
