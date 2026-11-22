@@ -51,6 +51,14 @@ sources.
 Run the gcc testsuite targets one at a time, not together in one `make -j`
 or in two shells on the same build tree: they share `gcc.sum`.
 
+The tests run under the volamos in `$PREFIX/bin`, which a check installs if
+it is missing. `SIM=` runs every check under another one, such as a local
+build:
+
+```shell
+make check SIM=~/src/volamos/target/release/volamos
+```
+
 ## Boards
 
 A board is a `baseboards/*.exp` file: the compiler flags the tests are built
@@ -75,9 +83,6 @@ programs, rather than `-m68020` alone.
 
 **Always give the runtime with `-mcrt=`.** Without one, the board uses
 `-mcrt=nix20` today, but that default may change.
-
-`SIM=/path/to/volamos` runs a volamos other than the one in `$PREFIX/bin`,
-such as a local build.
 
 ## libc-test
 
