@@ -520,35 +520,35 @@ endif
 # =================================================
 .PHONY: help
 help:
-	@echo "make help                display this help"
-	@echo "make info                print prefix and other flags"
-	@echo "make print-<var>         prints a make var (e.g. print-TARGET)"
-	@echo
-	@echo "make all                 build and install all"
-	@echo "make min                 build only the compiler and its runtimes (no gdb, gprof, libnix4.library)"
-	@echo "make <target>            builds a target: binutils, gcc, gprof, fd2sfd, fd2pragma, ira, sfdc, vasm, vbcc, vlink, libnix, ixemul, libgcc, clib2, libdebug, libpthread, ndk, ndk13"
-	@echo "make clean               remove the build folder"
-	@echo "make clean-<target>      remove the target's build folder"
-	@echo "make drop-prefix         remove all content from the prefix folder"
-	@echo "make package             package the prefix folder for the destination host"
-	@echo "make package-lha         package the prefix folder as an .lha archive"
-	@echo "make volamos             install the volamos simulator used by the testsuite"
-	@echo "make check               run the pre-release tests (doc/testing.md)"
-	@echo "make check-<suite>       run one testsuite: gcc-amigaos, gcc-c, gcc-c++, newlib, libnix, libc-test, examples, ..."
-	@echo "make update              perform git pull for all targets"
-	@echo "make update-<target>     perform git pull for the given target"
-	@echo "make sdk-<sdk>           install the sdk <sdk> (sdk/<sdk>.sdk)"
-	@echo "make all-sdk             install all sdks"
-	@echo "make b                   print each module's remote, commit and branch or tag"
-	@echo "make v [ref=<ref>|date=<date>]  checkout all modules at a tag, branch or commit, or as of a date; or at their branches"
-	@echo "make branch branch=<branch> mod=<module>  switch the module to the given branch"
-	@echo ""
-	@echo "Parameters:"
-	@echo "PREFIX=<path>            install directory; required once, the build tree remembers it"
-	@echo "THREADS=no|posix|amigaos gcc's thread model and newlib's locks (default: no; the others need gcc 16.2)"
-	@echo "ADDLANG=lang,lang...     configure additional language frontends"
-	@echo "board=volamos/<flags>    the board of the gcc testsuites, e.g. board=volamos/-mcrt=newlib"
-	@echo "SIM=<path>               the simulator of every check (default: the volamos in the prefix)"
+	echo "make help                display this help"
+	echo "make info                print prefix and other flags"
+	echo "make print-<var>         prints a make var (e.g. print-TARGET)"
+	echo
+	echo "make all                 build and install all"
+	echo "make min                 build only the compiler and its runtimes (no gdb, gprof, libnix4.library)"
+	echo "make <target>            builds a target: binutils, gcc, gprof, fd2sfd, fd2pragma, ira, sfdc, vasm, vbcc, vlink, libnix, ixemul, libgcc, clib2, libdebug, libpthread, ndk, ndk13"
+	echo "make clean               remove the build folder"
+	echo "make clean-<target>      remove the target's build folder"
+	echo "make drop-prefix         remove all content from the prefix folder"
+	echo "make package             package the prefix folder for the destination host"
+	echo "make package-lha         package the prefix folder as an .lha archive"
+	echo "make volamos             install the volamos simulator used by the testsuite"
+	echo "make check               run the pre-release tests (doc/testing.md)"
+	echo "make check-<suite>       run one testsuite: gcc-amigaos, gcc-c, gcc-c++, newlib, libnix, libc-test, examples, ..."
+	echo "make update              perform git pull for all targets"
+	echo "make update-<target>     perform git pull for the given target"
+	echo "make sdk-<sdk>           install the sdk <sdk> (sdk/<sdk>.sdk)"
+	echo "make all-sdk             install all sdks"
+	echo "make b                   print each module's remote, commit and branch or tag"
+	echo "make v [ref=<ref>|date=<date>]  checkout all modules at a tag, branch or commit, or as of a date; or at their branches"
+	echo "make branch branch=<branch> mod=<module>  switch the module to the given branch"
+	echo ""
+	echo "Parameters:"
+	echo "PREFIX=<path>            install directory; required once, the build tree remembers it"
+	echo "THREADS=no|posix|amigaos gcc's thread model and newlib's locks (default: no; the others need gcc 16.2)"
+	echo "ADDLANG=lang,lang...     configure additional language frontends"
+	echo "board=volamos/<flags>    the board of the gcc testsuites, e.g. board=volamos/-mcrt=newlib"
+	echo "SIM=<path>               the simulator of every check (default: the volamos in the prefix)"
 
 # =================================================
 # all
@@ -2330,17 +2330,17 @@ check-libc-test: $(PROJECTS)/libc-test/Makefile $(MIN_IF_MISSING) $(LIBC_TEST_PR
 # =================================================
 .PHONY: info
 info:
-	@echo $@ $(UNAME_S)
-	@echo PREFIX=$(PREFIX)
-	@echo GCC_VERSION=$(GCC_VERSION)
-	@echo CFLAGS=$(CFLAGS)
-	@echo CFLAGS_FOR_TARGET=$(CFLAGS_FOR_TARGET)
-	@echo CXXFLAGS_FOR_TARGET=$(CXXFLAGS_FOR_TARGET)
-	@$(CC) -v -E - </dev/null |& grep " version "
-	@$(CXX) -v -E - </dev/null |& grep " version "
-	@echo $(BUILD)
-	@echo $(PROJECTS)
-	@echo MODULES = $(modules)
+	echo $@ $(UNAME_S)
+	echo PREFIX=$(PREFIX)
+	echo GCC_VERSION=$(GCC_VERSION)
+	echo CFLAGS=$(CFLAGS)
+	echo CFLAGS_FOR_TARGET=$(CFLAGS_FOR_TARGET)
+	echo CXXFLAGS_FOR_TARGET=$(CXXFLAGS_FOR_TARGET)
+	$(CC) -v -E - </dev/null |& grep " version "
+	$(CXX) -v -E - </dev/null |& grep " version "
+	echo $(BUILD)
+	echo $(PROJECTS)
+	echo MODULES = $(modules)
 
 # make -s print-PACKAGE_VERSION prints one variable, for scripts
 print-%:
