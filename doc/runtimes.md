@@ -154,11 +154,17 @@ rest depends on the thread model the toolchain was built with (see
 
 | | `THREADS=no`, the default | `THREADS=amigaos` |
 |---|---|---|
-| C++'s `std::thread`, `std::mutex` | `<thread>` and `<mutex>` don't compile | need no option |
+| C++'s `std::thread`, `std::mutex` | `<thread>` and `<mutex>` don't compile | need `-pthread` with newlib |
 | `thread_local`, `_Thread_local` | one per program | one per thread |
-| newlib's `malloc()` and stdio | not safe from several threads | safe |
+| newlib's `malloc()` and stdio | not safe from several threads | safe with `-pthread` |
+| newlib's `errno`, `strtok()` | one per program | one per thread with `-pthread` |
 
-libnix's stdio isn't safe from several threads with either model.
+With `THREADS=amigaos`, a newlib program starts threads only when it is
+built and linked with `-pthread` (or `-lpthread`), which brings the C
+library's locks: without it, starting a thread fails with `ENOSYS`, and
+`std::thread` throws a `std::system_error`. In a newlib program without
+`-pthread`, a lock is an empty call. libnix's stdio isn't safe from several
+threads with either model.
 [examples/cxx_thread](../examples/cxx_thread/) and
 [examples/pthreads](../examples/pthreads/) say hello from four threads.
 

@@ -1,12 +1,12 @@
 CXX = m68k-amigaos-g++
 VOLAMOS = volamos
-CXXFLAGS = -Os -mcrt=newlib -Wall -Wextra
+CXXFLAGS = -Os -mcrt=newlib -pthread -Wall -Wextra
 
 all: hello
 
 # std::thread needs a toolchain built with THREADS=amigaos, and a C library
-# whose malloc() and stdio are safe across tasks: newlib.  -s strips the
-# symbols, which an AmigaOS program doesn't need.
+# whose malloc() and stdio are safe across tasks: newlib, with -pthread.  -s
+# strips the symbols, which an AmigaOS program doesn't need.
 hello: hello.cc
 	$(CXX) $(CXXFLAGS) -s -o $@ $<
 
