@@ -526,6 +526,8 @@ help:
 	@echo "make package             package the prefix folder for the destination host"
 	@echo "make package-lha         package the prefix folder as an .lha archive"
 	@echo "make volamos             install the volamos simulator used by the testsuite"
+	@echo "make check               run the pre-release tests (doc/testing.md)"
+	@echo "make check-<suite>       run one testsuite: gcc-c, gcc-c++, gcc-amigaos, newlib, libnix, libc-test, examples, ..."
 	@echo "make update              perform git pull for all targets"
 	@echo "make update-<target>     perform git pull for the given target"
 	@echo "make sdk-<sdk>           install the sdk <sdk> (sdk/<sdk>.sdk)"
@@ -538,6 +540,8 @@ help:
 	@echo "PREFIX=<path>            install directory; required once, the build tree remembers it"
 	@echo "THREADS=no|posix|amigaos gcc's thread model and newlib's locks (default: no; the others need gcc 16.2)"
 	@echo "ADDLANG=lang,lang...     configure additional language frontends"
+	@echo "board=volamos/<flags>    the board of the gcc testsuites, e.g. board=volamos/-mcrt=newlib"
+	@echo "SIM=<path>               the simulator of every check (default: the volamos in the prefix)"
 
 # =================================================
 # all
