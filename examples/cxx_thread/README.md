@@ -16,6 +16,11 @@ and current directory. Threads need OS 2.0 and a C library whose `malloc()` and
 stdio are safe across tasks, which is newlib: libnix and clib2 can start
 threads, but their own functions aren't safe to call from several of them.
 
+A newlib program starts threads only when it is built and linked with
+`-pthread`, which brings the C library's locks and gives each thread its own
+`errno`. Without it, `std::thread` throws a `std::system_error`, "Function not
+implemented", and each of the C library's locks is an empty call.
+
 The program is about 190 KB: `std::thread` reports a failure to start with a
 `std::system_error`, which brings in the exception support even with
 `-fno-exceptions`. It doesn't use `std::cout` or `std::print`, which would add
