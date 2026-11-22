@@ -387,7 +387,9 @@ NDK_FOLDER_NAME_LIBS := NDK3.2/lib
 
 # libstdc++ and libsupc++ are built at -Os, as libnix: libstdc++'s t-amigaos
 # brings the multilibs with an FPU back to -O2.  gcc 6 has no such hook, so
-# it keeps building them with the C flags.
+# it keeps building them with the C flags.  With gcc 7 and later, a
+# CFLAGS_FOR_TARGET given on the command line doesn't reach C++: give it as
+# CXXFLAGS_FOR_TARGET too.
 CXXFLAGS_FOR_TARGET ?= $(if $(filter 6.%,$(GCC_VERSION)),$(CFLAGS_FOR_TARGET),-Os)
 
 # $(E) is the environment of gcc's configure: the original one, exactly, in a
@@ -520,7 +522,7 @@ endif
 help:
 	@echo "make help                display this help"
 	@echo "make info                print prefix and other flags"
-	@echo "make print-<var>         prints a make var (e.g. print-TARGET"
+	@echo "make print-<var>         prints a make var (e.g. print-TARGET)"
 	@echo
 	@echo "make all                 build and install all"
 	@echo "make min                 build only the compiler and its runtimes (no gdb, gprof, libnix4.library)"
@@ -2333,6 +2335,7 @@ info:
 	@echo GCC_VERSION=$(GCC_VERSION)
 	@echo CFLAGS=$(CFLAGS)
 	@echo CFLAGS_FOR_TARGET=$(CFLAGS_FOR_TARGET)
+	@echo CXXFLAGS_FOR_TARGET=$(CXXFLAGS_FOR_TARGET)
 	@$(CC) -v -E - </dev/null |& grep " version "
 	@$(CXX) -v -E - </dev/null |& grep " version "
 	@echo $(BUILD)
