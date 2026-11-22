@@ -22,8 +22,8 @@ binary into `$PREFIX/bin` first (`make volamos` does just that).
 
 ```shell
 make -j$(nproc) check                                  # the usual set, see below
-make -j$(nproc) check-c board=volamos/-mcrt=newlib     # one testsuite on one board
-make -j$(nproc) check-c++                              # the g++ testsuite (slow)
+make -j$(nproc) check-gcc-c board=volamos/-mcrt=newlib # one testsuite on one board
+make -j$(nproc) check-gcc-c++                          # the g++ testsuite (slow)
 ```
 
 In a fresh tree a check target first builds what it tests (`min`, or just
@@ -33,9 +33,9 @@ sources.
 
 | target | what |
 |---|---|
-| `check-c` | gcc's `execute.exp` under the simulator |
+| `check-gcc-c` | gcc's `execute.exp` under the simulator |
 | `check-gcc-amigaos` | gcc's AmigaOS target tests (`amigaos.exp`) |
-| `check-c++` | the whole g++ testsuite (slow) |
+| `check-gcc-c++` | the whole g++ testsuite (slow) |
 | `check-newlib` | newlib's own testsuite, on both newlib boards |
 | `check-libc-test` | musl's testsuite, [libc-test](https://wiki.musl-libc.org/libc-test.html), see below. It has known failures ([#239](https://github.com/AmigaPorts/m68k-amigaos-gcc/issues/239)) |
 | `check-libnix` | libnix's target tests |
@@ -62,8 +62,8 @@ make check SIM=~/src/volamos/target/release/volamos
 ## Boards
 
 A board is a `baseboards/*.exp` file: the compiler flags the tests are built
-with and the simulator that runs them. `board=` picks one for `check-c`,
-`check-gcc-amigaos` and `check-c++`, and defaults to `volamos`, which runs
+with and the simulator that runs them. `board=` picks one for `check-gcc-c`,
+`check-gcc-amigaos` and `check-gcc-c++`, and defaults to `volamos`, which runs
 the tests on a 68000 under volamos.
 
 Options after `volamos` and a slash are added to every compile and link, so
@@ -71,8 +71,8 @@ any combination of runtime, CPU, FPU and code model works without a board
 file of its own:
 
 ```shell
-make check-c board=volamos/-mcrt=clib2
-make check-c board=volamos/-mcrt=newlib/-m68020-60/-m68881/-fbaserel32
+make check-gcc-c board=volamos/-mcrt=clib2
+make check-gcc-c board=volamos/-mcrt=newlib/-m68020-60/-m68881/-fbaserel32
 ```
 
 volamos follows them: it emulates the CPU that `-m680x0` or `-mcpu=680x0`
@@ -115,7 +115,7 @@ The failures it finds are tracked in
 
 The board combinations worth running, and their latest results:
 
-| board | `check-c` | `check-c++` | `check`[^check] |
+| board | `check-gcc-c` | `check-gcc-c++` | `check`[^check] |
 |---|---|---|---|
 | `volamos/-mcrt=nix20` | ✅ | ✅ | yes |
 | `volamos/-mcrt=nix20/-m68020-60` | ✅ | ✅ | |
@@ -132,7 +132,7 @@ The board combinations worth running, and their latest results:
 | `volamos/-mcrt=clib2` | ✅ | ❌ 31 | |
 | `volamos/-mcrt=clib2/-m68020-60/-m68881` | ✅ | ❌ 33 | |
 
-[^check]: `make check` runs `check-c` on these, and gates releases.
+[^check]: `make check` runs `check-gcc-c` on these, and gates releases.
 
 ## Results
 
@@ -143,10 +143,10 @@ name to see why it failed.
 
 ## Running a few tests
 
-To rerun some tests, call gcc's own check target with a filter, as
-`check-c` and `check-gcc-amigaos` do. Outside the top Makefile it needs the
-boards (`DEJAGNU`) and the installed tools on the `PATH`. Run `make check-c`
-once first: it links the installed libnix into the gcc build tree, where
+To rerun some tests, call the check target of gcc's own build tree with a
+filter, as `check-gcc-c` and `check-gcc-amigaos` do. Outside the top
+Makefile it needs the boards (`DEJAGNU`) and the installed tools on the
+`PATH`. Run `make check-gcc-c` once first: it links the installed libnix into the gcc build tree, where
 the tests look for it.
 
 ```shell
@@ -163,7 +163,7 @@ The volamos board, `check-libnix` and `check-libc-test` run every program
 with two volamos options:
 
 - `--sanitize`, the memory sanitizer: a bad access fails the run.
-  On the board, `SANITIZE=0` in `RUNTESTFLAGS` turns it off. `check-c++`
+  On the board, `SANITIZE=0` in `RUNTESTFLAGS` turns it off. `check-gcc-c++`
   always does, because its `-fstrub` tests read the scrubbed stack below the
   stack pointer on purpose.
 - `--dirty-heap`: memory allocated without `MEMF_CLEAR` is filled with `0xA5`
@@ -181,5 +181,5 @@ Python:
 python3 -m venv .venv
 .venv/bin/pip install "amitools[vamos] @ git+https://github.com/AmigaPorts/amitools.git"
 source .venv/bin/activate
-make -j$(nproc) check-c board=vamos
+make -j$(nproc) check-gcc-c board=vamos
 ```

@@ -2048,11 +2048,11 @@ check:
 	$(MAKE) --no-print-directory check-libpthread
 	$(MAKE) --no-print-directory check-examples
 	$(MAKE) --no-print-directory check-newlib
-	$(MAKE) --no-print-directory check-c
-	$(MAKE) --no-print-directory check-c board=volamos/-mcrt=ixemul/-m68020-60/-m68881
-	$(MAKE) --no-print-directory check-c board=volamos/-mcrt=nix20/-m68020-60/-m68881/-fbaserel32
-	$(MAKE) --no-print-directory check-c board=volamos/-mcrt=newlib/-m68060
-	$(MAKE) --no-print-directory check-c++
+	$(MAKE) --no-print-directory check-gcc-c
+	$(MAKE) --no-print-directory check-gcc-c board=volamos/-mcrt=ixemul/-m68020-60/-m68881
+	$(MAKE) --no-print-directory check-gcc-c board=volamos/-mcrt=nix20/-m68020-60/-m68881/-fbaserel32
+	$(MAKE) --no-print-directory check-gcc-c board=volamos/-mcrt=newlib/-m68060
+	$(MAKE) --no-print-directory check-gcc-c++
 	$(MAKE) --no-print-directory check-libc-test libc-test-crt=clib2 libc-test-cflags="-O2"
 	$(MAKE) --no-print-directory check-libc-test libc-test-crt=clib2 libc-test-group=math libc-test-cflags="-O2 -m68020-60 -m68881"
 
@@ -2080,13 +2080,16 @@ check-binutils-ld: $(call if-missing,$(BUILD)/binutils/_done,binutils)
 	@grep -qE '^PASS' $(BUILD)/binutils/ld/ld.sum
 	@! grep -qE '^(FAIL|ERROR|XPASS|UNRESOLVED)' $(BUILD)/binutils/ld/ld.sum
 
-# check-c runs all of execute.exp, and the gcc.dg tests that need the C library's C99
+# check-gcc-c runs all of execute.exp, and the gcc.dg tests that need the C library's C99
 # math functions (c99_runtime, or HAVE_C99_RUNTIME from builtins-config.h), which only
-# some of the C libraries have. Override check-c-exp to run other tests, as runtest
-# arguments: check-c check-c-exp="'dg.exp=pr12*.c'"
+# some of the C libraries have. Override check-gcc-c-exp to run other tests, as runtest
+# arguments: check-gcc-c check-gcc-c-exp="'dg.exp=pr12*.c'"
 c99-runtime-tests = $(notdir $(shell grep -l -e c99_runtime -e builtins-config.h $(PROJECTS)/gcc/gcc/testsuite/gcc.dg/$2*.c 2>/dev/null))
 c99-runtime-exp = $(if $(call c99-runtime-tests,$1,$2),'$1=$(call c99-runtime-tests,$1,$2)')
-check-c-exp ?= 'execute.exp=*' \
+ifdef check-c-exp
+  check-gcc-c-exp = $(check-c-exp)
+endif
+check-gcc-c-exp ?= 'execute.exp=*' \
   $(call c99-runtime-exp,dg.exp,) \
   $(call c99-runtime-exp,dg-torture.exp,torture/) \
   $(call c99-runtime-exp,tree-ssa.exp,tree-ssa/) \
@@ -2097,17 +2100,17 @@ check-c-exp ?= 'execute.exp=*' \
 # supports weak symbols, so dg-require-weak tests (20030125-1.c) come out unresolved.
 # On a board other than volamos the results are named after it, so that make check
 # keeps the runs apart, with the slashes dropped: board=volamos/-mcrt=ixemul gives
-# gcc-execute-volamos-mcrt=ixemul.sum and check-c-volamos-mcrt=ixemul.summary.txt.
-check-c-board = $(if $(filter volamos,$(board)),,-$(subst /,,$(board)))
-.PHONY: check-c
-check-c: $(MIN_IF_MISSING) $(BOARD_PREREQ)
+# gcc-execute-volamos-mcrt=ixemul.sum and check-gcc-c-volamos-mcrt=ixemul.summary.txt.
+check-gcc-c-board = $(if $(filter volamos,$(board)),,-$(subst /,,$(board)))
+.PHONY: check-gcc-c
+check-gcc-c: $(MIN_IF_MISSING) $(BOARD_PREREQ)
 	ln -sfn $(PREFIX)/$(TARGET)/libnix $(BUILD)/gcc/$(TARGET)/libnix
-	$(L0)"check execute.exp"$(L1)$(MAKE) -C $(BUILD)/gcc check-gcc-c "RUNTESTFLAGS=--target_board=$(board) $(strip $(check-c-exp))$(RUNTEST_SIM)"$(L2)
-	cp -f $(TESTSUITE)/gcc.sum $(TESTSUITE)/gcc-execute$(check-c-board).sum; cp -f $(TESTSUITE)/gcc.log $(TESTSUITE)/gcc-execute$(check-c-board).log
-	{ echo '----- execute.exp $(board) -----'; grep '^# of' $(TESTSUITE)/gcc-execute$(check-c-board).sum || echo '(no tests run)'; grep -E '^(FAIL|ERROR|XPASS)' $(TESTSUITE)/gcc-execute$(check-c-board).sum || true; } | tee $@$(check-c-board).summary.txt
-	echo "results: $(TESTSUITE)/gcc-execute$(check-c-board).{sum,log}"
-	grep -q '^# of expected passes' $(TESTSUITE)/gcc-execute$(check-c-board).sum
-	! grep -qE '^(FAIL|ERROR|XPASS)' $(TESTSUITE)/gcc-execute$(check-c-board).sum
+	$(L0)"check execute.exp"$(L1)$(MAKE) -C $(BUILD)/gcc check-gcc-c "RUNTESTFLAGS=--target_board=$(board) $(strip $(check-gcc-c-exp))$(RUNTEST_SIM)"$(L2)
+	cp -f $(TESTSUITE)/gcc.sum $(TESTSUITE)/gcc-execute$(check-gcc-c-board).sum; cp -f $(TESTSUITE)/gcc.log $(TESTSUITE)/gcc-execute$(check-gcc-c-board).log
+	{ echo '----- execute.exp $(board) -----'; grep '^# of' $(TESTSUITE)/gcc-execute$(check-gcc-c-board).sum || echo '(no tests run)'; grep -E '^(FAIL|ERROR|XPASS)' $(TESTSUITE)/gcc-execute$(check-gcc-c-board).sum || true; } | tee $@$(check-gcc-c-board).summary.txt
+	echo "results: $(TESTSUITE)/gcc-execute$(check-gcc-c-board).{sum,log}"
+	grep -q '^# of expected passes' $(TESTSUITE)/gcc-execute$(check-gcc-c-board).sum
+	! grep -qE '^(FAIL|ERROR|XPASS)' $(TESTSUITE)/gcc-execute$(check-gcc-c-board).sum
 
 # A no-op on gcc branches that predate amigaos.exp, such as amiga6.
 .PHONY: check-gcc-amigaos
@@ -2205,14 +2208,19 @@ check-newlib: $(NEWLIB_CHECKS)
 	@! grep -qE '^(FAIL|ERROR|XPASS)' $(foreach b,$(NEWLIB_BOARD_DIRS),$(NEWLIBTESTSUITE)/$(b)/newlib.sum)
 
 # The full C++ testsuite, slow: about as long as the rest of `check` together.
-.PHONY: check-c++
-check-c++: $(MIN_IF_MISSING) $(BOARD_PREREQ)
+.PHONY: check-gcc-c++
+check-gcc-c++: $(MIN_IF_MISSING) $(BOARD_PREREQ)
 	ln -sfn $(PREFIX)/$(TARGET)/libnix $(BUILD)/gcc/$(TARGET)/libnix
 	$(L0)"check c++"$(L1)$(MAKE) -C $(BUILD)/gcc check-gcc-c++ "RUNTESTFLAGS=--target_board=$(board)$(RUNTEST_SIM)"$(L2)
 	{ echo '----- c++ -----'; grep '^# of' $(CXXTESTSUITE)/g++.sum || echo '(no tests run)'; grep -E '^(FAIL|ERROR|XPASS)' $(CXXTESTSUITE)/g++.sum || true; } | tee $@.summary.txt
 	echo "results: $(CXXTESTSUITE)/g++.{sum,log}"
 	grep -q '^# of expected passes' $(CXXTESTSUITE)/g++.sum
 	! grep -qE '^(FAIL|ERROR|XPASS)' $(CXXTESTSUITE)/g++.sum
+
+# The old names of check-gcc-c and check-gcc-c++, and of check-gcc-c-exp above.
+.PHONY: check-c check-c++
+check-c: check-gcc-c
+check-c++: check-gcc-c++
 
 # The build's own scripts, listed rather than globbed: a glob would also
 # check a file that isn't committed, and with the wrong tool.

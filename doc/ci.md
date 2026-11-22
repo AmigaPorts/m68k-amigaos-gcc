@@ -36,9 +36,9 @@ is a separate job, and they all run in parallel. For example:
 ```
 /ci linux
 /ci macos
-/ci linux-arm make check-c board=volamos/-mcrt=newlib
-/ci linux-arm make all all-sdk libpng check-c++
-/ci linux binutils=amiga-2.46 make check-c
+/ci linux-arm make check-gcc-c board=volamos/-mcrt=newlib
+/ci linux-arm make all all-sdk libpng check-gcc-c++
+/ci linux binutils=amiga-2.46 make check-gcc-c
 ```
 
 A `<module>=<branch>` word builds that module, named as in `default-repos`,
@@ -83,7 +83,7 @@ passed to every target.
   changes the workflows themselves is not tested by `/ci`: use a label or
   a dispatch for it.
 - **The parser** is `.github/scripts/ci-command.py`. To see what a comment
-  would do: `echo '/ci linux-arm make check-c' | .github/scripts/ci-command.py --dry-run`.
+  would do: `echo '/ci linux-arm make check-gcc-c' | .github/scripts/ci-command.py --dry-run`.
 
 ## Labels
 
@@ -97,13 +97,13 @@ out:
 
 | label | same as |
 |---|---|
-| `ci-check-c` | `/ci linux-arm make check-c` |
-| `ci-check-c-fpu` | `/ci linux-arm make check-c board=volamos/-mcrt=nix20/-m68020-60/-m68881` |
-| `ci-check-c-ixemul` | `/ci linux-arm make check-c board=volamos/-mcrt=ixemul/-m68020-60/-m68881` |
-| `ci-check-c-newlib` | `/ci linux-arm make check-c board=volamos/-mcrt=newlib` |
-| `ci-check-c++` | `/ci linux-arm make check-c++` |
-| `ci-check-c++-baserel32` | `/ci linux-arm make check-c++ board=volamos/-mcrt=nix20/-m68020-60/-fbaserel32` |
-| `ci-check-c++-newlib` | `/ci linux-arm make check-c++ board=volamos/-mcrt=newlib` |
+| `ci-check-c` | `/ci linux-arm make check-gcc-c` |
+| `ci-check-c-fpu` | `/ci linux-arm make check-gcc-c board=volamos/-mcrt=nix20/-m68020-60/-m68881` |
+| `ci-check-c-ixemul` | `/ci linux-arm make check-gcc-c board=volamos/-mcrt=ixemul/-m68020-60/-m68881` |
+| `ci-check-c-newlib` | `/ci linux-arm make check-gcc-c board=volamos/-mcrt=newlib` |
+| `ci-check-c++` | `/ci linux-arm make check-gcc-c++` |
+| `ci-check-c++-baserel32` | `/ci linux-arm make check-gcc-c++ board=volamos/-mcrt=nix20/-m68020-60/-fbaserel32` |
+| `ci-check-c++-newlib` | `/ci linux-arm make check-gcc-c++ board=volamos/-mcrt=newlib` |
 | `ci-check-newlib` | `/ci linux-arm make check-newlib` |
 | `ci-check-threads` | `/ci linux-arm make THREADS=amigaos check-gcc-amigaos check-libpthread check-newlib` |
 
@@ -115,7 +115,7 @@ command line:
 
 ```
 gh workflow run toolchain.yml --ref my-branch \
-  -f make_args='check-c board=volamos/-mcrt=nix20/-m68020-60/-m68881' \
+  -f make_args='check-gcc-c board=volamos/-mcrt=nix20/-m68020-60/-m68881' \
   -f runner=ubuntu-24.04-arm \
   -f build_hosted=false
 ```
@@ -155,7 +155,7 @@ gcc 6, `amiga16.2` builds 16.2.
 
 The `/ci make` and `ci-check-*` runs use the same make targets and boards
 as a local test, so a failure reproduces with the same command, for example
-`make check-c board=volamos/-mcrt=nix20/-m68020-60/-m68881`: see [testing.md](testing.md).
+`make check-gcc-c board=volamos/-mcrt=nix20/-m68020-60/-m68881`: see [testing.md](testing.md).
 
 A run's summary page shows the module revisions it built, the commit, and
 each testsuite's summary. The `testsuite-results-*` artifact has the `.sum`
