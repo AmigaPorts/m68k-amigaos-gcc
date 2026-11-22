@@ -36,6 +36,7 @@ sources.
 | `check-gcc-c` | gcc's `execute.exp` under the simulator |
 | `check-gcc-amigaos` | gcc's AmigaOS target tests (`amigaos.exp`) |
 | `check-gcc-c++` | the whole g++ testsuite (slow) |
+| `check-gcc-rust` | the gccrs testsuite, for a toolchain built with `ADDLANG=rust`. It only reports, as its standing failures are test bugs on this target |
 | `check-newlib` | newlib's own testsuite, on both newlib boards |
 | `check-libc-test` | musl's testsuite, [libc-test](https://wiki.musl-libc.org/libc-test.html), see below. It has known failures ([#239](https://github.com/AmigaPorts/m68k-amigaos-gcc/issues/239)) |
 | `check-libnix` | libnix's target tests |
