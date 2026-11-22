@@ -2221,10 +2221,12 @@ check-gcc-c++: $(MIN_IF_MISSING) $(BOARD_PREREQ)
 	grep -q '^# of expected passes' $(CXXTESTSUITE)/g++.sum
 	! grep -qE '^(FAIL|ERROR|XPASS)' $(CXXTESTSUITE)/g++.sum
 
-# The old names of check-gcc-c and check-gcc-c++, and of check-gcc-c-exp above.
-.PHONY: check-c check-c++
+# The old names of check-gcc-c, check-gcc-c++ and check-gcc-rust, and of
+# check-gcc-c-exp above.
+.PHONY: check-c check-c++ check-rust
 check-c: check-gcc-c
 check-c++: check-gcc-c++
+check-rust: check-gcc-rust
 
 # The build's own scripts, listed rather than globbed: a glob would also
 # check a file that isn't committed, and with the wrong tool.
@@ -2262,8 +2264,8 @@ check-gdb-libpython:
 # The gccrs testsuite, for a toolchain built with ADDLANG=rust. It only
 # reports: its standing failures are test bugs on a big-endian ILP32 target
 # and CR+LF output through the simulator's pty.
-.PHONY: check-rust
-check-rust: $(BOARD_PREREQ)
+.PHONY: check-gcc-rust
+check-gcc-rust: $(BOARD_PREREQ)
 	@ln -sfn $(PREFIX)/$(TARGET)/libnix $(BUILD)/gcc/$(TARGET)/libnix
 	$(L0)"check rust"$(L1)$(MAKE) -C $(BUILD)/gcc check-gcc-rust "RUNTESTFLAGS=--target_board=$(board)$(RUNTEST_SIM)"$(L2)
 	@{ echo '----- rust -----'; grep '^# of' $(RUSTTESTSUITE)/rust.sum || echo '(no tests run)'; grep -E '^(FAIL|ERROR|XPASS)' $(RUSTTESTSUITE)/rust.sum || true; } | tee $@.summary.txt
