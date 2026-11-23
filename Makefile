@@ -386,11 +386,16 @@ NDK_FOLDER_NAME_SFD  := NDK3.2/SFD
 NDK_FOLDER_NAME_LIBS := NDK3.2/lib
 
 # libstdc++ and libsupc++ are built at -Os, as libnix: libstdc++'s t-amigaos
-# brings the multilibs with an FPU back to -O2.  gcc 6 has no such hook, so
-# it keeps building them with the C flags.  With gcc 7 and later, a
-# CFLAGS_FOR_TARGET given on the command line doesn't reach C++: give it as
-# CXXFLAGS_FOR_TARGET too.
-CXXFLAGS_FOR_TARGET ?= $(if $(filter 6.%,$(GCC_VERSION)),$(CFLAGS_FOR_TARGET),-Os)
+# brings the multilibs with an FPU back to -O2, through the MULTI_CXXFLAGS_
+# hook of gcc's config-ml.in.  They get the C flags with -Os in place of -O,
+# so flags like -mshort still reach C++, and a different -O for C++ goes in
+# CXXFLAGS_FOR_TARGET.  A gcc without the hook, such as gcc 6 or an older
+# 16.2, builds them with the C flags as they are.  Before make update has
+# cloned gcc there is no tree to look at.  Drop this check with the last of
+# the gcc 6 support.
+GCC_HAS_MULTI_CXXFLAGS := $(if $(wildcard $(PROJECTS)/gcc/config-ml.in),$(shell \
+	grep -l MULTI_CXXFLAGS_ $(PROJECTS)/gcc/config-ml.in),yes)
+CXXFLAGS_FOR_TARGET ?= $(strip $(if $(GCC_HAS_MULTI_CXXFLAGS),$(filter-out -O%,$(CFLAGS_FOR_TARGET)) -Os,$(CFLAGS_FOR_TARGET)))
 
 # $(E) is the environment of gcc's configure: the original one, exactly, in a
 # native build, and the flags for the host the toolchain runs on in a hosted
