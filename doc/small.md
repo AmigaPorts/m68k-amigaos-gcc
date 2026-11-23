@@ -24,7 +24,9 @@ the programs that use it.
 | `-msmall-code` | 16-bit branches only, see [options.md](options.md#code-model) |
 | `-flto` | link-time optimization: inlines functions across source files and drops unreachable symbols, see [below](#-flto) |
 | `-mregparm=N` | passes the first N arguments in registers: shorter calls, see [below](#-mregparmn) |
+| `-Wl,--gc-sections` | drops the unused functions and variables of libstdc++, see [below](#-wl--gc-sections) |
 | `-ffunction-sections -fdata-sections -Wl,--gc-sections` | drops unreferenced functions and variables, see [below](#-ffunction-sections--fdata-sections--wl--gc-sections) |
+| `-fno-exceptions`, `-fno-rtti` | C++ without exception handling or type information in the program's own code, see [C++](#c) |
 | `-m68020-60` | 68020 instructions, such as 32-bit multiplication and division, instead of calls; the program no longer runs on a 68000, see [options.md](options.md#cpu-and-fpu) |
 | `-m68881` | with a 68020 or later CPU, FPU instructions instead of the software floating point in libgcc and libm |
 
@@ -40,8 +42,8 @@ of 32-bit multiplications and divisions, `sqrt()`, `sin()` and `pow()` is
 `printf()` with `-lm` grows by about 7 KB with `-m68881`, see
 [C runtimes](runtimes.md#libnix).
 
-The following three options are most effective on larger programs, which
-consist of many functions and source files. Each places requirements on the
+The following options are most effective on larger programs, which consist
+of many functions and source files. Each places requirements on the
 program.
 
 ### -flto
@@ -78,6 +80,23 @@ arguments on the stack, and must be declared `__stdargs`:
 The functions of the C runtime require no change: its headers declare them
 `__stdargs`.
 
+### -Wl,--gc-sections
+
+The linker drops the sections that nothing in the program refers to. On its
+own, this removes the unused functions and variables of the libraries built
+with a section for each of them, as libstdc++ is, while the program's own
+code keeps its short calls between neighboring functions. It makes a C++
+program 5% to 7% smaller: the [std::thread example](../examples/cxx_thread/)
+goes from 152,496 to 144,848 bytes with `-Os -s`, and the program in
+[C++](#c) from 158,416 to 147,652. A C program gains little: newlib, libnix
+and clib2 have one function in most of their source files, so the linker
+already takes only those the program calls.
+
+A symbol that only something scanning the program finds, such as a `$VER:`
+string, stays when it shares a section with code the program uses. In a
+source file of its own, such as a `version.c`, it is dropped: name it as in
+the second point below.
+
 ### -ffunction-sections -fdata-sections -Wl,--gc-sections
 
 This simpler technique is superseded by `-flto`. It often makes programs
@@ -103,6 +122,55 @@ another project.
   nothing from it, and with `-flto` it drops everything: `-Wl,-u,_start`
   keeps the entry point of the program below, and each `$VER:` string
   needs its own `-Wl,-u`.
+
+## C++
+
+| option | effect |
+|---|---|
+| `-fno-exceptions` | no exception handling: `throw` and `try` are errors, and the program has no exception tables |
+| `-fno-rtti` | no type information: `dynamic_cast` and `typeid` are errors |
+
+Both apply to the program's own code only. libstdc++ is built with
+exceptions and type information, and links its exception handling, about
+20 KB, as soon as the program uses something that can throw, such as a
+`std::vector` that grows or `new`. This program is 158,416 bytes with
+newlib and `-Os -s`, 157,752 with both options, and 146,988 with
+`-Wl,--gc-sections` too:
+
+```c++
+#include <cstdio>
+#include <memory>
+#include <vector>
+
+struct Shape {
+    virtual ~Shape() = default;
+    virtual int area() const = 0;
+};
+
+struct Square : Shape {
+    int side;
+    explicit Square(int s) : side(s) {}
+    int area() const override { return side * side; }
+};
+
+int main()
+{
+    std::vector<std::unique_ptr<Shape>> shapes;
+    for (int i = 1; i <= 4; i++) {
+        shapes.push_back(std::make_unique<Square>(i));
+    }
+
+    int total = 0;
+    for (const auto &s : shapes) {
+        total += s->area();
+    }
+    std::printf("%d\n", total);
+    return 0;
+}
+```
+
+The two options save more in a program with many classes and functions of
+its own.
 
 ## Without startup code
 
