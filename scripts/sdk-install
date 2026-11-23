@@ -160,7 +160,12 @@ install_sdk()
 				# sfdc derives the proto include from the SFD basename, which
 				# need not match the proto/<name>.h generated above - fix it up
 				sed -i -e "s|#include <proto/.*\.h>|#include <proto/$name.h>|" "$prefix/m68k-amigaos/include/inline/$name.h"
-				run_sfdc --mode=macros --target=m68kvbcc-amigaos --output="$prefix/m68k-amigaos/include/inline/${name}_protos.h" "$prefix/m68k-amigaos/lib/sfd/$sfd" || exit 1
+				# The proto header includes the vbcc inline header under the
+				# library's base name (muimaster for muimaster_lib.sfd), so
+				# write it under the name the proto header asks for
+				vbcc_inline=$(sed -n 's|^# *include <inline/\(.*_protos\.h\)>.*|\1|p' "$prefix/m68k-amigaos/include/proto/$name.h")
+				vbcc_inline=${vbcc_inline:-${name}_protos.h}
+				run_sfdc --mode=macros --target=m68kvbcc-amigaos --output="$prefix/m68k-amigaos/include/inline/$vbcc_inline" "$prefix/m68k-amigaos/lib/sfd/$sfd" || exit 1
 				mkdir -p "$prefix/m68k-amigaos/include/lvo/"
 				run_sfdc --mode=lvo --target=m68k-amigaos --output="$prefix/m68k-amigaos/include/lvo/$name.i" "$prefix/m68k-amigaos/lib/sfd/$sfd" || exit 1
 				if [ "${a[2]}" != "" ] && [ "${a[3]}" != "" ]; then
@@ -169,8 +174,8 @@ install_sdk()
 					sed -i.bak -e "s/${a[2]}/${a[3]}/" "$prefix/m68k-amigaos/include/proto/$name.h"
 					sed -i.bak -e "s/${a[2]}/${a[3]}/" "$prefix/m68k-amigaos/include/lvo/$name.i"
 					sed -i.bak -e "s/${a[2]}/${a[3]}/" "$prefix/m68k-amigaos/include/inline/$name.h"
-					sed -i.bak -e "s/${a[2]}/${a[3]}/" "$prefix/m68k-amigaos/include/inline/${name}_protos.h"
-					rm "$prefix/m68k-amigaos/include/proto/$name.h.bak" "$prefix/m68k-amigaos/include/lvo/$name.i.bak" "$prefix/m68k-amigaos/include/inline/$name.h.bak" "$prefix/m68k-amigaos/include/inline/${name}_protos.h.bak"
+					sed -i.bak -e "s/${a[2]}/${a[3]}/" "$prefix/m68k-amigaos/include/inline/$vbcc_inline"
+					rm "$prefix/m68k-amigaos/include/proto/$name.h.bak" "$prefix/m68k-amigaos/include/lvo/$name.i.bak" "$prefix/m68k-amigaos/include/inline/$name.h.bak" "$prefix/m68k-amigaos/include/inline/$vbcc_inline.bak"
 				fi
 			;;
 			stubs)
