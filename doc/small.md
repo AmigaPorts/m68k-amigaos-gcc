@@ -24,9 +24,9 @@ the programs that use it.
 | `-msmall-code` | 16-bit branches only, see [options.md](options.md#code-model) |
 | `-flto` | link-time optimization: inlines functions across source files and drops unreachable symbols, see [below](#-flto) |
 | `-mregparm=N` | passes the first N arguments in registers: shorter calls, see [below](#-mregparmn) |
-| `-Wl,--gc-sections` | drops the unused functions and variables of libstdc++, see [below](#-wl--gc-sections) |
+| `-Wl,--gc-sections` | drops the unused functions and variables of libstdc++, and the program's unused inline functions, see [below](#-wl--gc-sections) |
 | `-ffunction-sections -fdata-sections -Wl,--gc-sections` | drops unreferenced functions and variables, see [below](#-ffunction-sections--fdata-sections--wl--gc-sections) |
-| `-fno-exceptions`, `-fno-rtti` | C++ without exception handling or type information in the program's own code, see [C++](#c) |
+| `-fno-exceptions`, `-fno-rtti` | C++ without exception handling or type information, see [C++](#c) |
 | `-m68020-60` | 68020 instructions, such as 32-bit multiplication and division, instead of calls; the program no longer runs on a 68000, see [options.md](options.md#cpu-and-fpu) |
 | `-m68881` | with a 68020 or later CPU, FPU instructions instead of the software floating point in libgcc and libm |
 
@@ -84,13 +84,17 @@ The functions of the C runtime require no change: its headers declare them
 
 The linker drops unreferenced sections. On its own, this removes the unused
 functions and variables of the libraries built with a section for each of
-them, as libstdc++ is, while the program's own code keeps its short calls
-between neighboring functions. It makes a C++ program 5% to 7% smaller: the
-[std::thread example](../examples/cxx_thread/) goes from 152,496 to 144,848
-bytes with `-Os -s`, and the program in [C++](#c) from 158,416 to 147,652.
-A C program gains little: newlib, libnix and clib2 have one function in most
-of their source files, so the linker already takes only those the program
-calls.
+them, as libstdc++ is, and the program's own inline and template functions
+that nothing calls, which gcc also puts in sections of their own. The rest of
+the program's code keeps its short calls between neighboring functions. The
+program in [C++](#c) goes from 162,248 to 149,960 bytes with newlib and
+`-Os -s`, 8% smaller. A C program gains little: newlib, libnix and clib2
+have one function in most of their source files, so the linker already takes
+only those the program calls.
+
+Constructors and destructors stay, and so do the functions that libnix's
+`ADD2INIT()` and `ADD2EXIT()` register: the startup code finds them in lists
+that nothing else refers to.
 
 A symbol that only something scanning the program finds, such as a `$VER:`
 string, stays when it shares a section with code the program uses. In a
@@ -127,15 +131,19 @@ another project.
 
 | option | effect |
 |---|---|
-| `-fno-exceptions` | no exception handling: `throw` and `try` are errors, and the program has no exception tables |
-| `-fno-rtti` | no type information: `dynamic_cast` and `typeid` are errors |
+| `-fno-exceptions` | no exception handling: `throw` and `try` are errors, the program has no exception tables, and `new` aborts instead of throwing `std::bad_alloc` |
+| `-fno-rtti` | no type information: `typeid` and a `dynamic_cast` that needs a check at run time are errors |
 
-Both apply to the program's own code only. libstdc++ is built with
-exceptions and type information, and links its exception handling, about
-20 KB, as soon as the program uses something that can throw, such as a
-`std::vector` that grows or `new`. This program is 158,416 bytes with
-newlib and `-Os -s`, 157,752 with both options, and 146,988 with
-`-Wl,--gc-sections` too:
+With `-fno-exceptions`, g++ also leaves out the runtime that handles
+exceptions, and links an `operator new` that aborts. libstdc++ itself is
+built with exceptions, so the runtime still comes in with library code that
+throws, such as a `std::vector` that grows. With newlib and `-Os -s`:
+
+| program | default | both options | both, and `-Wl,--gc-sections` |
+|---|---|---|---|
+| an empty `main()` | 16,164 | 5,656 | 5,656 |
+| `new` and `delete` of an `int` | 50,600 | 9,608 | 9,188 |
+| the program below | 162,248 | 161,576 | 149,288 |
 
 ```c++
 #include <cstdio>
@@ -170,7 +178,7 @@ int main()
 ```
 
 The two options save more in a program with many classes and functions of
-its own.
+its own, and that uses little of libstdc++.
 
 ## Without startup code
 
