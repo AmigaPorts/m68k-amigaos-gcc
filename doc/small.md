@@ -82,15 +82,15 @@ The functions of the C runtime require no change: its headers declare them
 
 ### -Wl,--gc-sections
 
-The linker drops the sections that nothing in the program refers to. On its
-own, this removes the unused functions and variables of the libraries built
-with a section for each of them, as libstdc++ is, while the program's own
-code keeps its short calls between neighboring functions. It makes a C++
-program 5% to 7% smaller: the [std::thread example](../examples/cxx_thread/)
-goes from 152,496 to 144,848 bytes with `-Os -s`, and the program in
-[C++](#c) from 158,416 to 147,652. A C program gains little: newlib, libnix
-and clib2 have one function in most of their source files, so the linker
-already takes only those the program calls.
+The linker drops unreferenced sections. On its own, this removes the unused
+functions and variables of the libraries built with a section for each of
+them, as libstdc++ is, while the program's own code keeps its short calls
+between neighboring functions. It makes a C++ program 5% to 7% smaller: the
+[std::thread example](../examples/cxx_thread/) goes from 152,496 to 144,848
+bytes with `-Os -s`, and the program in [C++](#c) from 158,416 to 147,652.
+A C program gains little: newlib, libnix and clib2 have one function in most
+of their source files, so the linker already takes only those the program
+calls.
 
 A symbol that only something scanning the program finds, such as a `$VER:`
 string, stays when it shares a section with code the program uses. In a
