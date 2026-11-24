@@ -8,7 +8,7 @@
 # hash the file again. A download that does not match is discarded and the
 # next URL is tried.
 
-set -o pipefail
+set -euo pipefail
 
 expected_sha256=
 while [ $# -gt 0 ]; do
@@ -96,7 +96,7 @@ fi
 urls=()
 for url in "$@"; do
 	if [[ $url =~ ^https?://(www\.)?aminet\.net/(.*)$ ]]; then
-		for mirror in $AMINET_MIRROR; do
+		for mirror in ${AMINET_MIRROR:-}; do
 			urls+=("${mirror%/}/${BASH_REMATCH[2]}")
 		done
 	fi

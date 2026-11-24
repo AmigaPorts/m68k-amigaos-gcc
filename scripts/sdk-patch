@@ -5,6 +5,8 @@
 # skipped, so a rerun on the same tree is harmless; one that applies neither
 # way stops with patch's own report.
 
+set -euo pipefail
+
 if [ $# -lt 2 ]; then
 	echo "usage: $0 <dir> <patch>..." >&2
 	exit 2

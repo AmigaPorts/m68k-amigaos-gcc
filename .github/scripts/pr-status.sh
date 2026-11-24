@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 # Report a dispatched run on the pull requests it builds, as a commit status
 # on each one's head: GitHub shows a dispatched run on no pull request, not
 # even one of this repository whose head it built.  Those are the module
@@ -23,7 +23,7 @@
 #              without one the script only says so
 #
 # A status that cannot be written is a warning, never a failed run.
-set -u
+set -euo pipefail
 state=$1
 
 [ -n "$GH_TOKEN" ] || { echo "::notice::no PR_STATUS_TOKEN: not reporting on the module pull requests"; exit 0; }
