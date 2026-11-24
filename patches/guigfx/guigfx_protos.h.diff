@@ -1,0 +1,10 @@
+--- include/clib/guigfx_protos.h	2026-11-24 14:01:11.213148050 +0900
++++ include/clib/guigfx_protos.h	2026-11-24 14:01:11.215541808 +0900
+@@ -23,6 +23,7 @@
+ APTR ClonePictureA(APTR pic, struct TagItem *tags);
+ 
+ void DeletePicture(APTR pic);
++BOOL UpdatePicture(APTR pic);
+ 
+ APTR AddPicture(APTR psm, APTR pic, ...);
+ APTR AddPictureA(APTR psm, APTR pic, struct TagItem *tags);
