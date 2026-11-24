@@ -152,7 +152,7 @@ directory, and need OS 2.0. `-pthread` adds the POSIX threads library. The
 rest depends on the thread model the toolchain was built with (see
 [Thread model](build.md#thread-model)):
 
-| | `THREADS=no`, the default | `THREADS=amigaos` |
+| | `THREADS=no` | `THREADS=amigaos`, the default |
 |---|---|---|
 | C++'s `std::thread`, `std::mutex` | `<thread>` and `<mutex>` don't compile | need `-pthread` with newlib |
 | `thread_local`, `_Thread_local` | one per program | one per thread |

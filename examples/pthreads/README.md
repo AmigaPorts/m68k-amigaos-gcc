@@ -14,7 +14,7 @@ which shares the program's console and current directory. Threads need OS 2.0.
 
 | runtime | size | C library across threads |
 |---|---:|---|
-| newlib | 69 KB | `malloc()` and stdio are safe, and `errno` is each thread's own, with a toolchain built with `THREADS=amigaos`, not with the default `THREADS=no` (see [Thread model](../../doc/build.md#thread-model)) |
+| newlib | 69 KB | `malloc()` and stdio are safe, and `errno` is each thread's own, with a toolchain built with the default `THREADS=amigaos`, not with `THREADS=no` (see [Thread model](../../doc/build.md#thread-model)) |
 | nix20 | 14 KB | `malloc()` is safe; stdio and `errno` aren't |
 
 So this program locks around `printf()` itself. It runs on an Amiga, an
