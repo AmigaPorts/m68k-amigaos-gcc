@@ -1,7 +1,7 @@
 Short: m68k MMU control library
-Version: 46.3
+Version: 47.12
 Url: http://aminet.net/docs/misc/MuManual.lha
-Sha256: 5d016ef34178e1388e021a98fa76416f262d5f6196934dfd2132c4bbefee44f0
+Sha256: 3262b12f0b7f53975e226c2f3ccfdf0559b9b8a5903d81134520f0313d8443bd
 
 MuManual/Autodocs/68040 = 68040.guide 
 MuManual/Autodocs/68040.doc
@@ -21,11 +21,6 @@ MuManual/Autodocs/mmu.doc
 MuManual/Autodocs/mmuexternals.doc
 MuManual/Autodocs/mmures = mmures.guide
 MuManual/Autodocs/mmures.doc
-MuManual/Include/clib/68040_protos.h
-MuManual/Include/clib/68060_protos.h
-MuManual/Include/clib/680x0_protos.h
-MuManual/Include/clib/disassembler_protos.h
-MuManual/Include/clib/mmu_protos.h
 MuManual/Include/libraries/68040.h
 MuManual/Include/libraries/68040.i
 MuManual/Include/libraries/68060.h
@@ -58,12 +53,18 @@ MuManual/fd/68060_lib.fd = 68060.fd
 MuManual/fd/680x0_lib.fd = 680x0.fd
 MuManual/fd/disassembler_lib.fd = disassembler.fd
 MuManual/fd/mmu_lib.fd = mmu.fd
+patch : mmu_lib.sfd.diff
+MuManual/sfd/68040_lib.sfd = 68040.sfd
+MuManual/sfd/68060_lib.sfd = 68060.sfd
+MuManual/sfd/680x0_lib.sfd = 680x0.sfd
+MuManual/sfd/disassembler_lib.sfd = disassembler.sfd
+MuManual/sfd/mmu_lib.sfd = mmu.sfd
 MuManual/Manual/mmudoc.pdf
-fd2sfd : 68040.fd clib/68040_protos.h
-fd2sfd : 68060.fd clib/68060_protos.h
-fd2sfd : 680x0.fd clib/680x0_protos.h
-fd2sfd : disassembler.fd clib/disassembler_protos.h
-fd2sfd : mmu.fd clib/mmu_protos.h
+clib : 68040.sfd
+clib : 68060.sfd
+clib : 680x0.sfd
+clib : disassembler.sfd
+clib : mmu.sfd
 sfdc : 68040.sfd
 sfdc : 68060.sfd
 sfdc : 680x0.sfd
