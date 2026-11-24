@@ -52,15 +52,17 @@ prepare)
 	done
 	# mtimes compare by the second here: be sure to be past T
 	sleep 2
+	reconfigure=
 	for m in ${changed[@]+"${changed[@]}"}; do
 		find "$projects/$m" -path "$projects/$m/.git" -prune -o -exec touch -h {} +
-		# libgcc, libstdc++ and libatomic keep what their configure found
-		# out about the compiler that built the cache, such as whether it
-		# has aliases: another gcc configures them again
-		if [ "$m" = gcc ]; then
-			make -s -C "$here" clean-libgcc BUILD="$build"
-		fi
+		case $m in gcc | binutils) reconfigure=yes ;; esac
 	done
+	# libgcc, libstdc++ and libatomic keep what their configure found out
+	# about the compiler, assembler and linker that built the cache, such as
+	# whether gcc has aliases: another gcc or binutils configures them again
+	if [ -n "$reconfigure" ]; then
+		make -s -C "$here" clean-libgcc BUILD="$build"
+	fi
 	echo "restored files at $(date -d "@$t" +%T), the sources of ${#changed[@]} changed module(s) after"
 	;;
 *)
