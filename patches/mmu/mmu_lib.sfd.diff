@@ -1,0 +1,11 @@
+--- MuManual/sfd/mmu_lib.sfd	2026-11-24 13:27:58.750466917 +0900
++++ MuManual/sfd/mmu_lib.sfd	2026-11-24 13:28:08.544301997 +0900
+@@ -7,7 +7,7 @@
+ ==include <utility/tagitem.h>
+ ==include <exec/tasks.h>
+ ==include <mmu/context.h>
+-==include <mm/descriptor.h>
++==include <mmu/descriptor.h>
+ *-----------------------------------------------------------------
+ *-- MMU.library                                                 --
+ *-- (c) 2026 the mmu.library development group, THOR-Software	--
