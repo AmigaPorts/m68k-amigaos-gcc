@@ -336,14 +336,6 @@ PKGVERSION ?= AmigaDev $(PACKAGE_VERSION)
 BUGURL ?= https://github.com/AmigaPorts/m68k-amigaos-gcc/issues
 CONFIG_VERSION := --with-pkgversion="$(PKGVERSION)" --with-bugurl="$(BUGURL)"
 
-ifeq ($(UNAME_S), Darwin)
-	SED := gsed
-else ifeq ($(UNAME_S), FreeBSD)
-	SED := gsed
-else
-	SED := sed
-endif
-
 # The modules' URLs and branches are read from .repos when a module is cloned or switched.
 # .repos exists from the first make on, for the scripts and CI steps that read it.
 # See scripts/repos.
@@ -500,7 +492,7 @@ ifeq ($(verbose),)
 L1 = ; ($(FLOCK) 200; echo -e \\033[33m$$__p...\\033[0m >>.state; echo -ne \\033[33m$$__p...\\033[0m ) 200>.lock; mkdir -p log; __l="log/$$__p.log" ; (
 L2 = )$(TEEEE) "$$__l"; __r=$$?; ($(FLOCK) 200; if (( $$__r > 0 )); then \
   echo -e \\n\\033[K\\033[31m$$__p...failed\\033[0m; \
-   $(SED) -n '1,/^make\(\[[0-9]*\]\)\?: \*\*\*/p' "$$__l" | tail -n 100; \
+   sed -n -E '1,/^make(\[[0-9]*\])?: \*\*\*/p' "$$__l" | tail -n 100; \
   echo -e \\033[31m$$__p...failed\\033[0m; \
   echo -e use \\033[1mless \"$$__l\"\\033[0m to view the full log; \
   else echo -e \\n\\033[K\\033[32m$$__p...done\\033[0m; fi \
@@ -1375,7 +1367,7 @@ $(BUILD)/vbcc_target_m68k-kick13/_done: $(BUILD)/vbcc_target_m68k-kick13/_unpack
 	@mkdir -p $(PREFIX)/m68k-kick13/vbcc/lib
 	$(L0)"copying vbcc headers"$(L1) rsync --no-group $(BUILD)/vbcc_target_m68k-kick13/targets/m68k-kick13/lib/* $(PREFIX)/m68k-kick13/vbcc/lib $(L2)
 	@mkdir -p $(PREFIX)/bin
-	$(L0)"creating vbcc kick13 config"$(L1) $(SED) -e "s|PREFIX|$(PREFIX)|g" patches/vbcc/kick13.config >$(BUILD)/vasm/kick13.config ;\
+	$(L0)"creating vbcc kick13 config"$(L1) sed -e "s|PREFIX|$(PREFIX)|g" patches/vbcc/kick13.config >$(BUILD)/vasm/kick13.config ;\
 	install $(BUILD)/vasm/kick13.config $(PREFIX)/bin/ $(L2)
 	@echo "done" >$@
 
@@ -1385,10 +1377,10 @@ $(BUILD)/vbcc_target_m68k-amigaos/_done: $(BUILD)/vbcc_target_m68k-amigaos/_unpa
 	@mkdir -p $(PREFIX)/m68k-amigaos/vbcc/lib
 	$(L0)"copying vbcc headers"$(L1) rsync --no-group $(BUILD)/vbcc_target_m68k-amigaos/targets/m68k-amigaos/lib/* $(PREFIX)/m68k-amigaos/vbcc/lib $(L2)
 	@mkdir -p $(PREFIX)/bin
-	$(L0)"creating vbcc config"$(L1) $(SED) -e "s|PREFIX|$(PREFIX)|g" patches/vbcc/vc.config >$(BUILD)/vasm/vc.config ;\
+	$(L0)"creating vbcc config"$(L1) sed -e "s|PREFIX|$(PREFIX)|g" patches/vbcc/vc.config >$(BUILD)/vasm/vc.config ;\
 	install $(BUILD)/vasm/vc.config $(PREFIX)/bin/ $(L2)
 	$(L0)"creating vbcc aos68k configs"$(L1) for c in aos68k aos68km aos68kr; do \
-		$(SED) -e "s|PREFIX|$(PREFIX)|g" patches/vbcc/$$c.config >$(BUILD)/vasm/$$c && \
+		sed -e "s|PREFIX|$(PREFIX)|g" patches/vbcc/$$c.config >$(BUILD)/vasm/$$c && \
 		install $(BUILD)/vasm/$$c $(PREFIX)/bin/ || exit 1; \
 	done $(L2)
 	@echo "done" >$@
@@ -1446,7 +1438,7 @@ $(BUILD)/ndk-include_ndk0: $(PROJECTS)/$(NDK_FOLDER_NAME)/_unpacked $(NDK_INCLUD
 	@rsync -a --no-group $(PROJECTS)/$(NDK_FOLDER_NAME_H)/* $(PREFIX)/$(TARGET)/ndk-include --exclude proto --exclude inline
 	$(L0)"STDARGing ndk"$(L1) for i in $$(find $(PREFIX)/$(TARGET)/ndk-include/clib/*protos.h -type f); do \
 		echo $$i; \
-		LC_CTYPE=C $(SED) -i.bak -E 's/([a-zA-Z0-9 _]*)([[:blank:]]+|\*)([a-zA-Z0-9_]+)\(/\1\2 __stdargs \3(/g' $$i; \
+		LC_CTYPE=C sed -i.bak -E 's/([a-zA-Z0-9 _]*)([[:blank:]]+|\*)([a-zA-Z0-9_]+)\(/\1\2 __stdargs \3(/g' $$i; \
 		rm $$i.bak; done $(L2)
 	@rsync -a --no-group $(PROJECTS)/$(NDK_FOLDER_NAME_I)/* $(PREFIX)/$(TARGET)/ndk-include
 	@mkdir -p $(PREFIX)/$(TARGET)/ndk/lib/fd
@@ -1534,15 +1526,15 @@ $(BUILD)/ndk-include_ndk13: $(BUILD)/ndk-include_ndk $(BUILD)/sfdc/_done
 	$(L0)"extract ndk13"$(L1) while read p; do p=$$(echo $$p|tr -d '\n'); \
 	  mkdir -p $(PREFIX)/$(TARGET)/ndk13-include/$$(dirname $$p); \
 	  if grep V36 $(PREFIX)/$(TARGET)/ndk-include/$$p; then \
-	  LC_CTYPE=C $(SED) -n -e '/#ifndef[[:space:]]*CLIB/,/V36/p' $(PREFIX)/$(TARGET)/ndk-include/$$p | $(SED) -e 's/__stdargs//g' >$(PREFIX)/$(TARGET)/ndk13-include/$$p; \
+	  LC_CTYPE=C sed -n -e '/#ifndef[[:space:]]*CLIB/,/V36/p' $(PREFIX)/$(TARGET)/ndk-include/$$p | sed -e 's/__stdargs//g' >$(PREFIX)/$(TARGET)/ndk13-include/$$p; \
 	  echo -e "#ifdef __cplusplus\n}\n#endif /* __cplusplus */\n#endif" >>$(PREFIX)/$(TARGET)/ndk13-include/$$p; \
-	  else LC_CTYPE=C $(SED) $(PREFIX)/$(TARGET)/ndk-include/$$p -e 's/__stdargs//g' >$(PREFIX)/$(TARGET)/ndk13-include/$$p; fi \
+	  else LC_CTYPE=C sed -e 's/__stdargs//g' $(PREFIX)/$(TARGET)/ndk-include/$$p >$(PREFIX)/$(TARGET)/ndk13-include/$$p; fi \
 	done < patches/ndk13/chfiles $(L2)
 	@while read p; do p=$$(echo $$p|tr -d '\n'); mkdir -p $(PREFIX)/$(TARGET)/ndk13-include/$$(dirname $$p); echo "" >$(PREFIX)/$(TARGET)/ndk13-include/$$p; done < patches/ndk13/ehfiles
 	@echo '#undef	EXECNAME' > $(PREFIX)/$(TARGET)/ndk13-include/exec/execname.h
 	@echo '#define	EXECNAME	"exec.library"' >> $(PREFIX)/$(TARGET)/ndk13-include/exec/execname.h
 	@mkdir -p $(PREFIX)/$(TARGET)/ndk/lib/fd13
-	@while read p; do p=$$(echo $$p|tr -d '\n'); LC_CTYPE=C $(SED) -n -e '/##base/,/V36/P'  $(PREFIX)/$(TARGET)/ndk/lib/fd/$$p >$(PREFIX)/$(TARGET)/ndk/lib/fd13/$$p; done < patches/ndk13/fdfiles
+	while read p; do p=$$(echo $$p|tr -d '\n'); LC_CTYPE=C sed -n -e '/##base/,/V36/P'  $(PREFIX)/$(TARGET)/ndk/lib/fd/$$p >$(PREFIX)/$(TARGET)/ndk/lib/fd13/$$p; done < patches/ndk13/fdfiles
 	@mkdir -p $(PREFIX)/$(TARGET)/ndk/lib/sfd13
 	@for i in $(PREFIX)/$(TARGET)/ndk/lib/fd13/*; do $(FD2SFD_FOR_BUILD) $$i $(PREFIX)/$(TARGET)/ndk13-include/clib/$$(basename $$i _lib.fd)_protos.h -o $(PREFIX)/$(TARGET)/ndk/lib/sfd13/$$(basename $$i .fd).sfd || exit 1; done
 	$(L0)"macros+protos ndk13"$(L1) for i in $(PREFIX)/$(TARGET)/ndk/lib/sfd13/*; do \
@@ -1552,7 +1544,7 @@ $(BUILD)/ndk-include_ndk13: $(BUILD)/ndk-include_ndk $(BUILD)/sfdc/_done
 	done $(L2)
 	$(L0)"STDARGing ndk13"$(L1) for i in $$(find $(PREFIX)/$(TARGET)/ndk13-include/clib/*protos.h -type f); do \
 	echo $$i; \
-	LC_CTYPE=C $(SED) -i.bak -E 's/([a-zA-Z0-9 _]*)([[:blank:]]+|\*)([a-zA-Z0-9_]+)\(/\1\2 __stdargs \3(/g' $$i; \
+	LC_CTYPE=C sed -i.bak -E 's/([a-zA-Z0-9 _]*)([[:blank:]]+|\*)([a-zA-Z0-9_]+)\(/\1\2 __stdargs \3(/g' $$i; \
 	rm $$i.bak; done $(L2)
 	@echo "done" >$@
 
@@ -2394,9 +2386,10 @@ $(BUILD)/$(zlib_DIR)/Makefile: $(PROJECTS)/$(zlib_DIR)/configure
 # The grep fails the build if a new zlib lays them out differently.
 $(PROJECTS)/$(zlib_DIR)/configure: $(DOWNLOAD)/$(zlib_DIR).tar.gz
 	tar -C $(PROJECTS) -xf $(DOWNLOAD)/$(zlib_DIR).tar.gz
-	$(SED) -i 's/ -fPIC"/"/' $@
-	$(SED) -i '/if (oflag & O_\(NONBLOCK\|CLOEXEC\))$$/{N;/\n *fcntl(fd, /d}' \
+	sed -i.bak 's/ -fPIC"/"/' $@
+	sed -i.bak -E '/if \(oflag & O_(NONBLOCK|CLOEXEC)\)$$/{N;/\n *fcntl\(fd, /d;}' \
 		$(PROJECTS)/$(zlib_DIR)/gzlib.c
+	rm $@.bak $(PROJECTS)/$(zlib_DIR)/gzlib.c.bak
 	! grep -q 'fcntl(fd, ' $(PROJECTS)/$(zlib_DIR)/gzlib.c
 	@touch $@
 

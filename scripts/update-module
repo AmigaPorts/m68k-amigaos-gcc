@@ -61,4 +61,6 @@ update() {
 }
 
 # Modules may update in parallel, so every line says which one it is about.
-update 2>&1 | sed -u "s|^|$name: |"
+update 2>&1 | while IFS= read -r line || [ -n "$line" ]; do
+	printf '%s: %s\n' "$name" "$line"
+done
