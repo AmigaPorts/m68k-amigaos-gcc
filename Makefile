@@ -344,29 +344,23 @@ else
 	SED := sed
 endif
 
-# get git urls and branches from .repos file
-$(shell  [ ! -f .repos ] && cp default-repos .repos)
+# The modules' URLs and branches are read from .repos when a module is cloned or switched.
+# .repos exists from the first make on, for the scripts and CI steps that read it.
+# See scripts/repos.
+$(if $(wildcard .repos),,$(shell cp default-repos .repos))
 
-
-# Blank lines and comments are skipped (a .manifest records this repository
-# in its first line, as a comment).
-modules := $(shell $(SED) -e '/^[[:blank:]]*\#/d' -e '/^[[:blank:]]*$$/d' -e 's/[[:blank:]]\+/ /g' .repos | cut -d' ' -f1)
-get_url = $(shell grep '^$(1)[[:blank:]]' .repos | $(SED) -e 's/[[:blank:]]\+/ /g' | cut -d' ' -f2)
-get_branch = $(shell grep '^$(1)[[:blank:]]' .repos | $(SED) -e 's/[[:blank:]]\+/ /g' | cut -d' ' -f3)
-$(foreach modu,$(modules),$(eval $(modu)_URL=$(call get_url,$(modu))))
-$(foreach modu,$(modules),$(eval $(modu)_BRANCH=$(call get_branch,$(modu))))
-
-# get file names, checksums and urls of the downloaded archives from
-# default-archives; <name>_DIR is the file without its extension, the
-# directory most of them unpack into
-archives := $(shell $(SED) -e '/^[[:blank:]]*\#/d' -e '/^[[:blank:]]*$$/d' -e 's/[[:blank:]]\+/ /g' default-archives | cut -d' ' -f1)
-get_archive = $(shell grep '^$(1)[[:blank:]]' default-archives | $(SED) -e 's/[[:blank:]]\+/ /g' | cut -d' ' -f2)
-get_sha256 = $(shell grep '^$(1)[[:blank:]]' default-archives | $(SED) -e 's/[[:blank:]]\+/ /g' | cut -d' ' -f3)
-get_urls = $(shell grep '^$(1)[[:blank:]]' default-archives | $(SED) -e 's/[[:blank:]]\+/ /g' | cut -d' ' -f4-)
-$(foreach arch,$(archives),$(eval $(arch)_ARCHIVE=$(call get_archive,$(arch))))
-$(foreach arch,$(archives),$(eval $(arch)_SHA256=$(call get_sha256,$(arch))))
-$(foreach arch,$(archives),$(eval $(arch)_URLS=$(call get_urls,$(arch))))
-$(foreach arch,$(archives),$(eval $(arch)_DIR=$(patsubst %.tar,%,$(basename $($(arch)_ARCHIVE)))))
+# The archives of default-archives, read in one shell (see scripts/archives):
+# <name>_ARCHIVE, <name>_SHA256 and <name>_URLS, and <name>_DIR, the file
+# without its extension, the directory most of them unpack into.
+archive_table := $(shell scripts/archives)
+archives := $(foreach a,$(archive_table),$(firstword $(subst |, ,$(a))))
+define archive_vars
+$(word 1,$(1))_ARCHIVE := $(word 2,$(1))
+$(word 1,$(1))_SHA256 := $(word 3,$(1))
+$(word 1,$(1))_URLS := $(wordlist 4,$(words $(1)),$(1))
+$(word 1,$(1))_DIR := $(patsubst %.tar,%,$(basename $(word 2,$(1))))
+endef
+$(foreach a,$(archive_table),$(eval $(call archive_vars,$(subst |, ,$(a)))))
 
 # The archives depend on the table, so a changed sha256 fetches the new
 # file; for an unchanged one scripts/sdk-download finds its hash in the
@@ -578,12 +572,12 @@ MANIFEST ?=
 .PHONY: manifest
 manifest:
 ifneq (,$(strip $(MANIFEST)))
-	@cp $(MANIFEST) .manifest
+	cp $(MANIFEST) .manifest
 else
-	@PROJECTS=$(PROJECTS) scripts/manifest > .manifest
+	scripts/manifest > .manifest
 endif
-	@mkdir -p $(PREFIX)
-	@install -m 644 .manifest $(PREFIX)/.manifest
+	mkdir -p $(PREFIX)
+	install -m 644 .manifest $(PREFIX)/.manifest
 
 # the compiler and the runtimes it links by default: what the testsuites need
 .PHONY: min
@@ -749,11 +743,7 @@ package:
 # never reaches it: name the modules whose line differs. Touching .repos keeps it as it is.
 .PHONY: repos-current
 repos-current:
-	if [ default-repos -nt .repos ]; then \
-	  drift=$$(awk '!NF || substr($$1, 1, 1) == "\043" { next } NR == FNR { d[$$1] = $$2 " " $$3; next } { r[$$1] = $$2 " " $$3 } END { for (m in d) if (r[m] != d[m]) print m }' default-repos .repos); \
-	  [ -z "$$drift" ] || { echo "default-repos changed after .repos was made from it, and differs for: $$drift." >&2; \
-	    echo "Update .repos to match, touch it to keep it as it is, or delete it to start over." >&2; exit 1; }; \
-	fi
+	scripts/repos current
 
 .PHONY: update
 update: repos-current update-gcc update-binutils update-fd2sfd update-lha update-fd2pragma update-ira update-sfdc update-vasm update-vbcc update-vlink update-libnix update-clib2 update-libc-test update-libdebug update-libpthread update-ndk update-newlib update-netinclude
@@ -944,7 +934,7 @@ $(BUILD)/binutils/Makefile: $(PROJECTS)/binutils/configure $(BINUTILS_PREREQUISI
 	$(L0)"configure binutils"$(L1) cd $(BUILD)/binutils && $(E) $(PROJECTS)/binutils/configure $(CONFIG_BINUTILS) $(L2)
 
 $(PROJECTS)/binutils/configure:
-	@cd $(PROJECTS) && git clone -b $(binutils_BRANCH) --depth 16 $(binutils_URL) binutils
+	scripts/repos clone binutils 16
 
 # =================================================
 # gdb
@@ -1118,7 +1108,7 @@ $(BUILD)/gcc/Makefile: Makefile $(PROJECTS)/gcc/configure $(BUILD)/binutils/_don
 	$(L0)"configure gcc"$(L1) cd $(BUILD)/gcc && $(E) $(GCC_HOST_TOOLS) $(GCC_HOST_CONFIGURE_ENV) $(GCC_TARGET_CONFIGURE_ENV) $(PROJECTS)/gcc/configure $(CONFIG_GCC) $(L2)
 
 $(PROJECTS)/gcc/configure:
-	@cd $(PROJECTS) && git clone -b $(gcc_BRANCH) --depth 16 $(gcc_URL)
+	scripts/repos clone gcc 16
 
 ifneq (,$(strip $(TARGET_BUILD_TOOLS_PREREQ)))
 TARGET_BUILD_MACHINE := $(if $(strip $(BUILD_TRIPLET)),$(BUILD_TRIPLET),$(shell $(BUILD_CC) -dumpmachine 2>/dev/null))
@@ -1213,7 +1203,7 @@ $(BUILD_TOOLS)/fd2sfd/Makefile: $(PROJECTS)/fd2sfd/configure
 	$(L0)"configure fd2sfd for the build machine"$(L1) cd $(BUILD_TOOLS)/fd2sfd && CC="$(BUILD_CC)" CFLAGS="$(BUILD_CFLAGS)" $(PROJECTS)/fd2sfd/configure --prefix=$(BUILD_TOOLS_PREFIX) --target=$(TARGET) $(L2)
 
 $(PROJECTS)/fd2sfd/configure:
-	@cd $(PROJECTS) && git clone -b $(fd2sfd_BRANCH) --depth 4 $(fd2sfd_URL)
+	scripts/repos clone fd2sfd 4
 
 # =================================================
 # fd2pragma
@@ -1250,7 +1240,7 @@ $(BUILD_TOOLS)/fd2pragma/fd2pragma: $(PROJECTS)/fd2pragma/makefile $(shell find 
 	$(L0)"make fd2pragma for the build machine"$(L1) cd $(PROJECTS)/fd2pragma && $(BUILD_CC) -o $@ $(BUILD_CFLAGS) fd2pragma.c $(L2)
 
 $(PROJECTS)/fd2pragma/makefile:
-	@cd $(PROJECTS) && git clone -b $(fd2pragma_BRANCH) --depth 4 $(fd2pragma_URL)
+	scripts/repos clone fd2pragma 4
 
 # =================================================
 # ira
@@ -1270,7 +1260,7 @@ $(BUILD)/ira/ira$(EXEEXT): $(PROJECTS)/ira/Makefile $(shell find 2>/dev/null $(P
 	$(L0)"make ira"$(L1) cd $(PROJECTS)/ira && $(CC) -o $@ $(CFLAGS) *.c -std=c99 $(LDFLAGS) $(L2)
 
 $(PROJECTS)/ira/Makefile:
-	@cd $(PROJECTS) && git clone -b $(ira_BRANCH) --depth 4 $(ira_URL)
+	scripts/repos clone ira 4
 
 # =================================================
 # sfdc
@@ -1293,7 +1283,7 @@ $(BUILD)/sfdc/Makefile: $(PROJECTS)/sfdc/configure $(shell find 2>/dev/null $(PR
 	$(L0)"configure sfdc"$(L1) cd $(BUILD)/sfdc && $(E) $(BUILD)/sfdc/configure $(CONFIG_SFDC) $(L2)
 
 $(PROJECTS)/sfdc/configure:
-	@cd $(PROJECTS) && git clone -b $(sfdc_BRANCH) --depth 4 $(sfdc_URL)
+	scripts/repos clone sfdc 4
 
 # =================================================
 # vasm
@@ -1344,7 +1334,7 @@ $(BUILD_TOOLS)/vasm/Makefile: $(PROJECTS)/vasm/Makefile $(shell find 2>/dev/null
 	@touch $(BUILD_TOOLS)/vasm/Makefile
 
 $(PROJECTS)/vasm/Makefile:
-	@cd $(PROJECTS) && git clone -b $(vasm_BRANCH) --depth 4 $(vasm_URL)
+	scripts/repos clone vasm 4
 
 # =================================================
 # vbcc
@@ -1370,7 +1360,7 @@ $(BUILD)/vbcc/Makefile: $(PROJECTS)/vbcc/Makefile $(shell find 2>/dev/null $(PRO
 	@touch $(BUILD)/vbcc/Makefile
 
 $(PROJECTS)/vbcc/Makefile:
-	@cd $(PROJECTS) && git clone -b $(vbcc_BRANCH) --depth 4 $(vbcc_URL)
+	scripts/repos clone vbcc 4
 
 # =================================================
 # vlink
@@ -1390,7 +1380,7 @@ $(BUILD)/vlink/Makefile: $(PROJECTS)/vlink/Makefile
 	@rsync -a --no-group $(PROJECTS)/vlink $(BUILD)/ --exclude .git
 
 $(PROJECTS)/vlink/Makefile:
-	@cd $(PROJECTS) && git clone -b $(vlink_BRANCH) --depth 4 $(vlink_URL)
+	scripts/repos clone vlink 4
 
 # Always built, so the toolchain ships its own lha instead of relying
 # on the host: brew only has lhasa, which cannot create archives and
@@ -1422,7 +1412,7 @@ $(BUILD)/lha/Makefile: $(PROJECTS)/lha/configure $(shell find 2>/dev/null $(PROJ
 	$(L0)"configure lha"$(L1) cd $(BUILD)/lha && $(PROJECTS)/lha/configure $(HOST_CONFIGURE) $(L2)
 
 $(PROJECTS)/lha/configure:
-	@cd $(PROJECTS) && git clone -b $(lha_BRANCH) --depth 4 $(lha_URL)
+	scripts/repos clone lha 4
 
 
 .PHONY: vbcc-target
@@ -1633,7 +1623,7 @@ $(BUILD)/_netinclude: $(PROJECTS)/amiga-netinclude/README.md $(BUILD)/ndk-includ
 	@echo "done" >$@
 
 $(PROJECTS)/amiga-netinclude/README.md:
-	@cd $(PROJECTS) && git clone -b $(amiga-netinclude_BRANCH) --depth 4 $(amiga-netinclude_URL)
+	scripts/repos clone amiga-netinclude 4
 
 # =================================================
 # libnix
@@ -1666,7 +1656,7 @@ $(BUILD)/libnix/_done: $(BUILD)/newlib/_done $(BUILD)/ndk-include_ndk $(BUILD)/n
 	@echo "done" >$@
 
 $(PROJECTS)/libnix/Makefile.m68k-amigaos:
-	@cd $(PROJECTS) && git clone -b $(libnix_BRANCH) --depth 4 $(libnix_URL)
+	scripts/repos clone libnix 4
 
 # =================================================
 # gcc libs
@@ -1737,7 +1727,7 @@ $(BUILD)/clib2/_done: $(PROJECTS)/clib2/LICENSE $(shell find 2>/dev/null $(PROJE
 	@echo "done" >$@
 
 $(PROJECTS)/clib2/LICENSE:
-	@cd $(PROJECTS) && git clone -b $(clib2_BRANCH) --depth 4 $(clib2_URL)
+	scripts/repos clone clib2 4
 
 # =================================================
 # libdebug
@@ -1762,8 +1752,8 @@ $(BUILD)/libdebug/Makefile: $(BUILD)/gcc/_libgcc_done $(BUILD)/libnix/_done $(PR
 	$(L0)"configure libdebug"$(L1) cd $(BUILD)/libdebug && LD=$(TARGET)-ld CC=$(TARGET)-gcc AR="$(TARGET_AR_FOR_BUILD)" RANLIB="$(TARGET_RANLIB_FOR_BUILD)" CFLAGS="$(CFLAGS_FOR_TARGET)" $(PROJECTS)/libdebug/configure $(CONFIG_LIBDEBUG) $(L2)
 
 $(PROJECTS)/libdebug/configure:
-	@cd $(PROJECTS) && git clone -b $(libdebug_BRANCH) --depth 4 $(libdebug_URL)
-	@touch -t 0001010000 $(PROJECTS)/libdebug/configure.ac
+	scripts/repos clone libdebug 4
+	touch -t 0001010000 $(PROJECTS)/libdebug/configure.ac
 
 # =================================================
 # libpthread
@@ -1787,7 +1777,7 @@ $(BUILD)/libpthread/Makefile: $(BUILD)/libnix/_done $(PROJECTS)/aros-stuff/pthre
 	touch $(BUILD)/libpthread/Makefile
 
 $(PROJECTS)/aros-stuff/pthreads/Makefile:
-	@cd $(PROJECTS) && git clone -b $(aros-stuff_BRANCH) --depth 4 $(aros-stuff_URL)
+	scripts/repos clone aros-stuff 4
 
 # =================================================
 # newlib
@@ -1854,7 +1844,7 @@ $(BUILD)/newlib/newlib/Makefile: $(PROJECTS)/newlib-cygwin/newlib/configure $(wi
 	; else touch "$(BUILD)/newlib/newlib/Makefile"; fi
 
 $(PROJECTS)/newlib-cygwin/newlib/configure:
-	@cd $(PROJECTS) && git clone -b $(newlib-cygwin_BRANCH) --depth 4 $(newlib-cygwin_URL)
+	scripts/repos clone newlib-cygwin 4
 
 # =================================================
 # ixemul
@@ -1924,7 +1914,7 @@ $(SDKS): sdk-%: sdk/%.sdk libnix | $(LHA_PREREQ)
 #   make release-tag TAG=v16.2-rc18 NOTES=notes.md [CONFIRM=yes]
 .PHONY: release-tag
 release-tag:
-	@PROJECTS=$(PROJECTS) scripts/release-tag "$(TAG)" "$(NOTES)" $(if $(filter yes,$(CONFIRM)),--confirm)
+	scripts/release-tag "$(TAG)" "$(NOTES)" $(if $(filter yes,$(CONFIRM)),--confirm)
 
 # The reviewers of the pull requests merged since the release SINCE, and how
 # many each approved, as a Markdown table for the release notes:
@@ -1932,28 +1922,6 @@ release-tag:
 .PHONY: release-reviewers
 release-reviewers:
 	scripts/release-reviewers "$(SINCE)" $(UNTIL)
-
-# =================================================
-# update repos
-# =================================================
-.PHONY: update-repos
-update-repos:
-	@for i in $(modules); do \
-		url=$$(grep "^$$i[[:blank:]]" .repos | $(SED) -e 's/[[:blank:]]\+/ /g' | cut -d' ' -f2); \
-		bra=$$(grep "^$$i[[:blank:]]" .repos | $(SED) -e 's/[[:blank:]]\+/ /g' | cut -d' ' -f3); \
-		bra=$${bra/$$'\n'} ;\
-		bra=$${bra/$$'\r'} ;\
-		if [ -e projects/$$i ]; then \
-			pushd projects/$$i; \
-			echo setting remote origin from $$(git remote get-url origin) to $$url using branch $$bra.; \
-			git remote remove origin; \
-			git remote add origin $$url; \
-			git remote set-branches origin $$bra; \
-			git pull --depth 4; \
-			git checkout $$bra; \
-			popd; \
-		fi; \
-	done
 
 # =================================================
 # volamos
@@ -2158,8 +2126,8 @@ check-libnix: $(MIN_IF_MISSING) $(SIM_PREREQ)
 # symbols with the installed cross compiler, which sfdc's own CI lacks.
 .PHONY: check-sfdc
 check-sfdc: $(MIN_IF_MISSING) $(BUILD)/sfdc/_done
-	$(MAKE) --no-print-directory -B -C $(PROJECTS)/sfdc/test check check-compile \
-	  SFDC=$(SFDC_FOR_BUILD) CC=$(PREFIX)/bin/$(TARGET)-gcc OUT=$(BUILD)/sfdc/test-out
+	$(L0)"check sfdc"$(L1)$(MAKE) --no-print-directory -B -C $(PROJECTS)/sfdc/test check check-compile \
+	  SFDC=$(SFDC_FOR_BUILD) CC=$(PREFIX)/bin/$(TARGET)-gcc OUT=$(BUILD)/sfdc/test-out$(L2)
 
 # Build libpthread's regression programs for each multilib, check what they
 # link, and run under volamos the ones that pass there.
@@ -2243,11 +2211,13 @@ check-rust: check-gcc-rust
 # The build's own scripts, listed rather than globbed: a glob would also
 # check a file that isn't committed, and with the wrong tool.
 SHELL_SCRIPTS = \
+	scripts/archives \
 	scripts/checkout \
 	scripts/libc-test \
 	scripts/manifest \
 	scripts/release-reviewers \
 	scripts/release-tag \
+	scripts/repos \
 	scripts/sdk-clean \
 	scripts/sdk-download \
 	scripts/sdk-install \
@@ -2319,7 +2289,7 @@ LIBC_TEST_PREREQ = $(if $(filter clib2,$(libc-test-crt)),$(call if-missing,$(BUI
 
 # repos-current: a .repos from before libc-test was a module has no line for it
 $(PROJECTS)/libc-test/Makefile: | repos-current
-	cd $(PROJECTS) && git clone -b $(libc-test_BRANCH) --depth 4 $(libc-test_URL)
+	scripts/repos clone libc-test 4
 
 # + for the jobserver: libc-test's make, which the script runs, shares this one's -j
 .PHONY: check-libc-test
@@ -2345,7 +2315,7 @@ info:
 	$(CXX) -v -E - </dev/null |& grep " version "
 	echo $(BUILD)
 	echo $(PROJECTS)
-	echo MODULES = $(modules)
+	echo MODULES = $$(scripts/repos list | cut -d' ' -f1)
 
 # make -s print-PACKAGE_VERSION prints one variable, for scripts
 print-%:
@@ -2355,7 +2325,7 @@ print-%:
 # writes .manifest.
 .PHONY: b
 b:
-	@PROJECTS=$(PROJECTS) scripts/manifest
+	scripts/manifest
 
 # Check out every module at one point, see scripts/checkout: the tag,
 # branch or commit ref in all of them, or each module's branch as it was at
@@ -2366,26 +2336,10 @@ b:
 v:
 	@scripts/checkout $(if $(ref),ref $(ref),$(if $(date),date "$(date)"))
 
-# change version to the given branch
+# Switch a module to another branch, in .repos and in its checkout
 .PHONY: branch
 branch:
-	@set -e; if [ "" != "$(branch)" ] && [ "1" == "$$(grep -c '^$(mod)[[:blank:]]' .repos)" ]; then \
-		echo $(mod) $(branch) ; \
-	    url=$$(grep '^$(mod)[[:blank:]]' .repos | $(SED) -e 's/[[:blank:]]\+/ /g' | cut -d' ' -f2); \
-	    mv .repos .repos.bak; \
-	    grep -v '^$(mod)[[:blank:]]' .repos.bak > .repos; \
-	    echo "$(mod) $$url $(branch)" >> .repos; \
-	    if [ -d  projects/$(mod) ]; then \
-	      pushd projects/$(mod); \
-	      git remote set-branches --add origin $(branch); \
-	      depth=; test "$$(git rev-parse --is-shallow-repository)" = true && depth="--depth 16"; \
-	      git fetch $$depth origin +refs/heads/$(branch):refs/remotes/origin/$(branch); \
-	      git checkout -B $(branch) refs/remotes/origin/$(branch); \
-	      popd ; \
-	   fi \
-	else \
-		echo "$(mod) $(branch) does NOT exist!"; \
-	fi
+	scripts/repos branch "$(mod)" "$(branch)"
 
 
 # =================================================
