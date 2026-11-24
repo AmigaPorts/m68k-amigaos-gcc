@@ -164,8 +164,6 @@ install_sdk()
 				file=$(basename "$sfd")
 				name=${file%????}
 				run_sfdc --mode=autoopen --target=m68k-amigaos --output="build/$sdk/$name.c" "$prefix/m68k-amigaos/lib/sfd/$name.sfd" || exit 1
-				sed -i.bak -e 's/__inline//g' -e 's/: \"d0\",/:/g' "build/$sdk/$name.c" || exit 1
-				rm "build/$sdk/$name.c.bak"
 				echo "$prefix/bin/m68k-amigaos-gcc" -Os -mcrt=nix20 -fomit-frame-pointer "build/$sdk/$name.c" -c
 				run_target_cc -Os -mcrt=nix20 -fomit-frame-pointer "build/$sdk/$name.c" -c -o "build/$sdk/$name.o" || exit 1
 				echo "$prefix/bin/m68k-amigaos-ar" r "$prefix/m68k-amigaos/lib/libstubs.a" "build/$sdk/$name.o"
@@ -180,8 +178,6 @@ install_sdk()
 				file=$(basename "$sfd")
 				name=${file%????}
 				run_sfdc --mode=stubs --target=m68k-amigaos --output="build/$sdk/lib$sdk.c" "$prefix/m68k-amigaos/lib/sfd/$name.sfd" || exit 1
-				sed -i.bak -e 's/__inline//g' -e 's/: \"d0\",/:/g' "build/$sdk/lib$sdk.c" || exit 1
-				rm "build/$sdk/lib$sdk.c.bak"
 				echo "$prefix/bin/m68k-amigaos-gcc" -Os -mcrt=nix20 -fomit-frame-pointer "build/$sdk/lib$sdk.c" -c
 				run_target_cc -Os -mcrt=nix20 -fomit-frame-pointer "build/$sdk/lib$sdk.c" -c -o "build/$sdk/lib$sdk.o" || exit 1
 				echo "$prefix/bin/m68k-amigaos-ar" r "$prefix/m68k-amigaos/lib/lib$sdk.a" "build/$sdk/lib$sdk.o"
@@ -192,8 +188,6 @@ install_sdk()
 				file=$(basename "$sfd")
 				name=${file%????}
 				run_sfdc --mode=stubs --target=m68k-amigaos --output="build/$sdk/lib$sdk.c" "$prefix/m68k-amigaos/lib/sfd/$name.sfd" || exit 1
-				sed -i.bak -e 's/__inline//g' -e 's/: \"d0\",/:/g' "build/$sdk/lib$sdk.c" || exit 1
-				rm "build/$sdk/lib$sdk.c.bak"
 			;;
 			libc)
 				echo "$prefix/bin/m68k-amigaos-gcc" -Os -mcrt=nix20 -fomit-frame-pointer "build/$sdk/lib$sdk.c" -c
@@ -205,14 +199,6 @@ install_sdk()
 			redirinc)
 				echo "creating redirecting header $prefix/m68k-amigaos/include/${a[1]}"
 				echo "#include \"${a[2]}\"" >"$prefix/m68k-amigaos/include/${a[1]}"
-			;;
-			sed)
-				x=${a[*]:2}
-				x=${x##\"}
-				x=${x%%\"}
-				echo applying: sed -i.bak -E \""$x"\" "$prefix/${a[1]}"
-				LC_CTYPE=C sed -i.bak -E "$x" "$prefix/${a[1]}"
-				rm "$prefix/${a[1]}.bak"
 			;;
 			symlink)
 				echo "creating symlink from $prefix/m68k-amigaos/${a[2]} to ${a[1]}"
