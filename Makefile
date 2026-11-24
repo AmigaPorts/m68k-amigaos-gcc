@@ -1408,7 +1408,6 @@ $(BUILD)/vbcc_target_m68k-amigaos/_unpacked: $(DOWNLOAD)/vbcc_target_m68k-amigao
 
 NDK_INCLUDE = $(shell find 2>/dev/null $(PROJECTS)/$(NDK_FOLDER_NAME_H) -type f)
 NDK_INCLUDE_SFD = $(shell find 2>/dev/null $(PROJECTS)/$(NDK_FOLDER_NAME_SFD) -type f -name '*.sfd')
-NDK_FD2PRAGMA_PREREQ := $(BUILD)/fd2pragma/_done
 NDK_INCLUDE_INLINE = $(patsubst $(PROJECTS)/$(NDK_FOLDER_NAME_SFD)/%_lib.sfd,$(PREFIX)/$(TARGET)/ndk-include/inline/%.h,$(NDK_INCLUDE_SFD))
 NDK_INCLUDE_INLINE_VBCC = $(patsubst $(PROJECTS)/$(NDK_FOLDER_NAME_SFD)/%_lib.sfd,$(PREFIX)/$(TARGET)/ndk-include/inline/%_protos.h,$(NDK_INCLUDE_SFD))
 NDK_INCLUDE_LVO    = $(patsubst $(PROJECTS)/$(NDK_FOLDER_NAME_SFD)/%_lib.sfd,$(PREFIX)/$(TARGET)/ndk-include/lvo/%_lib.i,$(NDK_INCLUDE_SFD))
@@ -1433,15 +1432,16 @@ SYS_INCLUDE2 = $(filter-out $(NDK_INCLUDE_PROTO),$(patsubst $(PROJECTS)/$(NDK_FO
 .PHONY: ndk
 ndk: $(BUILD)/ndk-include_ndk
 
-$(BUILD)/ndk-include_ndk: $(BUILD)/ndk-include_ndk0 $(NDK_INCLUDE_INLINE) $(NDK_INCLUDE_INLINE_VBCC) $(NDK_INCLUDE_LVO) $(NDK_INCLUDE_PROTO) $(PROJECTS)/fd2pragma/makefile
+$(BUILD)/ndk-include_ndk: $(BUILD)/ndk-include_ndk0 $(NDK_INCLUDE_INLINE) $(NDK_INCLUDE_INLINE_VBCC) $(NDK_INCLUDE_LVO) $(NDK_INCLUDE_PROTO)
 	$(MAKE) --no-print-directory ndk_inc=1 ndk-proto ndk-lvo ndk-inline ndk-inline-vbcc
 	@echo "sfdc: inline, vbcc inline, lvo and proto headers for $(words $(NDK_INCLUDE_SFD)) libraries; details in $(SFDC_LOG)"
 	@mkdir -p $(BUILD)/ndk-include/
 	@echo "done" >$@
 
-# inline/alib.h is fd2sfd's, kept in patches/; inline/macros.h and
-# inline/stubs.h come from fd2pragma.
-$(BUILD)/ndk-include_ndk0: $(PROJECTS)/$(NDK_FOLDER_NAME)/_unpacked $(NDK_INCLUDE) $(NDK_FD2PRAGMA_PREREQ)
+# inline/alib.h is fd2sfd's, and inline/macros.h and inline/stubs.h are
+# fd2pragma's, kept in patches/: older inline headers and third-party SDKs
+# use their LPn() macros.
+$(BUILD)/ndk-include_ndk0: $(PROJECTS)/$(NDK_FOLDER_NAME)/_unpacked $(NDK_INCLUDE)
 	@mkdir -p $(PREFIX)/$(TARGET)/ndk-include
 	@rsync -a --no-group $(PROJECTS)/$(NDK_FOLDER_NAME_H)/* $(PREFIX)/$(TARGET)/ndk-include --exclude proto --exclude inline
 	$(L0)"STDARGing ndk"$(L1) for i in $$(find $(PREFIX)/$(TARGET)/ndk-include/clib/*protos.h -type f); do \
@@ -1460,8 +1460,8 @@ $(BUILD)/ndk-include_ndk0: $(PROJECTS)/$(NDK_FOLDER_NAME)/_unpacked $(NDK_INCLUD
 	@install -p -m 644 $(PROJECTS)/$(NDK_FOLDER_NAME_H)/proto/cardres.h $(PREFIX)/$(TARGET)/ndk-include/proto
 	@mkdir -p $(PREFIX)/$(TARGET)/ndk-include/inline
 	install -p -m 644 $(PROJECTS)/$(NDK_FOLDER_NAME_H)/inline/alib.h $(PREFIX)/$(TARGET)/ndk-include/inline
-	@install -p -m 644 $(PROJECTS)/fd2pragma/Include/inline/stubs.h $(PREFIX)/$(TARGET)/ndk-include/inline
-	@install -p -m 644 $(PROJECTS)/fd2pragma/Include/inline/macros.h $(PREFIX)/$(TARGET)/ndk-include/inline
+	install -p -m 644 $(PROJECTS)/$(NDK_FOLDER_NAME_H)/inline/stubs.h $(PREFIX)/$(TARGET)/ndk-include/inline
+	install -p -m 644 $(PROJECTS)/$(NDK_FOLDER_NAME_H)/inline/macros.h $(PREFIX)/$(TARGET)/ndk-include/inline
 	@mkdir -p $(BUILD)/ndk-include/
 	@echo "done" >$@
 
