@@ -317,7 +317,7 @@ jobs:
         if: inputs.repos != ''
         env:
           REPOS: ${{ inputs.repos }}
-        run: sh .github/scripts/override-repos.sh
+        run: .github/scripts/override-repos.sh
 
       - name: Fetch sources
         run: make update
@@ -551,7 +551,7 @@ jobs:
         env:
           REPOS: ${{ inputs.repos }}
         run: |
-          [ -z "$REPOS" ] || sh .github/scripts/override-repos.sh
+          [ -z "$REPOS" ] || .github/scripts/override-repos.sh
           make update
           make gcc-prerequisites
           make -j "$(nproc)" all
@@ -683,7 +683,7 @@ jobs:
         env:
           REPOS: ${{ inputs.repos }}
         run: |
-          [ -z "$REPOS" ] || sh .github/scripts/override-repos.sh
+          [ -z "$REPOS" ] || .github/scripts/override-repos.sh
           make update
           make -j "$(nproc)" all
           make -j 4 all-sdk
