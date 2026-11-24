@@ -152,31 +152,12 @@ install_sdk()
 				name=${file%????}
 				mkdir -p "$prefix/m68k-amigaos/include/proto/"
 				rm "$prefix/m68k-amigaos/include/proto/$name.h"
-				run_sfdc --mode=proto --target=m68k-gcc-amigaos --output="$prefix/m68k-amigaos/include/proto/$name.h" "$prefix/m68k-amigaos/lib/sfd/$sfd" || exit 1
-				sed -i.bak -e 's/\(<clib\/.*>\)/\L\1/' -e 's/\(<defines\/.*>\)/\L\1/' -e 's/\(<inline\/.*>\)/\L\1/' -e 's/\(<pragmas\/.*>\)/\L\1/' "$prefix/m68k-amigaos/include/proto/$name.h"
-				rm "$prefix/m68k-amigaos/include/proto/$name.h.bak"
+				run_sfdc --mode=proto --target=m68k-gcc-amigaos --headername="$name" --output="$prefix/m68k-amigaos/include/proto/$name.h" "$prefix/m68k-amigaos/lib/sfd/$sfd" || exit 1
 				mkdir -p "$prefix/m68k-amigaos/include/inline/"
-				run_sfdc --mode=macros --target=m68k-gcc-amigaos --output="$prefix/m68k-amigaos/include/inline/$name.h" "$prefix/m68k-amigaos/lib/sfd/$sfd" || exit 1
-				# sfdc derives the proto include from the SFD basename, which
-				# need not match the proto/<name>.h generated above - fix it up
-				sed -i -e "s|#include <proto/.*\.h>|#include <proto/$name.h>|" "$prefix/m68k-amigaos/include/inline/$name.h"
-				# The proto header includes the vbcc inline header under the
-				# library's base name (muimaster for muimaster_lib.sfd), so
-				# write it under the name the proto header asks for
-				vbcc_inline=$(sed -n 's|^# *include <inline/\(.*_protos\.h\)>.*|\1|p' "$prefix/m68k-amigaos/include/proto/$name.h")
-				vbcc_inline=${vbcc_inline:-${name}_protos.h}
-				run_sfdc --mode=macros --target=m68kvbcc-amigaos --output="$prefix/m68k-amigaos/include/inline/$vbcc_inline" "$prefix/m68k-amigaos/lib/sfd/$sfd" || exit 1
+				run_sfdc --mode=macros --target=m68k-gcc-amigaos --headername="$name" --output="$prefix/m68k-amigaos/include/inline/$name.h" "$prefix/m68k-amigaos/lib/sfd/$sfd" || exit 1
+				run_sfdc --mode=macros --target=m68kvbcc-amigaos --output="$prefix/m68k-amigaos/include/inline/${name}_protos.h" "$prefix/m68k-amigaos/lib/sfd/$sfd" || exit 1
 				mkdir -p "$prefix/m68k-amigaos/include/lvo/"
 				run_sfdc --mode=lvo --target=m68k-amigaos --output="$prefix/m68k-amigaos/include/lvo/$name.i" "$prefix/m68k-amigaos/lib/sfd/$sfd" || exit 1
-				if [ "${a[2]}" != "" ] && [ "${a[3]}" != "" ]; then
-					echo "fixup names from ${a[2]} to ${a[3]}"
-					echo sed -i.bak -e "s/${a[2]}/${a[3]}/" "$prefix/m68k-amigaos/include/proto/$name.h"
-					sed -i.bak -e "s/${a[2]}/${a[3]}/" "$prefix/m68k-amigaos/include/proto/$name.h"
-					sed -i.bak -e "s/${a[2]}/${a[3]}/" "$prefix/m68k-amigaos/include/lvo/$name.i"
-					sed -i.bak -e "s/${a[2]}/${a[3]}/" "$prefix/m68k-amigaos/include/inline/$name.h"
-					sed -i.bak -e "s/${a[2]}/${a[3]}/" "$prefix/m68k-amigaos/include/inline/$vbcc_inline"
-					rm "$prefix/m68k-amigaos/include/proto/$name.h.bak" "$prefix/m68k-amigaos/include/lvo/$name.i.bak" "$prefix/m68k-amigaos/include/inline/$name.h.bak" "$prefix/m68k-amigaos/include/inline/$vbcc_inline.bak"
-				fi
 			;;
 			stubs)
 				sfd=${a[1]}
