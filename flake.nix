@@ -23,10 +23,6 @@
       url = "github:AmigaPorts/fd2pragma/master";
       flake = false;
     };
-    fd2sfd = {
-      url = "github:AmigaPorts/fd2sfd/master";
-      flake = false;
-    };
     gcc = {
       url = "github:AmigaPorts/gcc/amiga16.2";
       flake = false;
