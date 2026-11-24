@@ -90,5 +90,7 @@ done
 
 # Only once every checked-out module has REF: the ref column, for the
 # modules make update still has to clone.  The columns stay aligned.
-[ "$mode" != ref ] ||
-	sed -i -e "/^[[:blank:]]*#/! s|^\([^[:blank:]]\+[[:blank:]]\+[^[:blank:]]\+[[:blank:]]\+\)[^[:blank:]]\+|\1$arg|" .repos
+if [ "$mode" = ref ]; then
+	sed -i.bak -E "/^[[:blank:]]*#/!s|^([^[:blank:]]+[[:blank:]]+[^[:blank:]]+[[:blank:]]+)[^[:blank:]]+|\1$arg|" .repos
+	rm .repos.bak
+fi
