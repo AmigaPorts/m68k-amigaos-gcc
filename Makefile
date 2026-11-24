@@ -60,7 +60,7 @@ else
 endif
 
 UNAME_S := $(shell uname -s)
-BUILD := $(shell pwd)/build-$(UNAME_S)-$(TARGET)
+BUILD := $(CURDIR)/build-$(UNAME_S)-$(TARGET)
 ifneq (,$(strip $(HOST)))
   BUILD := $(BUILD)-$(HOST)
 endif
@@ -268,23 +268,23 @@ ifneq (,$(strip $(TARGET_EXEC_WRAPPER_DIR)))
 $(TARGET_EXEC_WRAPPERS): $(TARGET_BUILD_TOOLS_PREREQ)
 
 $(TARGET_EXEC_WRAPPER_DIR)/%:
-	@mkdir -p $(@D)
-	@test -x "$(TARGET_EXEC_PREFIX_FOR_BUILD)$*"
-	@ln -sf "$(TARGET_EXEC_PREFIX_FOR_BUILD)$*" $@
+	mkdir -p $(@D)
+	test -x "$(TARGET_EXEC_PREFIX_FOR_BUILD)$*"
+	ln -sf "$(TARGET_EXEC_PREFIX_FOR_BUILD)$*" $@
 
 $(TARGET_COMPILER_WRAPPERS): $(TARGET_COMPILER_WRAPPER_DIR)/$(TARGET)-%: $(TARGET_EXEC_WRAPPERS) Makefile
-	@mkdir -p $(@D)
-	@test -x "$(TARGET_EXEC_PREFIX_FOR_BUILD)$*"
-	@test -n "$(TARGET_GCC_INCLUDE_FOR_BUILD)"
-	@printf '%s\n' '#!/bin/sh' 'exec "$(TARGET_EXEC_PREFIX_FOR_BUILD)$*" -B"$(TARGET_EXEC_WRAPPER_DIR)/" -B"$(PREFIX)/lib/gcc/$(TARGET)/$(GCC_DIR_VERSION)/" -B"$(PREFIX)/$(TARGET)/lib/" -isystem "$(TARGET_GCC_INCLUDE_FOR_BUILD)" "$$@"' >$@
-	@chmod +x $@
+	mkdir -p $(@D)
+	test -x "$(TARGET_EXEC_PREFIX_FOR_BUILD)$*"
+	test -n "$(TARGET_GCC_INCLUDE_FOR_BUILD)"
+	printf '%s\n' '#!/bin/sh' 'exec "$(TARGET_EXEC_PREFIX_FOR_BUILD)$*" -B"$(TARGET_EXEC_WRAPPER_DIR)/" -B"$(PREFIX)/lib/gcc/$(TARGET)/$(GCC_DIR_VERSION)/" -B"$(PREFIX)/$(TARGET)/lib/" -isystem "$(TARGET_GCC_INCLUDE_FOR_BUILD)" "$$@"' >$@
+	chmod +x $@
 
 $(TARGET_PREFIXED_EXEC_WRAPPERS): $(TARGET_COMPILER_WRAPPER_DIR)/$(TARGET)-%: $(TARGET_EXEC_WRAPPER_DIR)/%
-	@mkdir -p $(@D)
-	@ln -sf "$<" $@
+	mkdir -p $(@D)
+	ln -sf "$<" $@
 endif
-PROJECTS := $(shell pwd)/projects
-DOWNLOAD := $(shell pwd)/download
+PROJECTS := $(CURDIR)/projects
+DOWNLOAD := $(CURDIR)/download
 __BUILDDIR := $(shell mkdir -p $(BUILD))
 
 # Don't build and install the texinfo documentation, which isn't very
@@ -367,7 +367,7 @@ $(foreach a,$(archive_table),$(eval $(call archive_vars,$(subst |, ,$(a)))))
 # archive's .sha256 note and returns at once, and nothing downstream is remade.
 define archive_rules
 $(DOWNLOAD)/$($(1)_ARCHIVE): default-archives
-	@$(PWD)/scripts/sdk-download --sha256 $($(1)_SHA256) $$@ $($(1)_URLS)
+	$(CURDIR)/scripts/sdk-download --sha256 $($(1)_SHA256) $$@ $($(1)_URLS)
 endef
 $(foreach arch,$(archives),$(eval $(call archive_rules,$(arch))))
 
@@ -1904,7 +1904,7 @@ all-sdk: $(SDKS)
 
 # a static pattern rule: make skips the implicit rule search for phony targets
 $(SDKS): sdk-%: sdk/%.sdk libnix | $(LHA_PREREQ)
-	$(L0)"sdk $*"$(L1) HOST_RUNNER="$(HOST_RUNNER)" EXEEXT="$(EXEEXT)" TARGET_CC_FOR_BUILD="$(TARGET_CC_FOR_BUILD)" TARGET_AR_FOR_BUILD="$(TARGET_AR_FOR_BUILD)" FD2SFD_FOR_BUILD="$(FD2SFD_FOR_BUILD)" SFDC_FOR_BUILD="$(SFDC_FOR_BUILD)" LHA_FOR_BUILD="$(LHA_FOR_BUILD)" $(PWD)/scripts/sdk-install $* $(PREFIX) $(L2)
+	$(L0)"sdk $*"$(L1) HOST_RUNNER="$(HOST_RUNNER)" EXEEXT="$(EXEEXT)" TARGET_CC_FOR_BUILD="$(TARGET_CC_FOR_BUILD)" TARGET_AR_FOR_BUILD="$(TARGET_AR_FOR_BUILD)" FD2SFD_FOR_BUILD="$(FD2SFD_FOR_BUILD)" SFDC_FOR_BUILD="$(SFDC_FOR_BUILD)" LHA_FOR_BUILD="$(LHA_FOR_BUILD)" $(CURDIR)/scripts/sdk-install $* $(PREFIX) $(L2)
 
 # =================================================
 # tag a release
