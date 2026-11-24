@@ -226,11 +226,11 @@
     "sfdc": {
       "flake": false,
       "locked": {
-        "lastModified": 1795495909,
-        "narHash": "sha256-2fHYCIsaTWY/B9Nt5QJEm14ToUp2aY1Oojb1CY9U2tE=",
+        "lastModified": 1795498246,
+        "narHash": "sha256-2OleIN5GVMSHUoKO2yxixmB4aK3hc9b70+soIctsmeg=",
         "owner": "AmigaPorts",
         "repo": "sfdc",
-        "rev": "2de127e7f805199b0c547f23be9df284c5ed8a33",
+        "rev": "e6353c61efbc1f2837695fd5bd72d4257ec2f25f",
         "type": "github"
       },
       "original": {
