@@ -406,11 +406,10 @@ endif
 
 # gcc's thread model for C++ thread_local, std::thread, the static-local
 # guards and libgcc's emutls: amigaos, the default, runs threads as DOS
-# processes and locks with the inline benaphore; posix goes through
-# libpthread, which every C++ program then links; no is the single-task model.
-# Both thread models need gcc's <benaphore.h>, from 16.2 on, so an older gcc
-# defaults to no and stops with another THREADS.  Before make update has
-# cloned gcc there is no tree to look at.
+# processes and locks with the inline benaphore; no is the single-task model.
+# amigaos needs gcc's <benaphore.h>, from 16.2 on, so an older gcc defaults
+# to no and stops with amigaos.  Before make update has cloned gcc there is
+# no tree to look at.
 GCC_HAS_THREADS := $(if $(wildcard $(PROJECTS)/gcc/gcc/BASE-VER),$(wildcard \
 	$(PROJECTS)/gcc/gcc/config/m68k/benaphore.h),yes)
 THREADS ?= $(if $(GCC_HAS_THREADS),amigaos,no)
@@ -433,6 +432,10 @@ ifneq ($(NEWLIB_H),)
 endif
 
 ifeq ($(filter $(NO_PREFIX_GOALS),$(GOALS)),)
+  ifeq ($(filter no amigaos,$(THREADS)),)
+    $(error THREADS=$(THREADS): use amigaos or no)
+  endif
+
   ifeq ($(GCC_HAS_THREADS),)
     ifneq ($(THREADS),no)
       $(error THREADS=$(THREADS) needs gcc 16.2 or later; gcc $(GCC_VERSION) builds with THREADS=no)
