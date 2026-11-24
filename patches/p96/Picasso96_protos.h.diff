@@ -1,0 +1,14 @@
+--- Picasso96Develop/Include/clib/Picasso96_protos.h	2026-11-24 14:00:23.839899649 +0900
++++ Picasso96Develop/Include/clib/Picasso96_protos.h	2026-11-24 14:00:23.866899221 +0900
+@@ -52,10 +52,9 @@
+ LONG p96PIP_GetTagList(struct Window *Window, struct TagItem *Tags);
+ LONG p96PIP_GetTags(struct Window *Window, ULONG Tags, ...);
+ 
+-/* obsolete, no longer needed (GetMsg and ReplyMsg will do from now on...)
++/* obsolete, no longer needed (GetMsg and ReplyMsg will do from now on...) */
+ struct IntuiMessage *p96PIP_GetIMsg(struct MsgPort *Port);
+ void p96PIP_ReplyIMsg(struct IntuiMessage *IntuiMessage);
+-*/
+ 
+ LONG p96GetRTGDataTagList(struct TagItem *tags);
+ LONG p96GetRTGDataTags(ULONG Tags, ...);
