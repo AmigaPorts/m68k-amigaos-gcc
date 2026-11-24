@@ -39,7 +39,7 @@ run_sfdc()
 
 run_fd2sfd()
 {
-	"${FD2SFD_FOR_BUILD:-$prefix/bin/fd2sfd${EXEEXT}}" "$@"
+	"${FD2SFD_FOR_BUILD:-$prefix/bin/fd2sfd}" "$@"
 }
 
 run_target_cc()

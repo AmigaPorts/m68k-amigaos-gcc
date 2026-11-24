@@ -11,7 +11,8 @@ Currently, these tools are bundled:
 * binutils with Hunk binary format support
 * gcc with frontends for C/C++/ObjC; the experimental Rust frontend (gccrs) builds with `make ADDLANG=rust` (see [examples/rust](examples/rust/))
 * libnix, newlib, clib2
-* sfdc, fd2sfd, fd2pragma
+* sfdc, with fd2sfd for FD files
+* fd2pragma
 * vbcc, vasm, vlink
 * ira (m68k reassembler)
 * zlib, libpng, freetype

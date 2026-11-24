@@ -525,7 +525,7 @@ help:
 	echo
 	echo "make all                 build and install all"
 	echo "make min                 build only the compiler and its runtimes (no gdb, gprof, libnix4.library)"
-	echo "make <target>            builds a target: binutils, gcc, gprof, fd2sfd, fd2pragma, ira, sfdc, vasm, vbcc, vlink, libnix, ixemul, libgcc, clib2, libdebug, libpthread, ndk, ndk13"
+	echo "make <target>            builds a target: binutils, gcc, gprof, fd2pragma, ira, sfdc, vasm, vbcc, vlink, libnix, ixemul, libgcc, clib2, libdebug, libpthread, ndk, ndk13"
 	echo "make clean               remove the build folder"
 	echo "make clean-<target>      remove the target's build folder"
 	echo "make drop-prefix         remove all content from the prefix folder"
@@ -560,7 +560,7 @@ else
 endif
 
 .PHONY: all
-all: gcc binutils $(ALL_GDB) gprof fd2sfd fd2pragma ira sfdc vasm libnix ixemul libgcc clib2 libdebug libpthread ndk ndk13 libnix4.library
+all: gcc binutils $(ALL_GDB) gprof fd2pragma ira sfdc vasm libnix ixemul libgcc clib2 libdebug libpthread ndk ndk13 libnix4.library
 	@echo "Creating .manifest..."
 	@$(MAKE) --no-print-directory manifest
 
@@ -590,7 +590,7 @@ build-target-tools: $(TARGET_BUILD_TOOLS_PREREQ)
 # clean
 # =================================================
 .PHONY: clean
-clean: clean-gcc clean-binutils clean-fd2sfd clean-lha clean-fd2pragma clean-ira clean-sfdc clean-vasm clean-vbcc clean-vlink clean-libnix clean-ixemul clean-clib2 clean-libdebug clean-libpthread clean-newlib clean-ndk clean-gmp clean-mpc clean-mpfr
+clean: clean-gcc clean-binutils clean-lha clean-fd2pragma clean-ira clean-sfdc clean-vasm clean-vbcc clean-vlink clean-libnix clean-ixemul clean-clib2 clean-libdebug clean-libpthread clean-newlib clean-ndk clean-gmp clean-mpc clean-mpfr
 	rm -rf $(BUILD)
 	rm -rf *.log
 	mkdir -p $(BUILD)
@@ -623,10 +623,6 @@ clean-binutils:
 .PHONY: clean-gprof
 clean-gprof:
 	rm -rf $(BUILD)/binutils/gprof
-
-.PHONY: clean-fd2sfd
-clean-fd2sfd:
-	rm -rf $(BUILD)/fd2sfd
 
 .PHONY: clean-fd2pragma
 clean-fd2pragma:
@@ -746,7 +742,7 @@ repos-current:
 	scripts/repos current
 
 .PHONY: update
-update: repos-current update-gcc update-binutils update-fd2sfd update-lha update-fd2pragma update-ira update-sfdc update-vasm update-vbcc update-vlink update-libnix update-clib2 update-libc-test update-libdebug update-libpthread update-ndk update-newlib update-netinclude
+update: repos-current update-gcc update-binutils update-lha update-fd2pragma update-ira update-sfdc update-vasm update-vbcc update-vlink update-libnix update-clib2 update-libc-test update-libdebug update-libpthread update-ndk update-newlib update-netinclude
 
 # Each pulls a module checkout forward; see scripts/update-module.
 .PHONY: update-gcc
@@ -756,10 +752,6 @@ update-gcc: $(PROJECTS)/gcc/configure
 .PHONY: update-binutils
 update-binutils: $(PROJECTS)/binutils/configure
 	@scripts/update-module $(PROJECTS)/binutils
-
-.PHONY: update-fd2sfd
-update-fd2sfd: $(PROJECTS)/fd2sfd/configure
-	@scripts/update-module $(PROJECTS)/fd2sfd
 
 .PHONY: update-lha
 update-lha: $(PROJECTS)/lha/configure
@@ -1167,45 +1159,6 @@ $(TARGET_BUILD_TOOLS_BUILD)/gcc/Makefile: Makefile $(PROJECTS)/gcc/configure $(P
 endif
 
 # =================================================
-# fd2sfd
-# =================================================
-CONFIG_FD2SFD := --prefix=$(PREFIX) --target=$(TARGET) $(HOST_CONFIGURE)
-ifneq (,$(strip $(HOST)))
-FD2SFD_INSTALL_ARGS := INSTALL_PROGRAM="install --strip-program=$(HOST)-strip"
-FD2SFD_BUILD_PREREQ := $(BUILD_TOOLS)/fd2sfd/_done
-endif
-
-.PHONY: fd2sfd
-fd2sfd: $(BUILD)/fd2sfd/_done $(FD2SFD_BUILD_PREREQ)
-
-$(BUILD)/fd2sfd/_done: $(PREFIX)/bin/fd2sfd$(EXEEXT)
-	@echo "done" >$@
-
-$(PREFIX)/bin/fd2sfd$(EXEEXT): $(BUILD)/fd2sfd/Makefile $(shell find 2>/dev/null $(PROJECTS)/fd2sfd -not \( -path $(PROJECTS)/fd2sfd/.git -prune \) -type f)
-	$(L0)"make fd2sfd"$(L1) $(MAKE) -C $(BUILD)/fd2sfd all $(L2)
-	@mkdir -p $(PREFIX)/bin/
-	$(L0)"install fd2sfd"$(L1) $(MAKE) -C $(BUILD)/fd2sfd install $(FD2SFD_INSTALL_ARGS) $(L2)
-
-$(BUILD)/fd2sfd/Makefile: $(PROJECTS)/fd2sfd/configure
-	@mkdir -p $(BUILD)/fd2sfd
-	$(L0)"configure fd2sfd"$(L1) cd $(BUILD)/fd2sfd && $(E) $(PROJECTS)/fd2sfd/configure $(CONFIG_FD2SFD) $(L2)
-
-$(BUILD_TOOLS)/fd2sfd/_done: $(BUILD_TOOLS_PREFIX)/bin/fd2sfd
-	@echo "done" >$@
-
-$(BUILD_TOOLS_PREFIX)/bin/fd2sfd: $(BUILD_TOOLS)/fd2sfd/Makefile $(shell find 2>/dev/null $(PROJECTS)/fd2sfd -not \( -path $(PROJECTS)/fd2sfd/.git -prune \) -type f)
-	$(L0)"make fd2sfd for the build machine"$(L1) $(MAKE) -C $(BUILD_TOOLS)/fd2sfd all CC="$(BUILD_CC)" CFLAGS="$(BUILD_CFLAGS)" $(L2)
-	@mkdir -p $(BUILD_TOOLS_PREFIX)/bin
-	$(L0)"install build-machine fd2sfd"$(L1) $(MAKE) -C $(BUILD_TOOLS)/fd2sfd install $(L2)
-
-$(BUILD_TOOLS)/fd2sfd/Makefile: $(PROJECTS)/fd2sfd/configure
-	@mkdir -p $(BUILD_TOOLS)/fd2sfd
-	$(L0)"configure fd2sfd for the build machine"$(L1) cd $(BUILD_TOOLS)/fd2sfd && CC="$(BUILD_CC)" CFLAGS="$(BUILD_CFLAGS)" $(PROJECTS)/fd2sfd/configure --prefix=$(BUILD_TOOLS_PREFIX) --target=$(TARGET) $(L2)
-
-$(PROJECTS)/fd2sfd/configure:
-	scripts/repos clone fd2sfd 4
-
-# =================================================
 # fd2pragma
 # =================================================
 ifneq (,$(findstring amigaos,$(HOST)))
@@ -1263,20 +1216,22 @@ $(PROJECTS)/ira/Makefile:
 	scripts/repos clone ira 4
 
 # =================================================
-# sfdc
+# sfdc, with its fd2sfd script.  sfdc's fd2pragma script stays out until
+# the C fd2pragma goes.
 # =================================================
 CONFIG_SFDC := --prefix=$(PREFIX) --target=$(TARGET)
+SFDC_SCRIPTS := $(PREFIX)/bin/sfdc $(PREFIX)/bin/fd2sfd
 
 .PHONY: sfdc
 sfdc: $(BUILD)/sfdc/_done
 
-$(BUILD)/sfdc/_done: $(PREFIX)/bin/sfdc
-	@echo "done" >$@
+$(BUILD)/sfdc/_done: $(SFDC_SCRIPTS)
+	echo "done" >$@
 
-$(PREFIX)/bin/sfdc: $(BUILD)/sfdc/Makefile
-	$(L0)"make sfdc"$(L1) $(MAKE) -C $(BUILD)/sfdc sfdc $(L2)
-	@mkdir -p $(PREFIX)/bin/
-	$(L0)"install sfdc"$(L1) install $(BUILD)/sfdc/sfdc $(PREFIX)/bin $(L2)
+$(SFDC_SCRIPTS): $(BUILD)/sfdc/Makefile
+	$(L0)"make $(@F)"$(L1) $(MAKE) -C $(BUILD)/sfdc $(@F) $(L2)
+	mkdir -p $(PREFIX)/bin/
+	$(L0)"install $(@F)"$(L1) install $(BUILD)/sfdc/$(@F) $(PREFIX)/bin $(L2)
 
 $(BUILD)/sfdc/Makefile: $(PROJECTS)/sfdc/configure $(shell find 2>/dev/null $(PROJECTS)/sfdc -not \( -path $(PROJECTS)/sfdc/.git -prune \)  -type f)
 	@rsync -a --no-group $(PROJECTS)/sfdc $(BUILD)/ --exclude .git
@@ -1393,11 +1348,7 @@ else
 LHA_PREREQ :=
 LHA_FOR_BUILD ?= $(shell command -v lha 2>/dev/null)
 endif
-ifneq (,$(strip $(HOST)))
-FD2SFD_FOR_BUILD ?= $(BUILD_TOOLS_PREFIX)/bin/fd2sfd
-else
-FD2SFD_FOR_BUILD ?= $(PREFIX)/bin/fd2sfd$(EXEEXT)
-endif
+FD2SFD_FOR_BUILD ?= $(PREFIX)/bin/fd2sfd
 SFDC_FOR_BUILD ?= $(PREFIX)/bin/sfdc
 
 .PHONY: lha
@@ -1458,11 +1409,6 @@ $(BUILD)/vbcc_target_m68k-amigaos/_unpacked: $(DOWNLOAD)/vbcc_target_m68k-amigao
 NDK_INCLUDE = $(shell find 2>/dev/null $(PROJECTS)/$(NDK_FOLDER_NAME_H) -type f)
 NDK_INCLUDE_SFD = $(shell find 2>/dev/null $(PROJECTS)/$(NDK_FOLDER_NAME_SFD) -type f -name '*.sfd')
 NDK_FD2PRAGMA_PREREQ := $(BUILD)/fd2pragma/_done
-ifneq (,$(strip $(HOST)))
-NDK_FD2SFD_PREREQ := $(BUILD_TOOLS)/fd2sfd/_done
-else
-NDK_FD2SFD_PREREQ := $(BUILD)/fd2sfd/_done
-endif
 NDK_INCLUDE_INLINE = $(patsubst $(PROJECTS)/$(NDK_FOLDER_NAME_SFD)/%_lib.sfd,$(PREFIX)/$(TARGET)/ndk-include/inline/%.h,$(NDK_INCLUDE_SFD))
 NDK_INCLUDE_INLINE_VBCC = $(patsubst $(PROJECTS)/$(NDK_FOLDER_NAME_SFD)/%_lib.sfd,$(PREFIX)/$(TARGET)/ndk-include/inline/%_protos.h,$(NDK_INCLUDE_SFD))
 NDK_INCLUDE_LVO    = $(patsubst $(PROJECTS)/$(NDK_FOLDER_NAME_SFD)/%_lib.sfd,$(PREFIX)/$(TARGET)/ndk-include/lvo/%_lib.i,$(NDK_INCLUDE_SFD))
@@ -1487,13 +1433,15 @@ SYS_INCLUDE2 = $(filter-out $(NDK_INCLUDE_PROTO),$(patsubst $(PROJECTS)/$(NDK_FO
 .PHONY: ndk
 ndk: $(BUILD)/ndk-include_ndk
 
-$(BUILD)/ndk-include_ndk: $(BUILD)/ndk-include_ndk0 $(NDK_INCLUDE_INLINE) $(NDK_INCLUDE_INLINE_VBCC) $(NDK_INCLUDE_LVO) $(NDK_INCLUDE_PROTO) $(PROJECTS)/fd2sfd/configure $(PROJECTS)/fd2pragma/makefile
+$(BUILD)/ndk-include_ndk: $(BUILD)/ndk-include_ndk0 $(NDK_INCLUDE_INLINE) $(NDK_INCLUDE_INLINE_VBCC) $(NDK_INCLUDE_LVO) $(NDK_INCLUDE_PROTO) $(PROJECTS)/fd2pragma/makefile
 	$(MAKE) --no-print-directory ndk_inc=1 ndk-proto ndk-lvo ndk-inline ndk-inline-vbcc
 	@echo "sfdc: inline, vbcc inline, lvo and proto headers for $(words $(NDK_INCLUDE_SFD)) libraries; details in $(SFDC_LOG)"
 	@mkdir -p $(BUILD)/ndk-include/
 	@echo "done" >$@
 
-$(BUILD)/ndk-include_ndk0: $(PROJECTS)/$(NDK_FOLDER_NAME)/_unpacked $(NDK_INCLUDE) $(NDK_FD2SFD_PREREQ) $(NDK_FD2PRAGMA_PREREQ)
+# inline/alib.h is fd2sfd's, kept in patches/; inline/macros.h and
+# inline/stubs.h come from fd2pragma.
+$(BUILD)/ndk-include_ndk0: $(PROJECTS)/$(NDK_FOLDER_NAME)/_unpacked $(NDK_INCLUDE) $(NDK_FD2PRAGMA_PREREQ)
 	@mkdir -p $(PREFIX)/$(TARGET)/ndk-include
 	@rsync -a --no-group $(PROJECTS)/$(NDK_FOLDER_NAME_H)/* $(PREFIX)/$(TARGET)/ndk-include --exclude proto --exclude inline
 	$(L0)"STDARGing ndk"$(L1) for i in $$(find $(PREFIX)/$(TARGET)/ndk-include/clib/*protos.h -type f); do \
@@ -1511,7 +1459,7 @@ $(BUILD)/ndk-include_ndk0: $(PROJECTS)/$(NDK_FOLDER_NAME)/_unpacked $(NDK_INCLUD
 	@install -p -m 644 $(PROJECTS)/$(NDK_FOLDER_NAME_H)/proto/alib.h $(PREFIX)/$(TARGET)/ndk-include/proto
 	@install -p -m 644 $(PROJECTS)/$(NDK_FOLDER_NAME_H)/proto/cardres.h $(PREFIX)/$(TARGET)/ndk-include/proto
 	@mkdir -p $(PREFIX)/$(TARGET)/ndk-include/inline
-	@install -p -m 644 $(PROJECTS)/fd2sfd/cross/share/m68k-amigaos/alib.h $(PREFIX)/$(TARGET)/ndk-include/inline
+	install -p -m 644 $(PROJECTS)/$(NDK_FOLDER_NAME_H)/inline/alib.h $(PREFIX)/$(TARGET)/ndk-include/inline
 	@install -p -m 644 $(PROJECTS)/fd2pragma/Include/inline/stubs.h $(PREFIX)/$(TARGET)/ndk-include/inline
 	@install -p -m 644 $(PROJECTS)/fd2pragma/Include/inline/macros.h $(PREFIX)/$(TARGET)/ndk-include/inline
 	@mkdir -p $(BUILD)/ndk-include/
@@ -1581,7 +1529,7 @@ $(PROJECTS)/$(NDK_FOLDER_NAME)/_unpacked: $(DOWNLOAD)/$(NDK_ARC_NAME).lha $(shel
 .PHONY: ndk13
 ndk13: $(BUILD)/ndk-include_ndk13
 
-$(BUILD)/ndk-include_ndk13: $(BUILD)/ndk-include_ndk $(NDK_FD2SFD_PREREQ) $(BUILD)/sfdc/_done
+$(BUILD)/ndk-include_ndk13: $(BUILD)/ndk-include_ndk $(BUILD)/sfdc/_done
 	@while read p; do p=$$(echo $$p|tr -d '\n'); mkdir -p $(PREFIX)/$(TARGET)/ndk13-include/$$(dirname $$p); install -m 644 $(PREFIX)/$(TARGET)/ndk-include/$$p $(PREFIX)/$(TARGET)/ndk13-include/$$p; done < patches/ndk13/hfiles
 	$(L0)"extract ndk13"$(L1) while read p; do p=$$(echo $$p|tr -d '\n'); \
 	  mkdir -p $(PREFIX)/$(TARGET)/ndk13-include/$$(dirname $$p); \
@@ -1596,7 +1544,7 @@ $(BUILD)/ndk-include_ndk13: $(BUILD)/ndk-include_ndk $(NDK_FD2SFD_PREREQ) $(BUIL
 	@mkdir -p $(PREFIX)/$(TARGET)/ndk/lib/fd13
 	@while read p; do p=$$(echo $$p|tr -d '\n'); LC_CTYPE=C $(SED) -n -e '/##base/,/V36/P'  $(PREFIX)/$(TARGET)/ndk/lib/fd/$$p >$(PREFIX)/$(TARGET)/ndk/lib/fd13/$$p; done < patches/ndk13/fdfiles
 	@mkdir -p $(PREFIX)/$(TARGET)/ndk/lib/sfd13
-	@for i in $(PREFIX)/$(TARGET)/ndk/lib/fd13/*; do $(FD2SFD_FOR_BUILD) $$i $(PREFIX)/$(TARGET)/ndk13-include/clib/$$(basename $$i _lib.fd)_protos.h > $(PREFIX)/$(TARGET)/ndk/lib/sfd13/$$(basename $$i .fd).sfd; done
+	@for i in $(PREFIX)/$(TARGET)/ndk/lib/fd13/*; do $(FD2SFD_FOR_BUILD) $$i $(PREFIX)/$(TARGET)/ndk13-include/clib/$$(basename $$i _lib.fd)_protos.h -o $(PREFIX)/$(TARGET)/ndk/lib/sfd13/$$(basename $$i .fd).sfd || exit 1; done
 	$(L0)"macros+protos ndk13"$(L1) for i in $(PREFIX)/$(TARGET)/ndk/lib/sfd13/*; do \
 	  $(SFDC_FOR_BUILD) --target=m68k-gcc-amigaos --mode=macros --output=$(PREFIX)/$(TARGET)/ndk13-include/inline/$$(basename $$i _lib.sfd).h $$i; \
 	  $(SFDC_FOR_BUILD) --target=m68kvbcc-amigaos --mode=macros --output=$(PREFIX)/$(TARGET)/ndk13-include/inline/$$(basename $$i _lib.sfd)_protos.h $$i; \
@@ -2123,11 +2071,14 @@ check-libnix: $(MIN_IF_MISSING) $(SIM_PREREQ)
 
 # sfdc's own tests (test/Makefile): check looks at what the installed sfdc
 # writes, and check-compile compiles the stubs, the library base and the LVO
-# symbols with the installed cross compiler, which sfdc's own CI lacks.
+# symbols with the installed cross compiler, which sfdc's own CI lacks.  sfdc's
+# fd2pragma script is tested from the build tree: the C fd2pragma is installed.
 .PHONY: check-sfdc
 check-sfdc: $(MIN_IF_MISSING) $(BUILD)/sfdc/_done
-	$(L0)"check sfdc"$(L1)$(MAKE) --no-print-directory -B -C $(PROJECTS)/sfdc/test check check-compile \
-	  SFDC=$(SFDC_FOR_BUILD) CC=$(PREFIX)/bin/$(TARGET)-gcc OUT=$(BUILD)/sfdc/test-out$(L2)
+	$(MAKE) --no-print-directory -C $(BUILD)/sfdc fd2pragma
+	$(L0)"check sfdc"$(L1)$(MAKE) --no-print-directory -B -C $(PROJECTS)/sfdc/test \
+	  SFDC=$(SFDC_FOR_BUILD) FD2PRAGMA=$(BUILD)/sfdc/fd2pragma \
+	  CC=$(PREFIX)/bin/$(TARGET)-gcc OUT=$(BUILD)/sfdc/test-out$(L2)
 
 # Build libpthread's regression programs for each multilib, check what they
 # link, and run under volamos the ones that pass there.

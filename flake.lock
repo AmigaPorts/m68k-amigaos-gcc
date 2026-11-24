@@ -85,23 +85,6 @@
         "type": "github"
       }
     },
-    "fd2sfd": {
-      "flake": false,
-      "locked": {
-        "lastModified": 1792263866,
-        "narHash": "sha256-tXhbYKWAAgLRMmGcJ2X1UN8BOHMBzDZYjIn0i0Y0P7s=",
-        "owner": "AmigaPorts",
-        "repo": "fd2sfd",
-        "rev": "a0ae60d140fdfd30f889810faea07cc6968d1fd0",
-        "type": "github"
-      },
-      "original": {
-        "owner": "AmigaPorts",
-        "ref": "master",
-        "repo": "fd2sfd",
-        "type": "github"
-      }
-    },
     "gcc": {
       "flake": false,
       "locked": {
@@ -227,7 +210,6 @@
         "binutils": "binutils",
         "clib2": "clib2",
         "fd2pragma": "fd2pragma",
-        "fd2sfd": "fd2sfd",
         "gcc": "gcc",
         "ira": "ira",
         "lha": "lha",
@@ -244,11 +226,11 @@
     "sfdc": {
       "flake": false,
       "locked": {
-        "lastModified": 1789164234,
-        "narHash": "sha256-lw71R0/N3RrwL0EkT5qocgMFMzeCVUEAc/PooylQ+/A=",
+        "lastModified": 1795495909,
+        "narHash": "sha256-2fHYCIsaTWY/B9Nt5QJEm14ToUp2aY1Oojb1CY9U2tE=",
         "owner": "AmigaPorts",
         "repo": "sfdc",
-        "rev": "4e7afc044c1ff129574fcf3b839c3351edcfe2fb",
+        "rev": "2de127e7f805199b0c547f23be9df284c5ed8a33",
         "type": "github"
       },
       "original": {
