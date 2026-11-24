@@ -108,13 +108,13 @@ most of it in the multilib phases.
 
 | `THREADS=` | threads | newlib's stdio and `malloc()` |
 |---|---|---|
-| `amigaos` | DOS processes, locked with gcc's `<benaphore.h>` | locked in a program built with `-pthread`, which a newlib program needs to start threads; without it, they cost an empty call |
+| `amigaos`, the default | DOS processes, locked with gcc's `<benaphore.h>` | locked in a program built with `-pthread`, which a newlib program needs to start threads; without it, they cost an empty call |
 | `posix` | through libpthread, which every C++ program then links | locked |
-| `no`, the default | none: one task | not locked, so they cost nothing |
+| `no` | none: one task | not locked, so they cost nothing |
 
 The release binaries are built with the default. Both thread models need gcc
 16.2 or later: an older gcc branch (see [Version management](branches.md))
-builds with `THREADS=no`, and another value stops with an error.
+builds with `THREADS=no` by default, and another value stops with an error.
 
 A build tree keeps the model it was configured with: building it with
 another `THREADS` stops with an error that names the tree. The remedies are
