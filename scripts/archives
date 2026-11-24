@@ -1,0 +1,10 @@
+#!/bin/bash
+# The archives of default-archives, a line each as name|file|sha256|url...,
+# for the Makefile to read in one $(shell): each line is one make word.
+# Blank lines and comments are skipped.
+
+set -euo pipefail
+
+cd "$(dirname "$0")/.."
+tr -d '\r' < default-archives | tr -s '[:blank:]' ' ' |
+	sed -e 's/^ //' -e 's/ $//' -e '/^#/d' -e '/^$/d' | tr ' ' '|'

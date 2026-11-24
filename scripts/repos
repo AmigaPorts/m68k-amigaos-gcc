@@ -1,0 +1,78 @@
+#!/bin/bash
+# The modules this toolchain is built from, as .repos lists them: a line per
+# module with its name, git URL and branch, tag or commit.  .repos starts as a
+# copy of default-repos and is then the user's to edit.  Blank lines and
+# comments are skipped (a .manifest records this repository on a comment
+# line), and so are the columns past the third.
+#
+#   scripts/repos list               name, URL and ref, one module per line
+#   scripts/repos clone MOD DEPTH    clone MOD into projects/MOD at its ref
+#   scripts/repos current            fail if default-repos changed after .repos
+#   scripts/repos branch MOD BRANCH  switch MOD to BRANCH in .repos and projects/
+
+set -euo pipefail
+
+cd "$(dirname "$0")/.."
+
+die() { echo "repos: $*" >&2; exit 1; }
+
+# the table in FILE as "name url ref" lines, one blank between the columns
+table() {
+	tr -d '\r' < "$1" | tr -s '[:blank:]' ' ' |
+		sed -e 's/^ //' -e '/^#/d' -e '/^$/d' | cut -d' ' -f1-3
+}
+
+# the line of module $1
+module() {
+	table .repos | grep "^$1 "
+}
+
+[ -f .repos ] || cp default-repos .repos
+
+case ${1:-} in
+list)
+	table .repos
+	;;
+clone)
+	[ $# -eq 3 ] || die "usage: repos clone MOD DEPTH"
+	line=$(module "$2") || die "$2 is not in .repos"
+	read -r _ url ref <<< "$line"
+	git clone -b "$ref" --depth "$3" "$url" "projects/$2"
+	;;
+current)
+	# .repos is only compared once default-repos is newer: touching .repos
+	# keeps it as it is.
+	[ default-repos -nt .repos ] || exit 0
+	export LC_ALL=C
+	drift=$(comm -23 <(table default-repos | sort) <(table .repos | sort) | cut -d' ' -f1 | tr '\n' ' ')
+	[ -z "$drift" ] || {
+		echo "default-repos changed after .repos was made from it, and differs for: ${drift% }." >&2
+		echo "Update .repos to match, touch it to keep it as it is, or delete it to start over." >&2
+		exit 1
+	}
+	;;
+branch)
+	if [ $# -ne 3 ] || [ -z "$2" ] || [ -z "$3" ]; then
+		die "usage: repos branch MOD BRANCH"
+	fi
+	mod=$2
+	branch=$3
+	line=$(module "$mod") || die "$mod is not in .repos"
+	read -r _ url _ <<< "$line"
+	echo "$mod $branch"
+	grep -v "^[[:blank:]]*${mod}[[:blank:]]" .repos > .repos.new || true
+	echo "$mod $url $branch" >> .repos.new
+	mv .repos.new .repos
+	dir=projects/$mod
+	[ -d "$dir" ] || exit 0
+	git -C "$dir" remote set-branches --add origin "$branch"
+	depth=
+	[ "$(git -C "$dir" rev-parse --is-shallow-repository)" = true ] && depth="--depth 16"
+	# shellcheck disable=SC2086
+	git -C "$dir" fetch $depth origin "+refs/heads/$branch:refs/remotes/origin/$branch"
+	git -C "$dir" checkout -B "$branch" "refs/remotes/origin/$branch"
+	;;
+*)
+	die "usage: repos list | clone MOD DEPTH | current | branch MOD BRANCH"
+	;;
+esac

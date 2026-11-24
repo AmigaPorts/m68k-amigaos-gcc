@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 # Check out every module listed in .repos at the same point, for a build
 # that reproduces another one:
 #
@@ -22,7 +22,7 @@
 #
 # Run from the top of the build tree, as make v does.
 
-set -eu
+set -euo pipefail
 
 mode=${1-} arg=${2-}
 case $mode in
@@ -34,10 +34,9 @@ esac
 
 die() { echo "checkout: $*" >&2; exit 1; }
 
-# module name and branch, one per line, skipping blanks and comments
+# module name and branch, one per line
 modules() {
-	sed -e '/^[[:blank:]]*#/d' -e '/^[[:blank:]]*$/d' -e 's/[[:blank:]]\+/ /g' .repos |
-		cut -d' ' -f1,3
+	scripts/repos list | cut -d' ' -f1,3
 }
 
 # the commit on $2 before $1 in the module at $3, deepening the clone as
