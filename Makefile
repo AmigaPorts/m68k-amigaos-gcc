@@ -66,7 +66,7 @@ ifneq (,$(strip $(HOST)))
 endif
 
 # Goals that touch nothing under PREFIX, so they run without one
-NO_PREFIX_GOALS := clean% drop-prefix help info print-% update% branch release-tag release-reviewers v
+NO_PREFIX_GOALS := clean% help info print-% update% branch release-tag release-reviewers v
 GOALS := $(or $(MAKECMDGOALS),$(.DEFAULT_GOAL))
 
 # PREFIX has no default: the first build names it, the build tree records
@@ -520,7 +520,6 @@ help:
 	echo "make <target>            builds a target: binutils, gcc, gprof, fd2pragma, ira, sfdc, vasm, vbcc, vlink, libnix, ixemul, libgcc, clib2, libdebug, libpthread, ndk, ndk13"
 	echo "make clean               remove the build folder"
 	echo "make clean-<target>      remove the target's build folder"
-	echo "make drop-prefix         remove all content from the prefix folder"
 	echo "make package             package the prefix folder for the destination host"
 	echo "make package-lha         package the prefix folder as an .lha archive"
 	echo "make volamos             install the volamos simulator used by the testsuite"
@@ -671,21 +670,6 @@ clean-libpthread:
 .PHONY: clean-newlib
 clean-newlib:
 	rm -rf $(BUILD)/newlib
-
-# drop-prefix drops the files from prefix folder.  It also removes
-# build-machine helpers left by versions predating the build-local prefix.
-.PHONY: drop-prefix
-drop-prefix:
-	rm -rf $(PREFIX)/bin
-	rm -rf $(PREFIX)/build-tools
-	rm -rf $(PREFIX)/etc
-	rm -rf $(PREFIX)/info
-	rm -rf $(PREFIX)/libexec
-	rm -rf $(PREFIX)/lib/gcc
-	rm -rf $(PREFIX)/$(TARGET)
-	rm -rf $(PREFIX)/man
-	rm -rf $(PREFIX)/share
-	@mkdir -p $(PREFIX)/bin
 
 # Package native builds for the build machine and cross builds for the machine
 # on which the produced tools run.  PACKAGE_PLATFORM may be overridden for a
