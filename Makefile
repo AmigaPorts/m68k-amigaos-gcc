@@ -1797,33 +1797,31 @@ $(PROJECTS)/newlib-cygwin/newlib/configure:
 .PHONY: ixemul
 ixemul:	$(BUILD)/ixemul/_done
 
-# The SDK is the gg/ tree of the ixemul release archive: headers, startup
-# files and the libc.a stubs.  The archive also carries ixemul.library and
-# ixnet.library for each CPU, the ixpipe handler and the sources; only the
-# 68000 libraries are installed, in ixemul/libs, and the 68020 FPU ones, in
-# ixemul/libs-020fpu, for the testsuite's -mcrt=ixemul boards.  ranlib: the libc.a files of 80.1 ship with a stale symbol
-# index that misses poll.o, so poll() did not link.
+# The SDK archive has the headers, the startup files and the libc.a stubs;
+# ixemul.library and ixnet.library come in an archive for each CPU, of
+# which the 68000 ones are installed, in ixemul/libs, and the 68020 FPU
+# ones, in ixemul/libs-020fpu, for the testsuite's -mcrt=ixemul boards.
+# ranlib: the libc.a files of 80.1 shipped with a stale symbol index that
+# missed poll.o, so poll() did not link.
 #
-# patches/ixemul has the headers the SDK lacks or gets wrong, whole or as a .diff that
-# scripts/sdk-patch applies to the SDK's before it is installed:
-# - <inttypes.h> is missing, so newlib's came from sys-include, with its own int32_t (long) clashing with ixemul's (int);
-# - <assert.h> calls libgcc's __eprintf, which writes to newlib's stderr and fails to link;
-# - <machine/ansi.h> makes wchar_t and ptrdiff_t int, while GCC's <stddef.h> has long;
-# - <sys/time.h> clashed with NDK 3.2's <devices/timer.h> included after it, and hid its
-#   signed tv_sec and tv_usec when included before it.
+# patches/ixemul has the .diff files that scripts/sdk-patch applies to the
+# SDK's headers before they are installed:
+# - <machine/ansi.h> makes wchar_t int, while GCC's <stddef.h> has long.
 # The SDK's own <stddef.h>, <stdarg.h>, <float.h>, <varargs.h> and <math-68881.h> are removed,
 # so that GCC's are used: its <stdarg.h> broke variadic functions that GCC inlines, and its
 # <float.h> gave long double 53 bits.
-IXEMUL_HEADERS = $(addprefix patches/ixemul/,inttypes.h assert.h machine/ansi.h sys/time.h.diff)
+IXEMUL_HEADERS = $(addprefix patches/ixemul/,machine/ansi.h.diff)
 IXEMUL_COMPILER_HEADERS = stddef.h stdarg.h float.h varargs.h math-68881.h
+IXEMUL_ARCHIVES = $(addprefix $(DOWNLOAD)/,$(ixemul-sdk_ARCHIVE) $(ixemul-000_ARCHIVE) $(ixemul-020fpu_ARCHIVE))
 
-$(BUILD)/ixemul/_done: $(DOWNLOAD)/$(ixemul-sdk_ARCHIVE) $(IXEMUL_HEADERS) scripts/sdk-patch $(BUILD)/binutils/_done | $(LHA_PREREQ)
-	mkdir -p $(BUILD)/ixemul $(PREFIX)/$(TARGET)/ixemul
-	$(L0)"unpacking $(ixemul-sdk_ARCHIVE)"$(L1) cd $(BUILD)/ixemul && $(LHA_FOR_BUILD) xf $(DOWNLOAD)/$(ixemul-sdk_ARCHIVE) 'gg/include/*' 'gg/lib/*' Sys/libs/ixemul000.library Sys/libs/ixnet000.library Sys/libs/ixemul020-fpu.library Sys/libs/ixnet020.library $(L2)
-	scripts/sdk-patch $(BUILD)/ixemul/gg/include $(filter %.diff,$(IXEMUL_HEADERS))
-	$(L0)"installing ixemul-sdk"$(L1) rsync -a --no-group --delete $(BUILD)/ixemul/gg/ $(PREFIX)/$(TARGET)/ixemul/ $(L2)
+$(BUILD)/ixemul/_done: $(IXEMUL_ARCHIVES) $(IXEMUL_HEADERS) scripts/sdk-patch $(BUILD)/binutils/_done | $(LHA_PREREQ)
+	rm -rf $(BUILD)/ixemul
+	mkdir -p $(BUILD)/ixemul/sdk $(PREFIX)/$(TARGET)/ixemul
+	$(L0)"unpacking $(ixemul-sdk_ARCHIVE)"$(L1) cd $(BUILD)/ixemul/sdk && $(LHA_FOR_BUILD) xf $(DOWNLOAD)/$(ixemul-sdk_ARCHIVE) 'include/*' 'lib/*' $(L2)
+	$(L0)"unpacking ixemul.library"$(L1) cd $(BUILD)/ixemul && $(LHA_FOR_BUILD) xf $(DOWNLOAD)/$(ixemul-000_ARCHIVE) && $(LHA_FOR_BUILD) xf $(DOWNLOAD)/$(ixemul-020fpu_ARCHIVE) $(L2)
+	scripts/sdk-patch $(BUILD)/ixemul/sdk/include $(filter %.diff,$(IXEMUL_HEADERS))
+	$(L0)"installing ixemul-sdk"$(L1) rsync -a --no-group --delete $(BUILD)/ixemul/sdk/ $(PREFIX)/$(TARGET)/ixemul/ $(L2)
 	$(TARGET_RANLIB_FOR_BUILD) $(PREFIX)/$(TARGET)/ixemul/lib/libc.a $(PREFIX)/$(TARGET)/ixemul/lib/libc_p.a $(PREFIX)/$(TARGET)/ixemul/lib/libb/libc.a $(PREFIX)/$(TARGET)/ixemul/lib/libb32/libm020/libc.a
-	rsync -a --no-group --exclude='*.diff' patches/ixemul/ $(PREFIX)/$(TARGET)/ixemul/include/
 	rm -f $(addprefix $(PREFIX)/$(TARGET)/ixemul/include/,$(IXEMUL_COMPILER_HEADERS))
 	mkdir -p $(PREFIX)/$(TARGET)/ixemul/libs
 	cp $(BUILD)/ixemul/Sys/libs/ixemul000.library $(PREFIX)/$(TARGET)/ixemul/libs/ixemul.library
