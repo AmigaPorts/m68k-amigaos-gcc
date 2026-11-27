@@ -699,7 +699,7 @@ package-lha: package
 
 package:
 	@test -n "$(GCC_VERSION)" || { echo "GCC_VERSION is empty - run make update first"; exit 1; }
-	$(L0)"packaging $(notdir $(PACKAGE_FILENAME))"$(L1) case "$(PACKAGE_FORMAT)" in \
+	$(L0)"package $(notdir $(PACKAGE_FILENAME))"$(L1) case "$(PACKAGE_FORMAT)" in \
 	  tar.xz) \
 	    XZ_OPT=-T0 tar -C "$(dir $(abspath $(PREFIX)))" -cJf "$(abspath $(PACKAGE_FILENAME))" "$(notdir $(abspath $(PREFIX)))"; \
 	    ;; \
@@ -1354,23 +1354,23 @@ vbcc-target: $(BUILD)/vbcc_target_$(TARGET)/_done $(BUILD)/vbcc_target_m68k-kick
 
 $(BUILD)/vbcc_target_m68k-kick13/_done: $(BUILD)/vbcc_target_m68k-kick13/_unpacked patches/vbcc/kick13.config $(BUILD)/vasm/_done
 	@mkdir -p $(PREFIX)/m68k-kick13/vbcc/include
-	$(L0)"copying vbcc headers"$(L1) rsync --no-group $(BUILD)/vbcc_target_m68k-kick13/targets/m68k-kick13/include/* $(PREFIX)/m68k-kick13/vbcc/include $(L2)
+	$(L0)"copy vbcc kick13 headers"$(L1) rsync --no-group $(BUILD)/vbcc_target_m68k-kick13/targets/m68k-kick13/include/* $(PREFIX)/m68k-kick13/vbcc/include $(L2)
 	@mkdir -p $(PREFIX)/m68k-kick13/vbcc/lib
-	$(L0)"copying vbcc headers"$(L1) rsync --no-group $(BUILD)/vbcc_target_m68k-kick13/targets/m68k-kick13/lib/* $(PREFIX)/m68k-kick13/vbcc/lib $(L2)
+	$(L0)"copy vbcc kick13 libs"$(L1) rsync --no-group $(BUILD)/vbcc_target_m68k-kick13/targets/m68k-kick13/lib/* $(PREFIX)/m68k-kick13/vbcc/lib $(L2)
 	@mkdir -p $(PREFIX)/bin
-	$(L0)"creating vbcc kick13 config"$(L1) sed -e "s|PREFIX|$(PREFIX)|g" patches/vbcc/kick13.config >$(BUILD)/vasm/kick13.config ;\
+	$(L0)"create vbcc kick13 config"$(L1) sed -e "s|PREFIX|$(PREFIX)|g" patches/vbcc/kick13.config >$(BUILD)/vasm/kick13.config ;\
 	install $(BUILD)/vasm/kick13.config $(PREFIX)/bin/ $(L2)
 	@echo "done" >$@
 
 $(BUILD)/vbcc_target_m68k-amigaos/_done: $(BUILD)/vbcc_target_m68k-amigaos/_unpacked $(wildcard patches/vbcc/*.config) $(BUILD)/vasm/_done
 	@mkdir -p $(PREFIX)/m68k-amigaos/vbcc/include
-	$(L0)"copying vbcc headers"$(L1) rsync --no-group $(BUILD)/vbcc_target_m68k-amigaos/targets/m68k-amigaos/include/* $(PREFIX)/m68k-amigaos/vbcc/include $(L2)
+	$(L0)"copy vbcc headers"$(L1) rsync --no-group $(BUILD)/vbcc_target_m68k-amigaos/targets/m68k-amigaos/include/* $(PREFIX)/m68k-amigaos/vbcc/include $(L2)
 	@mkdir -p $(PREFIX)/m68k-amigaos/vbcc/lib
-	$(L0)"copying vbcc headers"$(L1) rsync --no-group $(BUILD)/vbcc_target_m68k-amigaos/targets/m68k-amigaos/lib/* $(PREFIX)/m68k-amigaos/vbcc/lib $(L2)
+	$(L0)"copy vbcc libs"$(L1) rsync --no-group $(BUILD)/vbcc_target_m68k-amigaos/targets/m68k-amigaos/lib/* $(PREFIX)/m68k-amigaos/vbcc/lib $(L2)
 	@mkdir -p $(PREFIX)/bin
-	$(L0)"creating vbcc config"$(L1) sed -e "s|PREFIX|$(PREFIX)|g" patches/vbcc/vc.config >$(BUILD)/vasm/vc.config ;\
+	$(L0)"create vbcc config"$(L1) sed -e "s|PREFIX|$(PREFIX)|g" patches/vbcc/vc.config >$(BUILD)/vasm/vc.config ;\
 	install $(BUILD)/vasm/vc.config $(PREFIX)/bin/ $(L2)
-	$(L0)"creating vbcc aos68k configs"$(L1) for c in aos68k aos68km aos68kr; do \
+	$(L0)"create vbcc aos68k configs"$(L1) for c in aos68k aos68km aos68kr; do \
 		sed -e "s|PREFIX|$(PREFIX)|g" patches/vbcc/$$c.config >$(BUILD)/vasm/$$c && \
 		install $(BUILD)/vasm/$$c $(PREFIX)/bin/ || exit 1; \
 	done $(L2)
@@ -1427,7 +1427,7 @@ $(BUILD)/ndk-include_ndk: $(BUILD)/ndk-include_ndk0 $(NDK_INCLUDE_INLINE) $(NDK_
 $(BUILD)/ndk-include_ndk0: $(PROJECTS)/$(NDK_FOLDER_NAME)/_unpacked $(NDK_INCLUDE)
 	@mkdir -p $(PREFIX)/$(TARGET)/ndk-include
 	@rsync -a --no-group $(PROJECTS)/$(NDK_FOLDER_NAME_H)/* $(PREFIX)/$(TARGET)/ndk-include --exclude proto --exclude inline
-	$(L0)"STDARGing ndk"$(L1) for i in $$(find $(PREFIX)/$(TARGET)/ndk-include/clib/*protos.h -type f); do \
+	$(L0)"add __stdargs to ndk"$(L1) for i in $$(find $(PREFIX)/$(TARGET)/ndk-include/clib/*protos.h -type f); do \
 		echo $$i; \
 		LC_CTYPE=C sed -i.bak -E 's/([a-zA-Z0-9 _]*)([[:blank:]]+|\*)([a-zA-Z0-9_]+)\(/\1\2 __stdargs \3(/g' $$i; \
 		rm $$i.bak; done $(L2)
@@ -1533,7 +1533,7 @@ $(BUILD)/ndk-include_ndk13: $(BUILD)/ndk-include_ndk $(BUILD)/sfdc/_done
 	  $(SFDC_FOR_BUILD) --target=m68kvbcc-amigaos --mode=macros --output=$(PREFIX)/$(TARGET)/ndk13-include/inline/$$(basename $$i _lib.sfd)_protos.h $$i; \
 	  $(SFDC_FOR_BUILD) --target=m68k-amigaos --mode=proto --output=$(PREFIX)/$(TARGET)/ndk13-include/proto/$$(basename $$i _lib.sfd).h $$i; \
 	done $(L2)
-	$(L0)"STDARGing ndk13"$(L1) for i in $$(find $(PREFIX)/$(TARGET)/ndk13-include/clib/*protos.h -type f); do \
+	$(L0)"add __stdargs to ndk13"$(L1) for i in $$(find $(PREFIX)/$(TARGET)/ndk13-include/clib/*protos.h -type f); do \
 	echo $$i; \
 	LC_CTYPE=C sed -i.bak -E 's/([a-zA-Z0-9 _]*)([[:blank:]]+|\*)([a-zA-Z0-9_]+)\(/\1\2 __stdargs \3(/g' $$i; \
 	rm $$i.bak; done $(L2)
@@ -1807,9 +1807,9 @@ IXEMUL_COMPILER_HEADERS = stddef.h stdarg.h float.h varargs.h math-68881.h
 
 $(BUILD)/ixemul/_done: $(DOWNLOAD)/$(ixemul-sdk_ARCHIVE) $(IXEMUL_HEADERS) scripts/sdk-patch $(BUILD)/binutils/_done | $(LHA_PREREQ)
 	mkdir -p $(BUILD)/ixemul $(PREFIX)/$(TARGET)/ixemul
-	$(L0)"unpacking $(ixemul-sdk_ARCHIVE)"$(L1) cd $(BUILD)/ixemul && $(LHA_FOR_BUILD) xf $(DOWNLOAD)/$(ixemul-sdk_ARCHIVE) 'gg/include/*' 'gg/lib/*' Sys/libs/ixemul000.library Sys/libs/ixnet000.library Sys/libs/ixemul020-fpu.library Sys/libs/ixnet020.library $(L2)
+	$(L0)"unpack $(ixemul-sdk_ARCHIVE)"$(L1) cd $(BUILD)/ixemul && $(LHA_FOR_BUILD) xf $(DOWNLOAD)/$(ixemul-sdk_ARCHIVE) 'gg/include/*' 'gg/lib/*' Sys/libs/ixemul000.library Sys/libs/ixnet000.library Sys/libs/ixemul020-fpu.library Sys/libs/ixnet020.library $(L2)
 	scripts/sdk-patch $(BUILD)/ixemul/gg/include $(filter %.diff,$(IXEMUL_HEADERS))
-	$(L0)"installing ixemul-sdk"$(L1) rsync -a --no-group --delete $(BUILD)/ixemul/gg/ $(PREFIX)/$(TARGET)/ixemul/ $(L2)
+	$(L0)"install ixemul-sdk"$(L1) rsync -a --no-group --delete $(BUILD)/ixemul/gg/ $(PREFIX)/$(TARGET)/ixemul/ $(L2)
 	$(TARGET_RANLIB_FOR_BUILD) $(PREFIX)/$(TARGET)/ixemul/lib/libc.a $(PREFIX)/$(TARGET)/ixemul/lib/libc_p.a $(PREFIX)/$(TARGET)/ixemul/lib/libb/libc.a $(PREFIX)/$(TARGET)/ixemul/lib/libb32/libm020/libc.a
 	rsync -a --no-group --exclude='*.diff' patches/ixemul/ $(PREFIX)/$(TARGET)/ixemul/include/
 	rm -f $(addprefix $(PREFIX)/$(TARGET)/ixemul/include/,$(IXEMUL_COMPILER_HEADERS))
@@ -1987,7 +1987,7 @@ check-binutils: check-binutils-gas check-binutils-ld
 .PHONY: check-binutils-gas
 check-binutils-gas: $(call if-missing,$(BUILD)/binutils/_done,binutils)
 	@rm -f $(BUILD)/binutils/gas/testsuite/gas.sum
-	$(L0)"check gas"$(L1)$(MAKE) -C $(BUILD)/binutils/gas check "RUNTESTFLAGS=all.exp" || true$(L2)
+	$(L0)"$@"$(L1)$(MAKE) -C $(BUILD)/binutils/gas check "RUNTESTFLAGS=all.exp" || true$(L2)
 	@{ echo '----- gas -----'; grep -E '^(PASS|FAIL|ERROR|XPASS|UNRESOLVED).*[Aa]miga' $(BUILD)/binutils/gas/testsuite/gas.sum 2>/dev/null || echo '(no tests run)'; } | tee $@.summary.txt
 	@echo "results: $(BUILD)/binutils/gas/testsuite/gas.{sum,log}"
 	@grep -qE '^PASS.*[Aa]miga' $(BUILD)/binutils/gas/testsuite/gas.sum
@@ -1996,7 +1996,7 @@ check-binutils-gas: $(call if-missing,$(BUILD)/binutils/_done,binutils)
 .PHONY: check-binutils-ld
 check-binutils-ld: $(call if-missing,$(BUILD)/binutils/_done,binutils)
 	@rm -f $(BUILD)/binutils/ld/ld.sum
-	$(L0)"check ld"$(L1)$(MAKE) -C $(BUILD)/binutils/ld check "RUNTESTFLAGS=amiga.exp"$(L2)
+	$(L0)"$@"$(L1)$(MAKE) -C $(BUILD)/binutils/ld check "RUNTESTFLAGS=amiga.exp"$(L2)
 	@{ echo '----- ld -----'; grep -E '^(PASS|FAIL|ERROR|XPASS|UNRESOLVED)' $(BUILD)/binutils/ld/ld.sum 2>/dev/null || echo '(no tests run)'; } | tee $@.summary.txt
 	@echo "results: $(BUILD)/binutils/ld/ld.{sum,log}"
 	@grep -qE '^PASS' $(BUILD)/binutils/ld/ld.sum
@@ -2006,7 +2006,7 @@ check-binutils-ld: $(call if-missing,$(BUILD)/binutils/_done,binutils)
 .PHONY: check-gcc-amigaos
 check-gcc-amigaos: $(MIN_IF_MISSING) $(BOARD_PREREQ)
 	@ln -sfn $(PREFIX)/$(TARGET)/libnix $(BUILD)/gcc/$(TARGET)/libnix
-	$(L0)"check amigaos.exp"$(L1)$(MAKE) -C $(BUILD)/gcc check-gcc-c "RUNTESTFLAGS=--target_board=$(board) gcc.target/m68k/amigaos/amigaos.exp$(RUNTEST_SIM)"$(L2)
+	$(L0)"$@"$(L1)$(MAKE) -C $(BUILD)/gcc check-gcc-c "RUNTESTFLAGS=--target_board=$(board) gcc.target/m68k/amigaos/amigaos.exp$(RUNTEST_SIM)"$(L2)
 	@cp -f $(TESTSUITE)/gcc.sum $(TESTSUITE)/gcc-amigaos.sum; cp -f $(TESTSUITE)/gcc.log $(TESTSUITE)/gcc-amigaos.log
 	@{ echo '----- amigaos.exp -----'; grep '^# of' $(TESTSUITE)/gcc-amigaos.sum || echo '(no tests run)'; grep -E '^(FAIL|ERROR|XPASS)' $(TESTSUITE)/gcc-amigaos.sum || true; } | tee $@.summary.txt
 	@echo "results: $(TESTSUITE)/gcc-amigaos.{sum,log}"
@@ -2038,7 +2038,7 @@ check-gcc-c-board = $(if $(filter volamos,$(board)),,-$(subst /,,$(board)))
 .PHONY: check-gcc-c
 check-gcc-c: $(MIN_IF_MISSING) $(BOARD_PREREQ)
 	ln -sfn $(PREFIX)/$(TARGET)/libnix $(BUILD)/gcc/$(TARGET)/libnix
-	$(L0)"check execute.exp"$(L1)$(MAKE) -C $(BUILD)/gcc check-gcc-c "RUNTESTFLAGS=--target_board=$(board) $(strip $(check-gcc-c-exp))$(RUNTEST_SIM)"$(L2)
+	$(L0)"$@"$(L1)$(MAKE) -C $(BUILD)/gcc check-gcc-c "RUNTESTFLAGS=--target_board=$(board) $(strip $(check-gcc-c-exp))$(RUNTEST_SIM)"$(L2)
 	cp -f $(TESTSUITE)/gcc.sum $(TESTSUITE)/gcc-execute$(check-gcc-c-board).sum; cp -f $(TESTSUITE)/gcc.log $(TESTSUITE)/gcc-execute$(check-gcc-c-board).log
 	{ echo '----- execute.exp $(board) -----'; grep '^# of' $(TESTSUITE)/gcc-execute$(check-gcc-c-board).sum || echo '(no tests run)'; grep -E '^(FAIL|ERROR|XPASS)' $(TESTSUITE)/gcc-execute$(check-gcc-c-board).sum || true; } | tee $@$(check-gcc-c-board).summary.txt
 	echo "results: $(TESTSUITE)/gcc-execute$(check-gcc-c-board).{sum,log}"
@@ -2066,7 +2066,7 @@ check-libnix: $(MIN_IF_MISSING) $(SIM_PREREQ)
 .PHONY: check-sfdc
 check-sfdc: $(MIN_IF_MISSING) $(BUILD)/sfdc/_done
 	$(MAKE) --no-print-directory -C $(BUILD)/sfdc fd2pragma
-	$(L0)"check sfdc"$(L1)$(MAKE) --no-print-directory -B -C $(PROJECTS)/sfdc/test \
+	$(L0)"$@"$(L1)$(MAKE) --no-print-directory -B -C $(PROJECTS)/sfdc/test \
 	  SFDC=$(SFDC_FOR_BUILD) FD2PRAGMA=$(BUILD)/sfdc/fd2pragma \
 	  CC=$(PREFIX)/bin/$(TARGET)-gcc OUT=$(BUILD)/sfdc/test-out$(L2)
 
@@ -2136,7 +2136,7 @@ check-newlib: $(NEWLIB_CHECKS)
 .PHONY: check-gcc-c++
 check-gcc-c++: $(MIN_IF_MISSING) $(BOARD_PREREQ)
 	ln -sfn $(PREFIX)/$(TARGET)/libnix $(BUILD)/gcc/$(TARGET)/libnix
-	$(L0)"check c++"$(L1)$(MAKE) -C $(BUILD)/gcc check-gcc-c++ "RUNTESTFLAGS=--target_board=$(board)$(RUNTEST_SIM)"$(L2)
+	$(L0)"$@"$(L1)$(MAKE) -C $(BUILD)/gcc check-gcc-c++ "RUNTESTFLAGS=--target_board=$(board)$(RUNTEST_SIM)"$(L2)
 	{ echo '----- c++ -----'; grep '^# of' $(CXXTESTSUITE)/g++.sum || echo '(no tests run)'; grep -E '^(FAIL|ERROR|XPASS)' $(CXXTESTSUITE)/g++.sum || true; } | tee $@.summary.txt
 	echo "results: $(CXXTESTSUITE)/g++.{sum,log}"
 	grep -q '^# of expected passes' $(CXXTESTSUITE)/g++.sum
@@ -2190,7 +2190,7 @@ check-gdb-libpython:
 .PHONY: check-gcc-rust
 check-gcc-rust: $(BOARD_PREREQ)
 	@ln -sfn $(PREFIX)/$(TARGET)/libnix $(BUILD)/gcc/$(TARGET)/libnix
-	$(L0)"check rust"$(L1)$(MAKE) -C $(BUILD)/gcc check-gcc-rust "RUNTESTFLAGS=--target_board=$(board)$(RUNTEST_SIM)"$(L2)
+	$(L0)"$@"$(L1)$(MAKE) -C $(BUILD)/gcc check-gcc-rust "RUNTESTFLAGS=--target_board=$(board)$(RUNTEST_SIM)"$(L2)
 	@{ echo '----- rust -----'; grep '^# of' $(RUSTTESTSUITE)/rust.sum || echo '(no tests run)'; grep -E '^(FAIL|ERROR|XPASS)' $(RUSTTESTSUITE)/rust.sum || true; } | tee $@.summary.txt
 	@echo "results: $(RUSTTESTSUITE)/rust.{sum,log}"
 
@@ -2209,7 +2209,7 @@ endif
 check-examples: $(CHECK_EXAMPLES)
 
 $(CHECK_EXAMPLES): $(MIN_IF_MISSING) $(SIM_PREREQ)
-	$(L0)"check example $(@:check-examples-%=%)"$(L1)$(MAKE) -C examples/$(@:check-examples-%=%) check \
+	$(L0)"$@"$(L1)$(MAKE) -C examples/$(@:check-examples-%=%) check \
 	  CC=$(PREFIX)/bin/$(TARGET)-gcc CXX=$(PREFIX)/bin/$(TARGET)-g++ \
 	  SFDC=$(SFDC_FOR_BUILD) VOLAMOS=$(SIM_BIN)$(L2)
 
