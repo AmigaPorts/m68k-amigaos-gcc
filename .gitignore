@@ -4,7 +4,6 @@ projects
 *.log
 *.summary.txt
 .lock
-.state
 .vscode
 .DS_Store
 .repos*
