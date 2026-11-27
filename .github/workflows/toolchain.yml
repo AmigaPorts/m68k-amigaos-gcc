@@ -437,8 +437,10 @@ jobs:
         run: |
           { echo '```'; ccache -s || true; echo '```'; } >> $GITHUB_STEP_SUMMARY
 
+      # also when a make failed, for the upload below
       - name: Package name
         id: package
+        if: ${{ !cancelled() }}
         run: echo "filename=$(make -s print-PACKAGE_FILENAME)" >> "$GITHUB_OUTPUT"
 
       # a release build must have its tarball; other runs, such as the
