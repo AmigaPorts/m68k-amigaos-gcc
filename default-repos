@@ -4,6 +4,7 @@ clib2              https://github.com/AmigaPorts/clib2              master
 fd2pragma          https://github.com/AmigaPorts/fd2pragma          master
 gcc                https://github.com/AmigaPorts/gcc                amiga16.2
 ira                https://github.com/AmigaPorts/ira                master
+ixemul             https://github.com/jjodevbase/ixemul             main
 lha                https://github.com/AmigaPorts/lha                master
 libc-test          https://github.com/AmigaPorts/libc-test          amiga
 libdebug           https://github.com/AmigaPorts/libdebug           master

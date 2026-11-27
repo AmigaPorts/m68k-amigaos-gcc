@@ -1,0 +1,91 @@
+#!/usr/bin/env python3
+"""Rewrite C string literals that span lines as one literal per line.
+
+GCC before 3.3 accepted a newline inside a string literal, as in
+    asm ("
+    	movel	d0,d1
+    	rts
+    ");
+which old Amiga sources (ixemul) use for inline assembly.  Each line becomes
+its own literal ending in \\n, which every GCC from 2.95 on accepts:
+    asm (
+    "	movel	d0,d1\\n"
+    "	rts\\n"
+    );
+Files are changed in place; files without such literals are left alone.
+"""
+
+import sys
+
+
+def split_literals(text):
+    out = []
+    i = 0
+    n = len(text)
+    changed = False
+    while i < n:
+        c = text[i]
+        if text.startswith("//", i):
+            j = text.find("\n", i)
+            j = n if j < 0 else j
+            out.append(text[i:j])
+            i = j
+        elif text.startswith("/*", i):
+            j = text.find("*/", i + 2)
+            j = n if j < 0 else j + 2
+            out.append(text[i:j])
+            i = j
+        elif c == "'":
+            j = i + 1
+            while j < n and text[j] not in "'\n":
+                j += 2 if text[j] == "\\" else 1
+            out.append(text[i:j + 1])
+            i = j + 1
+        elif c == '"':
+            j = i + 1
+            while j < n and text[j] != '"':
+                j += 2 if text[j] == "\\" else 1
+            body = text[i + 1:j]
+            # a backslash-newline is spliced away, as in a macro definition
+            if "\n" not in body.replace("\\\n", ""):
+                out.append(text[i:j + 1])
+            else:
+                out.append(split_one(out, body))
+                changed = True
+            i = j + 1
+        else:
+            out.append(c)
+            i += 1
+    return "".join(out), changed
+
+
+def split_one(out, body):
+    lines = body.split("\n")
+    if any(line.endswith("\\") for line in lines[:-1]):
+        raise ValueError("line continuation inside a multi-line string literal")
+    first, middle, last = lines[0], lines[1:-1], lines[-1]
+    # the newline right after the opening quote is part of the string too
+    parts = [f'"{first}\\n"']
+    parts.extend(f'"{line}\\n"' for line in middle)
+    parts.append(f'"{last}"' if last else "")
+    return "\n".join(parts)
+
+
+def main():
+    if len(sys.argv) < 2:
+        sys.exit("usage: split-string-literals FILE...")
+    for path in sys.argv[1:]:
+        # Latin-1 maps every byte to a character and back unchanged
+        with open(path, encoding="latin-1", newline="") as f:
+            text = f.read()
+        try:
+            new, changed = split_literals(text)
+        except ValueError as e:
+            sys.exit(f"{path}: {e}")
+        if changed:
+            with open(path, "w", encoding="latin-1", newline="") as f:
+                f.write(new)
+            print(path)
+
+
+main()
