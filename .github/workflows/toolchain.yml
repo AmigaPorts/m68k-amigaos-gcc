@@ -223,8 +223,8 @@ jobs:
             || needs.refs.outputs.label == 'ci-check-c++-newlib' && 'check-gcc-c++ board=volamos/-mcrt=newlib'
             || needs.refs.outputs.label == 'ci-check-newlib' && 'check-newlib'
             || needs.refs.outputs.label == 'ci-check-threads' && 'THREADS=amigaos check-gcc-amigaos check-libnix check-libpthread check-newlib'
-            || format('all-dist check-gdb-libpython package {0}{1}{2}',
-                      inputs.run_testsuite && 'check' || 'check-multilib check-binutils check-sfdc check-gcc-amigaos check-libnix check-libpthread',
+            || format('all-dist package check-gdb-libpython {0}{1}{2}',
+                      inputs.run_testsuite && 'check' || 'check-fast',
                       inputs.run_cxx_testsuite && ' check-gcc-c++' || '',
                       (inputs.simulator || 'volamos') == 'vamos' && ' board=vamos' || '') }}
       AMITOOLS_GIT: ${{ inputs.amitools_git || 'git+https://github.com/AmigaPorts/amitools.git' }}
@@ -443,8 +443,11 @@ jobs:
 
       # a release build must have its tarball; other runs, such as the
       # release's make check, only when they built one.  Not zipped: the
-      # artifact is the tarball itself, named after it
+      # artifact is the tarball itself, named after it.  Uploaded when a test
+      # after package failed too, to debug it with; release.yml publishes
+      # only what passed
       - name: Upload toolchain tarball
+        if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v7
         with:
           path: ${{ steps.package.outputs.filename }}
