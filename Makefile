@@ -1814,8 +1814,8 @@ IXEMUL_HEADERS = $(addprefix patches/ixemul/,machine/ansi.h.diff)
 IXEMUL_COMPILER_HEADERS = stddef.h stdarg.h float.h varargs.h math-68881.h
 IXEMUL_ARCHIVES = $(addprefix $(DOWNLOAD)/,$(ixemul-sdk_ARCHIVE) $(ixemul-000_ARCHIVE) $(ixemul-020fpu_ARCHIVE))
 
-$(BUILD)/ixemul/_done: $(IXEMUL_ARCHIVES) $(IXEMUL_HEADERS) scripts/sdk-patch $(BUILD)/binutils/_done | $(LHA_PREREQ)
-	rm -rf $(BUILD)/ixemul
+$(BUILD)/ixemul/_done: $(BUILD)/ixemul/_built $(IXEMUL_ARCHIVES) $(IXEMUL_HEADERS) scripts/sdk-patch $(BUILD)/binutils/_done | $(LHA_PREREQ)
+	rm -rf $(BUILD)/ixemul/sdk $(BUILD)/ixemul/Sys
 	mkdir -p $(BUILD)/ixemul/sdk $(PREFIX)/$(TARGET)/ixemul
 	$(L0)"unpacking $(ixemul-sdk_ARCHIVE)"$(L1) cd $(BUILD)/ixemul/sdk && $(LHA_FOR_BUILD) xf $(DOWNLOAD)/$(ixemul-sdk_ARCHIVE) 'include/*' 'lib/*' $(L2)
 	$(L0)"unpacking ixemul.library"$(L1) cd $(BUILD)/ixemul && $(LHA_FOR_BUILD) xf $(DOWNLOAD)/$(ixemul-000_ARCHIVE) && $(LHA_FOR_BUILD) xf $(DOWNLOAD)/$(ixemul-020fpu_ARCHIVE) $(L2)
@@ -1836,6 +1836,29 @@ $(BUILD)/ixemul/_done: $(IXEMUL_ARCHIVES) $(IXEMUL_HEADERS) scripts/sdk-patch $(
 	# satisfies -lm.
 	printf '!<arch>\n' >$(PREFIX)/$(TARGET)/ixemul/lib/libm.a
 	echo "done" >$@
+
+# ixemul from source, with its own configure and make: the library for each CPU and FPU,
+# the startup files, the libc.a variants and the utilities.
+# - The library Makefiles expect to run in the source tree, so the build runs in a copy, in
+#   which scripts/split-string-literals rewrites the multi-line string literals of the
+#   inline assembly, which GCC 3.3 and later reject.
+# - Autoconf 2.13 takes the build machine to be the host unless --build names it.
+# - The utilities link with the crt0.o and libc.a of the build (-B../libsrc/ -L../libsrc),
+#   which takes -mcrt=ixemul here: Geek Gadgets' gcc defaulted to it.
+IXEMUL_CONFIGURE = --host=$(TARGET) --build=$$($(BUILD_CC) -dumpmachine) --prefix=$(PREFIX)/$(TARGET)/ixemul
+
+$(BUILD)/ixemul/_built: $(BUILD)/gcc/_libgcc_done $(BUILD)/ndk-include_ndk $(PROJECTS)/ixemul/configure scripts/split-string-literals
+	rm -rf $(BUILD)/ixemul
+	mkdir -p $(BUILD)/ixemul
+	rsync -a --no-group --exclude=.git $(PROJECTS)/ixemul/ $(BUILD)/ixemul/
+	$(L0)"split string literals"$(L1) find $(BUILD)/ixemul -name '*.[ch]' -exec scripts/split-string-literals {} + $(L2)
+	$(L0)"configure ixemul"$(L1) cd $(BUILD)/ixemul && CC=$(TARGET)-gcc AR="$(TARGET_AR_FOR_BUILD)" RANLIB="$(TARGET_RANLIB_FOR_BUILD)" LDFLAGS=-mcrt=ixemul ./configure $(IXEMUL_CONFIGURE) $(L2)
+	# ZONEINFO=: the timezone database is compiled by a zic built for the target
+	$(L0)"make ixemul"$(L1) $(MAKE) -C $(BUILD)/ixemul ZONEINFO= $(L2)
+	echo "done" >$@
+
+$(PROJECTS)/ixemul/configure:
+	scripts/repos clone ixemul 4
 
 # =================================================
 # sdk installation
