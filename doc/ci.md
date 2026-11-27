@@ -103,6 +103,9 @@ out:
 | `ci-check-newlib` | `/ci linux-arm make check-newlib` |
 | `ci-check-threads` | `/ci linux-arm make THREADS=amigaos check-gcc-amigaos check-libpthread check-newlib` |
 
+The `claude-review` label has Claude review the pull request, with inline
+comments; remove and re-add it for another review after a push.
+
 ## Dispatch
 
 "Run workflow" in the Actions tab, on the "Bootstrap toolchain" workflow,
