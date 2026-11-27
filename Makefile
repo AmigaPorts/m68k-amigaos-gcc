@@ -517,9 +517,9 @@ help:
 	echo "make print-<var>         prints a make var (e.g. print-TARGET)"
 	echo
 	echo "make all                 build and install all"
-	echo "make all-dist            all, plus what the release packages add: sdks, vbcc, vlink, zlib, libpng"
+	echo "make all-dist            all, plus what the release packages add: sdks, vbcc, vlink, zlib, libpng, flexcat"
 	echo "make min                 build only the compiler and its runtimes (no gdb, gprof, libnix4.library)"
-	echo "make <target>            builds a target: binutils, gcc, gprof, fd2pragma, ira, sfdc, vasm, vbcc, vlink, libnix, ixemul, libgcc, clib2, libdebug, libpthread, ndk, ndk13"
+	echo "make <target>            builds a target: binutils, gcc, gprof, fd2pragma, ira, flexcat, sfdc, vasm, vbcc, vlink, libnix, ixemul, libgcc, clib2, libdebug, libpthread, ndk, ndk13, zlib, libpng, libfreetype2"
 	echo "make clean               remove the build folder"
 	echo "make clean-<target>      remove the target's build folder"
 	echo "make package             package the prefix folder for the destination host"
@@ -558,9 +558,9 @@ all: gcc binutils $(ALL_GDB) gprof fd2pragma ira sfdc vasm libnix ixemul libgcc 
 	@echo "Creating .manifest..."
 	@$(MAKE) --no-print-directory manifest
 
-# Everything the release packages have.
+# Everything the release packages have; flexcat only for the native hosts.
 .PHONY: all-dist
-all-dist: all all-sdk vbcc vlink zlib libpng
+all-dist: all all-sdk vbcc vlink zlib libpng $(if $(strip $(HOST)),,flexcat)
 
 # Record what was built in .manifest, in the format of .repos with the
 # commit of each checkout; see scripts/manifest.  Installed to $(PREFIX), so
@@ -588,7 +588,7 @@ build-target-tools: $(TARGET_BUILD_TOOLS_PREREQ)
 # clean
 # =================================================
 .PHONY: clean
-clean: clean-gcc clean-binutils clean-lha clean-fd2pragma clean-ira clean-sfdc clean-vasm clean-vbcc clean-vlink clean-libnix clean-ixemul clean-clib2 clean-libdebug clean-libpthread clean-newlib clean-ndk clean-gmp clean-mpc clean-mpfr
+clean: clean-gcc clean-binutils clean-lha clean-fd2pragma clean-ira clean-flexcat clean-sfdc clean-vasm clean-vbcc clean-vlink clean-libnix clean-ixemul clean-clib2 clean-libdebug clean-libpthread clean-newlib clean-ndk clean-gmp clean-mpc clean-mpfr
 	rm -rf $(BUILD)
 	rm -rf *.log
 	mkdir -p $(BUILD)
@@ -629,6 +629,10 @@ clean-fd2pragma:
 .PHONY: clean-ira
 clean-ira:
 	rm -rf $(BUILD)/ira
+
+.PHONY: clean-flexcat
+clean-flexcat:
+	rm -rf $(BUILD)/flexcat
 
 .PHONY: clean-sfdc
 clean-sfdc:
@@ -725,7 +729,7 @@ repos-current:
 	scripts/repos current
 
 .PHONY: update
-update: repos-current update-gcc update-binutils update-lha update-fd2pragma update-ira update-sfdc update-vasm update-vbcc update-vlink update-libnix update-clib2 update-libc-test update-libdebug update-libpthread update-ndk update-newlib update-netinclude
+update: repos-current update-gcc update-binutils update-lha update-fd2pragma update-ira update-flexcat update-sfdc update-vasm update-vbcc update-vlink update-libnix update-clib2 update-libc-test update-libdebug update-libpthread update-ndk update-newlib update-netinclude
 
 # Each pulls a module checkout forward; see scripts/update-module.
 .PHONY: update-gcc
@@ -747,6 +751,10 @@ update-fd2pragma: $(PROJECTS)/fd2pragma/makefile
 .PHONY: update-ira
 update-ira: $(PROJECTS)/ira/Makefile
 	@scripts/update-module $(PROJECTS)/ira
+
+.PHONY: update-flexcat
+update-flexcat: $(PROJECTS)/flexcat/src/Makefile
+	@scripts/update-module $(PROJECTS)/flexcat
 
 .PHONY: update-sfdc
 update-sfdc: $(PROJECTS)/sfdc/configure
@@ -1197,6 +1205,30 @@ $(BUILD)/ira/ira$(EXEEXT): $(PROJECTS)/ira/Makefile $(shell find 2>/dev/null $(P
 
 $(PROJECTS)/ira/Makefile:
 	scripts/repos clone ira 4
+
+# =================================================
+# flexcat, for the native hosts: on Windows it needs a libiconv that the
+# MinGW cross compilers don't have.  Its makefile picks the host by HOST,
+# which here is the toolchain's host instead, and builds in its source tree.
+# =================================================
+FLEXCAT_MAKE_ARGS := OS=unix HOST=$$(uname) CC="$(CC)" DEBUG= DEBUGSYM=
+
+.PHONY: flexcat
+flexcat: $(BUILD)/flexcat/_done
+
+$(BUILD)/flexcat/_done: $(BUILD)/flexcat/src/Makefile | $(PREFIX_STAMP)
+	$(L0)"make flexcat"$(L1) $(MAKE) -C $(BUILD)/flexcat/src $(FLEXCAT_MAKE_ARGS) bootstrap all $(L2)
+	@mkdir -p $(PREFIX)/bin/ $(PREFIX)/share/flexcat/
+	$(L0)"install flexcat"$(L1) install $(BUILD)/flexcat/src/bin_unix/flexcat $(PREFIX)/bin/ && \
+	rsync -a --no-group $(BUILD)/flexcat/src/sd/ $(PREFIX)/share/flexcat/ $(L2)
+	@echo "done" >$@
+
+$(BUILD)/flexcat/src/Makefile: $(PROJECTS)/flexcat/src/Makefile $(wildcard $(PROJECTS)/flexcat/src/*.[ch] $(PROJECTS)/flexcat/src/sd/*)
+	@rsync -a --no-group $(PROJECTS)/flexcat $(BUILD)/ --exclude .git
+	@touch $@
+
+$(PROJECTS)/flexcat/src/Makefile:
+	scripts/repos clone flexcat 4
 
 # =================================================
 # sfdc, with its fd2sfd script.  sfdc's fd2pragma script stays out until
