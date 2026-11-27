@@ -490,7 +490,7 @@ ifneq ($(VERBOSE),)
 verbose = $(VERBOSE)
 endif
 ifeq ($(verbose),)
-L1 = ; echo -e \\033[33m$$__p...\\033[0m; mkdir -p log; __l="log/$$__p.log" ; (
+L1 = ; echo -e \\033[33m$$__p...\\033[0m; mkdir -p log; __l="log/$${__p// /-}.log" ; (
 L2 = )$(TEEEE) "$$__l"; __r=$$?; ($(FLOCK) 200; if (( $$__r > 0 )); then \
   echo -e \\033[31m$$__p...failed\\033[0m; \
    sed -n -E '1,/^make(\[[0-9]*\])?: \*\*\*/p' "$$__l" | tail -n 100; \
