@@ -48,9 +48,7 @@ The words after `make` go to make as they are. Without `make`, the platform
 builds the whole distribution and runs the fast tests:
 
 ```
-make all-dist check-gdb-libpython package \
-  check-multilib check-binutils check-sfdc check-gcc-amigaos check-libnix \
-  check-libpthread
+make all-dist package check-gdb-libpython check-fast
 ```
 
 `/ci` alone lists the platforms.
@@ -159,7 +157,7 @@ A run's summary page shows the module revisions it built, the commit, and
 each testsuite's summary. The `testsuite-results-*` artifact has the `.sum`
 and `.log` files and the `*.summary.txt` of every check target that ran. A
 failed build uploads `build-logs-*`, with the configure logs. A full build
-also uploads the toolchain tarball.
+also uploads the toolchain tarball, even when a test after `package` failed.
 
 ## Releases
 
