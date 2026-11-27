@@ -200,6 +200,14 @@ install_sdk()
 				echo "creating redirecting header $prefix/m68k-amigaos/include/${a[1]}"
 				echo "#include \"${a[2]}\"" >"$prefix/m68k-amigaos/include/${a[1]}"
 			;;
+			sed)
+				x=${a[*]:2}
+				x=${x##\"}
+				x=${x%%\"}
+				echo applying: sed -i.bak -E \""$x"\" "$prefix/${a[1]}"
+				LC_CTYPE=C sed -i.bak -E "$x" "$prefix/${a[1]}" || exit 1
+				rm "$prefix/${a[1]}.bak"
+			;;
 			symlink)
 				echo "creating symlink from $prefix/m68k-amigaos/${a[2]} to ${a[1]}"
 				rm -rf "$prefix/m68k-amigaos/${a[2]}"
