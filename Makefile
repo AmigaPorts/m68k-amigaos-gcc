@@ -1650,6 +1650,8 @@ libnix4.library: $(BUILD)/libnix/libb/libnix4.library
 $(BUILD)/libnix/libb/libnix4.library: $(BUILD)/gcc/_libgcc_done $(BUILD)/libnix/_done
 	$(L0)"make libnix4.library"$(L1) CFLAGS="$(CFLAGS_FOR_TARGET) $(LIBNIX_CFLAGS)" \
 	$(MAKE) -C $(BUILD)/libnix -f $(PROJECTS)/libnix/Makefile.m68k-amigaos root=$(PROJECTS)/libnix libb/libnix4.library $(L2)
+	# libnix's make leaves an up-to-date library alone, older than the stamps above
+	touch $@
 
 # =================================================
 # clib2
