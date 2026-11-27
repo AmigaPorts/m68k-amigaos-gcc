@@ -6,7 +6,7 @@ This is the AmigaPorts continuation of bebbo's amiga-gcc; fixes flow both ways.
 * [Amiga GCC User's Manual](doc/manual.md): using the toolchain, and its Amiga-specific options, attributes and C runtimes.
 * [Amiga GCC Development Manual](doc/devel.md): building, packaging, testing and releasing the toolchain, its branches, and making changes to it.
 
-Currently, these tools are bundled:
+Currently, these tools are bundled; some are built only on request (see [Beyond `make all`](doc/build.md#beyond-make-all)):
 
 * binutils with Hunk binary format support
 * gcc with frontends for C/C++/ObjC; the experimental Rust frontend (gccrs) builds with `make ADDLANG=rust` (see [examples/rust](examples/rust/))
@@ -15,6 +15,7 @@ Currently, these tools are bundled:
 * fd2pragma
 * vbcc, vasm, vlink
 * ira (m68k reassembler)
+* FlexCat (locale catalogs and their source files; only for Linux and macOS)
 * zlib, libpng, freetype
 * Various Amiga SDKs (see [sdk](sdk/))
 

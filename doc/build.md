@@ -100,6 +100,21 @@ time make all -j$(nproc)
 A full bootstrap takes roughly 5 to 15 minutes on current Linux hardware,
 most of it in the multilib phases.
 
+## Beyond `make all`
+
+These parts are built only when named on the command line, after `all`:
+
+| target | builds and installs |
+|---|---|
+| `all-sdk` | every SDK described in [sdk/](../sdk/): headers, inlines and link libraries |
+| `sdk-<name>` | the SDK of `sdk/<name>.sdk`, e.g. `sdk-mui` |
+| `zlib`, `libpng`, `libfreetype2` | zlib, libpng and FreeType, for every multilib |
+| `vbcc`, `vlink` | the vbcc compiler and the vlink linker |
+| `flexcat` | FlexCat, which makes locale catalogs and their C sources (only for Linux and macOS), and its `.sd` templates in `$PREFIX/share/flexcat`: set `FLEXCAT_SDDIR` to it to name them without their path |
+
+`make all-dist` builds what the release packages have: `all` and all of
+these but `libfreetype2`.
+
 ## Thread model
 
 `THREADS=` picks the thread model gcc is built with, which C++'s
