@@ -1,0 +1,28 @@
+--- /dev/null
++++ whatis.sfd
+@@ -0,0 +1,25 @@
++* whatis.library 4.0, from WhatIs.lha's clib/whatis_protos.h
++==base _WhatIsBase
++==basetype struct Library *
++==libname whatis.library
++==include <exec/types.h>
++==include <utility/tagitem.h>
++==bias 30
++==public
++FileType WhatIs(char *Name, struct TagItem *TagArray) (a0,a1)
++==varargs
++FileType WhatIsTags(char *Name, Tag FirstTag, ...) (a0,a1)
++char *GetIDString(FileType Type) (a0)
++char *GetIconName(FileType Type) (a0)
++FileType GetIDType(char *IdString) (a0)
++WORD CmpFileType(FileType Type1, FileType Type2) (a0,a1)
++ULONG GetIDStringMaxLen() ()
++FileType FirstType() ()
++FileType NextType(FileType Type) (a0)
++long AskReparse(BOOL Now) (d0)
++FileType ParentFileType(FileType Type) (d0)
++BOOL IsSubTypeOf(FileType Type, FileType ParentType) (d0,d1)
++APTR MakeTypeInfos(ULONG SizeOfInfo) (d0)
++void *GetTypeInfo(APTR Handle, FileType Type) (a0,d0)
++void FreeTypeInfos(APTR Handle) (a0)
++==end
