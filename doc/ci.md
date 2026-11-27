@@ -57,16 +57,14 @@ make all-dist check-gdb-libpython package \
 
 | platform | runner | without `make` |
 |---|---|---|
-| `linux` | x86-64 Ubuntu | the make targets above |
-| `linux-x86` | x86-64 Ubuntu | the same as `linux`, which will become `linux-arm` |
-| `linux-arm` | arm64 Ubuntu | same, but faster |
+| `linux`, `linux-arm` | arm64 Ubuntu | the make targets above |
+| `linux-x86` | x86-64 Ubuntu | same |
 | `linux-gcc6` | x86-64 Ubuntu | same, with gcc branch `amiga6` |
 | `macos` | macOS 15 | same |
 | `amigaos` | x86-64 Ubuntu | the Linux build, then the AmigaOS-hosted toolchain bootstrapped with it |
 | `mingw` | MinGW cross container | the Windows-hosted toolchain and its installer |
 
-`make` works on the first four. `amigaos` and `mingw` build compilers that
-cannot run on the runner, so a `make` there fails.
+`make` works on Linux and macOS.
 
 A job runs its targets one after the other, because the gcc testsuites
 share `gcc.sum`, and stops at the first that fails. A check target builds
