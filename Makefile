@@ -528,6 +528,7 @@ help:
 	echo "make package-lha         package the prefix folder as an .lha archive"
 	echo "make volamos             install the volamos simulator used by the testsuite"
 	echo "make check               run the pre-release tests (doc/testing.md)"
+	echo "make check-fast          run the quick tests, which CI runs on every build"
 	echo "make check-<suite>       run one testsuite: gcc-amigaos, gcc-c, gcc-c++, newlib, libnix, libc-test, examples, ..."
 	echo "make update              perform git pull for all targets"
 	echo "make update-<target>     perform git pull for the given target"
@@ -1947,6 +1948,16 @@ if-missing = $(if $(filter-out $(wildcard $(1)),$(1)),$(2))
 # _libgcc_done comes after binutils, gcc and libnix
 MIN_IF_MISSING = $(call if-missing,$(BUILD)/gcc/_libgcc_done $(BUILD)/ixemul/_done,min)
 
+# The quick tests, which CI runs on every build and check starts with.
+.PHONY: check-fast
+check-fast:
+	$(MAKE) --no-print-directory check-multilib
+	$(MAKE) --no-print-directory check-binutils
+	$(MAKE) --no-print-directory check-sfdc
+	$(MAKE) --no-print-directory check-gcc-amigaos
+	$(MAKE) --no-print-directory check-libnix
+	$(MAKE) --no-print-directory check-libpthread
+
 # What a release must pass; the release workflow runs it.  The GCC testsuites run
 # sequentially: they drive check-gcc-c in the same build tree, sharing gcc.sum
 # and testsuite/gcc-parallel, so they must not run at the same time.
@@ -1958,12 +1969,7 @@ MIN_IF_MISSING = $(call if-missing,$(BUILD)/gcc/_libgcc_done $(BUILD)/ixemul/_do
 .PHONY: check
 check:
 	$(MAKE) --no-print-directory check-shell
-	$(MAKE) --no-print-directory check-multilib
-	$(MAKE) --no-print-directory check-binutils
-	$(MAKE) --no-print-directory check-sfdc
-	$(MAKE) --no-print-directory check-gcc-amigaos
-	$(MAKE) --no-print-directory check-libnix
-	$(MAKE) --no-print-directory check-libpthread
+	$(MAKE) --no-print-directory check-fast
 	$(MAKE) --no-print-directory check-examples
 	$(MAKE) --no-print-directory check-newlib
 	$(MAKE) --no-print-directory check-gcc-c
