@@ -31,24 +31,29 @@ In a fresh tree a check target first builds what it tests (`min`, or just
 an old one: rebuild with `make min` (or `make all`) first after changing
 sources.
 
-| target | what |
-|---|---|
-| `check-gcc-amigaos` | gcc's AmigaOS target tests (`amigaos.exp`) |
-| `check-gcc-c` | gcc's `execute.exp` under the simulator |
-| `check-gcc-c++` | the whole g++ testsuite (slow) |
-| `check-gcc-rust` | the gccrs testsuite, for a toolchain built with `ADDLANG=rust`. It only reports, as its standing failures are test bugs on this target |
-| `check-newlib` | newlib's own testsuite, on both newlib boards |
-| `check-libc-test` | musl's testsuite, [libc-test](https://wiki.musl-libc.org/libc-test.html), see below. It has known failures ([#239](https://github.com/AmigaPorts/m68k-amigaos-gcc/issues/239)) |
-| `check-libnix` | libnix's target tests |
-| `check-libpthread` | builds libpthread's test programs, runs its link checks, and runs under volamos the programs that pass there |
-| `check-examples` | `make check` in each of the [examples](../examples/), under volamos; `make -j` runs them in parallel. The C++ threads example needs `THREADS=amigaos` |
-| `check-binutils` | the gas and ld tests for the Amiga hunk format |
-| `check-sfdc` | sfdc's tests, and what it writes for a link library compiled with the cross compiler |
-| `check-multilib` | the multilib list against the driver's |
-| `check-shell` | shellcheck on the shell scripts of `scripts/` and `.github/scripts/` |
-| `check-fast` | the quick tests, which CI runs on every build: `check-multilib`, `check-binutils`, `check-sfdc`, `check-gcc-amigaos`, `check-libnix` and `check-libpthread` |
-| `check` | the pre-release test: all of the above on the boards marked in [Tested configurations](#tested-configurations), with `check-libc-test` only on clib2 at `-O2`: both groups, and the math one with `-m68020-60 -m68881` too |
-| `check-python` | [ruff](https://docs.astral.sh/ruff/) on the Python scripts of `scripts/` and `.github/scripts/`. Not part of `check`: it needs ruff installed |
+`make check` runs the pre-release tests, in less than 20 minutes on a fast
+laptop, with the gcc testsuites on the boards marked in [Tested
+configurations](#tested-configurations), and `check-libc-test` on clib2 at
+`-O2`: both groups, and the math one with `-m68020-60 -m68881` too.
+`make check-fast` runs the quick tests, in less than 5 minutes; CI runs them
+on every build.
+
+| target | `check` | `check-fast` | what |
+|---|---|---|---|
+| `check-gcc-amigaos` | yes | yes | gcc's AmigaOS target tests (`amigaos.exp`) |
+| `check-gcc-c` | yes | | gcc's `execute.exp` under the simulator |
+| `check-gcc-c++` | yes | | the whole g++ testsuite (slow) |
+| `check-gcc-rust` | | | the gccrs testsuite, for a toolchain built with `ADDLANG=rust`. It only reports, as its standing failures are test bugs on this target |
+| `check-newlib` | yes | | newlib's own testsuite, on both newlib boards |
+| `check-libc-test` | yes | | musl's testsuite, [libc-test](https://wiki.musl-libc.org/libc-test.html), see below. It has known failures ([#239](https://github.com/AmigaPorts/m68k-amigaos-gcc/issues/239)) |
+| `check-libnix` | yes | yes | libnix's target tests |
+| `check-libpthread` | yes | yes | builds libpthread's test programs, runs its link checks, and runs under volamos the programs that pass there |
+| `check-examples` | yes | | `make check` in each of the [examples](../examples/), under volamos; `make -j` runs them in parallel. The C++ threads example needs `THREADS=amigaos` |
+| `check-binutils` | yes | yes | the gas and ld tests for the Amiga hunk format |
+| `check-sfdc` | yes | yes | sfdc's tests, and what it writes for a link library compiled with the cross compiler |
+| `check-multilib` | yes | yes | the multilib list against the driver's |
+| `check-shell` | yes | | shellcheck on the shell scripts of `scripts/` and `.github/scripts/` |
+| `check-python` | | | [ruff](https://docs.astral.sh/ruff/) on the Python scripts of `scripts/` and `.github/scripts/`; it needs ruff installed |
 
 Run the gcc testsuite targets one at a time, not together in one `make -j`
 or in two shells on the same build tree: they share `gcc.sum`.
