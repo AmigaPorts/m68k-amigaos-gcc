@@ -12,6 +12,8 @@
 #   EXEEXT               the executable suffix of <prefix>'s tools (.exe)
 #   HOST_RUNNER          the command that runs <prefix>'s compiler and ar
 #                        when they are built for another host, e.g. wine
+#   BUILD                the build tree; each SDK is unpacked into
+#                        $BUILD/sdk/<sdk> (default: build)
 
 if [ $# -ne 2 ]; then
 	echo "usage: $0 <sdk> <prefix>" >&2
@@ -19,6 +21,7 @@ if [ $# -ne 2 ]; then
 fi
 sdk=$1
 prefix=$2
+build=${BUILD:-build}/sdk
 
 export PATH=$PATH:$prefix/bin
 sdk_descriptor="sdk/$sdk.sdk"
@@ -111,8 +114,8 @@ install_sdk()
 					pushd "projects/$file" || exit 1
 					git pull
 					popd || exit 1
-					mkdir -p "build/$sdk/"
-					rsync -r "projects/$file"/* "build/$sdk/"
+					mkdir -p "$build/$sdk/"
+					rsync -r "projects/$file"/* "$build/$sdk/"
 				else
 					archive="download/$file"
 					url=${a[1]}:${a[2]}
@@ -120,12 +123,12 @@ install_sdk()
 						"$archive" "$url" ${sdk_fallback_url:+"$sdk_fallback_url"} || exit 1
 					# a re-downloaded archive (e.g. after a Sha256 bump)
 					# is newer than the tree extracted from the old one
-					if [ ! -e "build/$sdk" ] || [ -z "$(ls -A "build/$sdk")" ] || \
-						[ "$archive" -nt "build/$sdk" ]; then
-						rm -rf "build/$sdk"
-						mkdir -p "build/$sdk"
-						pushd "build/$sdk" || exit 1
-							"$LHA_FOR_BUILD" x "../../download/$file"
+					if [ ! -e "$build/$sdk" ] || [ -z "$(ls -A "$build/$sdk")" ] || \
+						[ "$archive" -nt "$build/$sdk" ]; then
+						rm -rf "${build:?}/$sdk"
+						mkdir -p "$build/$sdk"
+						pushd "$build/$sdk" || exit 1
+							"$LHA_FOR_BUILD" x "$OLDPWD/$archive"
 							find . -type d -exec chmod +x {} \;
 						popd || exit 1
 					fi
@@ -163,13 +166,13 @@ install_sdk()
 				sfd=${a[1]}
 				file=$(basename "$sfd")
 				name=${file%????}
-				run_sfdc --mode=autoopen --target=m68k-amigaos --output="build/$sdk/$name.c" "$prefix/m68k-amigaos/lib/sfd/$name.sfd" || exit 1
-				echo "$prefix/bin/m68k-amigaos-gcc" -Os -mcrt=nix20 -fomit-frame-pointer "build/$sdk/$name.c" -c
-				run_target_cc -Os -mcrt=nix20 -fomit-frame-pointer "build/$sdk/$name.c" -c -o "build/$sdk/$name.o" || exit 1
-				echo "$prefix/bin/m68k-amigaos-ar" r "$prefix/m68k-amigaos/lib/libstubs.a" "build/$sdk/$name.o"
+				run_sfdc --mode=autoopen --target=m68k-amigaos --output="$build/$sdk/$name.c" "$prefix/m68k-amigaos/lib/sfd/$name.sfd" || exit 1
+				echo "$prefix/bin/m68k-amigaos-gcc" -Os -mcrt=nix20 -fomit-frame-pointer "$build/$sdk/$name.c" -c
+				run_target_cc -Os -mcrt=nix20 -fomit-frame-pointer "$build/$sdk/$name.c" -c -o "$build/$sdk/$name.o" || exit 1
+				echo "$prefix/bin/m68k-amigaos-ar" r "$prefix/m68k-amigaos/lib/libstubs.a" "$build/$sdk/$name.o"
 				(
 					flock -x 200
-					run_target_ar r "$prefix/m68k-amigaos/lib/libstubs.a" "build/$sdk/$name.o" || exit 1
+					run_target_ar r "$prefix/m68k-amigaos/lib/libstubs.a" "$build/$sdk/$name.o" || exit 1
 				) 200>/tmp/amiga-gcc-libstubs-lock
 				rm -f /tmp/amiga-gcc-libstubs-lock
 			;;
@@ -177,23 +180,23 @@ install_sdk()
 				sfd=${a[1]}
 				file=$(basename "$sfd")
 				name=${file%????}
-				run_sfdc --mode=stubs --target=m68k-amigaos --output="build/$sdk/lib$sdk.c" "$prefix/m68k-amigaos/lib/sfd/$name.sfd" || exit 1
-				echo "$prefix/bin/m68k-amigaos-gcc" -Os -mcrt=nix20 -fomit-frame-pointer "build/$sdk/lib$sdk.c" -c
-				run_target_cc -Os -mcrt=nix20 -fomit-frame-pointer "build/$sdk/lib$sdk.c" -c -o "build/$sdk/lib$sdk.o" || exit 1
-				echo "$prefix/bin/m68k-amigaos-ar" r "$prefix/m68k-amigaos/lib/lib$sdk.a" "build/$sdk/lib$sdk.o"
-				run_target_ar r "$prefix/m68k-amigaos/lib/lib$sdk.a" "build/$sdk/lib$sdk.o" || exit 1
+				run_sfdc --mode=stubs --target=m68k-amigaos --output="$build/$sdk/lib$sdk.c" "$prefix/m68k-amigaos/lib/sfd/$name.sfd" || exit 1
+				echo "$prefix/bin/m68k-amigaos-gcc" -Os -mcrt=nix20 -fomit-frame-pointer "$build/$sdk/lib$sdk.c" -c
+				run_target_cc -Os -mcrt=nix20 -fomit-frame-pointer "$build/$sdk/lib$sdk.c" -c -o "$build/$sdk/lib$sdk.o" || exit 1
+				echo "$prefix/bin/m68k-amigaos-ar" r "$prefix/m68k-amigaos/lib/lib$sdk.a" "$build/$sdk/lib$sdk.o"
+				run_target_ar r "$prefix/m68k-amigaos/lib/lib$sdk.a" "$build/$sdk/lib$sdk.o" || exit 1
 			;;
 			liba)
 				sfd=${a[1]}
 				file=$(basename "$sfd")
 				name=${file%????}
-				run_sfdc --mode=stubs --target=m68k-amigaos --output="build/$sdk/lib$sdk.c" "$prefix/m68k-amigaos/lib/sfd/$name.sfd" || exit 1
+				run_sfdc --mode=stubs --target=m68k-amigaos --output="$build/$sdk/lib$sdk.c" "$prefix/m68k-amigaos/lib/sfd/$name.sfd" || exit 1
 			;;
 			libc)
-				echo "$prefix/bin/m68k-amigaos-gcc" -Os -mcrt=nix20 -fomit-frame-pointer "build/$sdk/lib$sdk.c" -c
-				run_target_cc -Os -mcrt=nix20 -fomit-frame-pointer "build/$sdk/lib$sdk.c" -c -o "build/$sdk/lib$sdk.o" || exit 1
-				echo "$prefix/bin/m68k-amigaos-ar" r "$prefix/m68k-amigaos/lib/lib$sdk.a" "build/$sdk/lib$sdk.o"
-				run_target_ar r "$prefix/m68k-amigaos/lib/lib$sdk.a" "build/$sdk/lib$sdk.o" || exit 1
+				echo "$prefix/bin/m68k-amigaos-gcc" -Os -mcrt=nix20 -fomit-frame-pointer "$build/$sdk/lib$sdk.c" -c
+				run_target_cc -Os -mcrt=nix20 -fomit-frame-pointer "$build/$sdk/lib$sdk.c" -c -o "$build/$sdk/lib$sdk.o" || exit 1
+				echo "$prefix/bin/m68k-amigaos-ar" r "$prefix/m68k-amigaos/lib/lib$sdk.a" "$build/$sdk/lib$sdk.o"
+				run_target_ar r "$prefix/m68k-amigaos/lib/lib$sdk.a" "$build/$sdk/lib$sdk.o" || exit 1
 			;;
 
 			redirinc)
@@ -206,18 +209,18 @@ install_sdk()
 				ln -s "${a[1]}" "$prefix/m68k-amigaos/${a[2]}"
 			;;
 			stdargs)
-				echo "adding __stdargs to build/$sdk/${a[1]}"
-				LC_CTYPE=C sed -i.bak -E 's/(.*)__stdargs (.*)/\1\2/g' "build/$sdk/${a[1]}"
-				LC_CTYPE=C sed -i.bak -E 's/([a-zA-Z0-9_]*[[:blank:]]*.*[[:blank:]]+\*?[[:blank:]]*)([a-zA-Z0-9_]+)[[:blank:]]*\(/__stdargs \1\2(/g' "build/$sdk/${a[1]}"
-				rm "build/$sdk/${a[1]}.bak"
+				echo "adding __stdargs to $build/$sdk/${a[1]}"
+				LC_CTYPE=C sed -i.bak -E 's/(.*)__stdargs (.*)/\1\2/g' "$build/$sdk/${a[1]}"
+				LC_CTYPE=C sed -i.bak -E 's/([a-zA-Z0-9_]*[[:blank:]]*.*[[:blank:]]+\*?[[:blank:]]*)([a-zA-Z0-9_]+)[[:blank:]]*\(/__stdargs \1\2(/g' "$build/$sdk/${a[1]}"
+				rm "$build/$sdk/${a[1]}.bak"
 			;;
 			patch)
 				patch=patches/$sdk/${a[1]}
-				echo "applying patch $patch to build/$sdk"
-				patch -N -p0 -r - -d "build/$sdk" < "$patch"
+				echo "applying patch $patch to $build/$sdk"
+				patch -N -p0 -r - -d "$build/$sdk" < "$patch"
 			;;
 			patch1)
-				scripts/sdk-patch "build/$sdk" "${a[1]}" || exit 1
+				scripts/sdk-patch "$build/$sdk" "${a[1]}" || exit 1
 			;;
 			copy)
 				source_file=${a[1]}
@@ -227,15 +230,15 @@ install_sdk()
 					exit 1
 				fi
 				mkdir -p "$prefix/$(dirname "$destination_file")"
-				echo cp "build/$sdk/$source_file" "$prefix/$destination_file"
-				cp "build/$sdk/$source_file" "$prefix/$destination_file" || exit 1
+				echo cp "$build/$sdk/$source_file" "$prefix/$destination_file"
+				cp "$build/$sdk/$source_file" "$prefix/$destination_file" || exit 1
 			;;
 			*)
 				if [ "$line" != "" ]; then
 					if [ "${a[1]}" == "=" ]; then
 						file=${a[2]}
 						line=${a[0]}
-						cp "build/$sdk/$line" "build/$sdk/$(dirname "$line")/$file"
+						cp "$build/$sdk/$line" "$build/$sdk/$(dirname "$line")/$file"
 					else
 						file=$(basename "$line")
 					fi
@@ -244,27 +247,27 @@ install_sdk()
 					outdir=$(echo "$dir" | tr '[:upper:]' '[:lower:]')
 					if [[ $file == *.h ]] || [[ $file == *.i ]]; then
 						mkdir -p "$prefix/m68k-amigaos/include/$outdir"
-						echo cp "build/$sdk/$line" "$prefix/m68k-amigaos/include/$outdir/$file"
-						cp "build/$sdk/$line" "$prefix/m68k-amigaos/include/$outdir/$file"
+						echo cp "$build/$sdk/$line" "$prefix/m68k-amigaos/include/$outdir/$file"
+						cp "$build/$sdk/$line" "$prefix/m68k-amigaos/include/$outdir/$file"
 					elif [[ $file == *.guide ]]; then
 						mkdir -p "$prefix/m68k-amigaos/guide"
-						echo cp "build/$sdk/$line" "$prefix/m68k-amigaos/guide/$file"
-						cp "build/$sdk/$line" "$prefix/m68k-amigaos/guide/$file"
+						echo cp "$build/$sdk/$line" "$prefix/m68k-amigaos/guide/$file"
+						cp "$build/$sdk/$line" "$prefix/m68k-amigaos/guide/$file"
 					elif [[ $file == *.doc ]]; then
 						mkdir -p "$prefix/m68k-amigaos/doc"
-						echo cp "build/$sdk/$line" "$prefix/m68k-amigaos/doc/$file"
-						cp "build/$sdk/$line" "$prefix/m68k-amigaos/doc/$file"
+						echo cp "$build/$sdk/$line" "$prefix/m68k-amigaos/doc/$file"
+						cp "$build/$sdk/$line" "$prefix/m68k-amigaos/doc/$file"
 					elif [[ $file == *.sfd ]]; then
 						mkdir -p "$prefix/m68k-amigaos/lib/sfd"
-						echo cp "build/$sdk/$line" "$prefix/m68k-amigaos/lib/sfd/$file"
-						cp "build/$sdk/$line" "$prefix/m68k-amigaos/lib/sfd/$file"
+						echo cp "$build/$sdk/$line" "$prefix/m68k-amigaos/lib/sfd/$file"
+						cp "$build/$sdk/$line" "$prefix/m68k-amigaos/lib/sfd/$file"
 					elif [[ $file == *.fd ]]; then
 						mkdir -p "$prefix/m68k-amigaos/lib/fd"
-						echo cp "build/$sdk/$line" "$prefix/m68k-amigaos/lib/fd/$file"
-						cp "build/$sdk/$line" "$prefix/m68k-amigaos/lib/fd/$file"
+						echo cp "$build/$sdk/$line" "$prefix/m68k-amigaos/lib/fd/$file"
+						cp "$build/$sdk/$line" "$prefix/m68k-amigaos/lib/fd/$file"
 					elif [[ $file == *.a ]]; then
-						echo cp "build/$sdk/$line" "$prefix/m68k-amigaos/lib/$file"
-						cp "build/$sdk/$line" "$prefix/m68k-amigaos/lib/$file"
+						echo cp "$build/$sdk/$line" "$prefix/m68k-amigaos/lib/$file"
+						cp "$build/$sdk/$line" "$prefix/m68k-amigaos/lib/$file"
 					fi
 				fi
 			;;
