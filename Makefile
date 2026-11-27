@@ -1847,7 +1847,7 @@ all-sdk: $(SDKS)
 
 # a static pattern rule: make skips the implicit rule search for phony targets
 $(SDKS): sdk-%: sdk/%.sdk libnix | $(LHA_PREREQ)
-	$(L0)"sdk $*"$(L1) HOST_RUNNER="$(HOST_RUNNER)" EXEEXT="$(EXEEXT)" TARGET_CC_FOR_BUILD="$(TARGET_CC_FOR_BUILD)" TARGET_AR_FOR_BUILD="$(TARGET_AR_FOR_BUILD)" FD2SFD_FOR_BUILD="$(FD2SFD_FOR_BUILD)" SFDC_FOR_BUILD="$(SFDC_FOR_BUILD)" LHA_FOR_BUILD="$(LHA_FOR_BUILD)" $(CURDIR)/scripts/sdk-install $* $(PREFIX) $(L2)
+	$(L0)"sdk $*"$(L1) BUILD="$(BUILD)" HOST_RUNNER="$(HOST_RUNNER)" EXEEXT="$(EXEEXT)" TARGET_CC_FOR_BUILD="$(TARGET_CC_FOR_BUILD)" TARGET_AR_FOR_BUILD="$(TARGET_AR_FOR_BUILD)" FD2SFD_FOR_BUILD="$(FD2SFD_FOR_BUILD)" SFDC_FOR_BUILD="$(SFDC_FOR_BUILD)" LHA_FOR_BUILD="$(LHA_FOR_BUILD)" $(CURDIR)/scripts/sdk-install $* $(PREFIX) $(L2)
 
 # =================================================
 # tag a release

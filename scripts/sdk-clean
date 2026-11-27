@@ -1,6 +1,7 @@
 #!/bin/bash
-# Remove the tree scripts/sdk-install unpacked an SDK into, so the next
-# install starts from the archive again.
+# Remove the tree scripts/sdk-install unpacked an SDK into, $BUILD/sdk/<sdk>
+# (default: build/sdk/<sdk>), so the next install starts from the archive
+# again.
 
 set -euo pipefail
 
@@ -9,4 +10,4 @@ if [ $# -ne 1 ]; then
 	exit 2
 fi
 
-rm -rf "build/$1"
+rm -rf "${BUILD:-build}/sdk/$1"
