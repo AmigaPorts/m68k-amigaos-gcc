@@ -2362,7 +2362,7 @@ $(BUILD)/$(zlib_DIR)/libz.a: $(BUILD)/$(zlib_DIR)/Makefile
 # libnix's string.h inlines memmove(), which calls __bcopz(): __NO_INLINE__
 # turns those inlines off.
 $(BUILD)/$(zlib_DIR)/Makefile: MULTI_CFLAGS = -D__NO_INLINE__
-$(BUILD)/$(zlib_DIR)/Makefile: $(PROJECTS)/$(zlib_DIR)/configure
+$(BUILD)/$(zlib_DIR)/Makefile: $(PROJECTS)/$(zlib_DIR)/configure $(BUILD)/gcc/_libgcc_done
 	$(call MULTICONFIGURE,$(zlib_DIR),libz.a,)
 	@touch $@
 
