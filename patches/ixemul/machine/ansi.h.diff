@@ -1,0 +1,11 @@
+--- old/machine/ansi.h
++++ new/machine/ansi.h
+@@ -91,7 +91,7 @@
+  * and rune_t are typedef'd, _WCHAR_T_ will be undef'd, but _RUNE_T remains
+  * defined for ctype.h.
+  */
+-#define	_BSD_WCHAR_T_	int			/* wchar_t */
++#define	_BSD_WCHAR_T_	__WCHAR_TYPE__		/* wchar_t, as GCC's <stddef.h> */
+ #define	_BSD_RUNE_T_	int			/* rune_t */
+ 
+ #endif	/* _ANSI_H_ */
