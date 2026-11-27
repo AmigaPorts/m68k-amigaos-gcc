@@ -48,7 +48,7 @@ The words after `make` go to make as they are. Without `make`, the platform
 builds the whole distribution and runs the fast tests:
 
 ```
-make all all-sdk vbcc vlink zlib libpng check-gdb-libpython package \
+make all-dist check-gdb-libpython package \
   check-multilib check-binutils check-sfdc check-gcc-amigaos check-libnix \
   check-libpthread
 ```

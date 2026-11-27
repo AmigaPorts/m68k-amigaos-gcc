@@ -222,7 +222,7 @@ jobs:
             || needs.refs.outputs.label == 'ci-check-c++-newlib' && 'check-gcc-c++ board=volamos/-mcrt=newlib'
             || needs.refs.outputs.label == 'ci-check-newlib' && 'check-newlib'
             || needs.refs.outputs.label == 'ci-check-threads' && 'THREADS=amigaos check-gcc-amigaos check-libnix check-libpthread check-newlib'
-            || format('all all-sdk vbcc vlink zlib libpng check-gdb-libpython package {0}{1}{2}',
+            || format('all-dist check-gdb-libpython package {0}{1}{2}',
                       inputs.run_testsuite && 'check' || 'check-multilib check-binutils check-sfdc check-gcc-amigaos check-libnix check-libpthread',
                       inputs.run_cxx_testsuite && ' check-gcc-c++' || '',
                       (inputs.simulator || 'volamos') == 'vamos' && ' board=vamos' || '') }}

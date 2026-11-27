@@ -519,6 +519,7 @@ help:
 	echo "make print-<var>         prints a make var (e.g. print-TARGET)"
 	echo
 	echo "make all                 build and install all"
+	echo "make all-dist            all, plus what the release packages add: sdks, vbcc, vlink, zlib, libpng"
 	echo "make min                 build only the compiler and its runtimes (no gdb, gprof, libnix4.library)"
 	echo "make <target>            builds a target: binutils, gcc, gprof, fd2pragma, ira, sfdc, vasm, vbcc, vlink, libnix, ixemul, libgcc, clib2, libdebug, libpthread, ndk, ndk13"
 	echo "make clean               remove the build folder"
@@ -557,6 +558,10 @@ endif
 all: gcc binutils $(ALL_GDB) gprof fd2pragma ira sfdc vasm libnix ixemul libgcc clib2 libdebug libpthread ndk ndk13 libnix4.library
 	@echo "Creating .manifest..."
 	@$(MAKE) --no-print-directory manifest
+
+# Everything the release packages have.
+.PHONY: all-dist
+all-dist: all all-sdk vbcc vlink zlib libpng
 
 # Record what was built in .manifest, in the format of .repos with the
 # commit of each checkout; see scripts/manifest.  Installed to $(PREFIX), so
