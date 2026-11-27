@@ -114,4 +114,5 @@ sfdc : muimaster_lib.sfd
 stubs : muimaster_lib.sfd
 patch : SDK/MUI/C/include/libraries/mui.h
 lib : muimaster_lib.sfd
+sed : m68k-amigaos/include/proto/muimaster_lib.h "s/^(#\s+include <inline\/muimaster_lib_protos.h>)$/#ifndef NO_INLINE_STDARG\n#define NO_INLINE_STDARG\n\1\n#undef NO_INLINE_STDARG\n#else\n\1\n#endif/"
 symlink: muimaster_lib.h include/proto/muimaster.h
