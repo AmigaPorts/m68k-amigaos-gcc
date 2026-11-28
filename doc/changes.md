@@ -19,10 +19,6 @@ Fork the repository the change belongs in, push a branch, and open a pull
 request (PR) against the branch `default-repos` names. Keep each commit to one
 logical change, described as in [Commit messages](#commit-messages).
 
-`gcc` has a second maintained branch, `amiga6` (gcc 6). A change to how a
-runtime is installed or linked (start files, link specs, multilibs) needs a
-matching change there.
-
 A change that spans repositories goes in two steps: first the module's PR,
 then the one here that depends on it. Link them with full
 references (`AmigaPorts/gcc#131`), which GitHub turns into links in both
@@ -82,7 +78,7 @@ reply.
 
 A review checks that the change:
 - does what its description says, and nothing unrelated;
-- does not break other targets, runtimes or the gcc 6 branch;
+- does not break other targets or runtimes;
 - comes with a test when it fixes a bug or adds a feature, and has passed
   CI;
 - reads like the code around it, with commit messages that explain it.

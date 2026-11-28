@@ -7,11 +7,11 @@ Part of the [Amiga GCC Development Manual](devel.md).
 gcc:
 * `amiga16.2`: GCC 16.2, built and tested by CI (default)
 * `amiga13.4`: GCC 13.4, no longer supported
-* `amiga6`: the legacy GCC 6.5.0b, on feature freeze
+* `amiga6`: GCC 6.5.0b, no longer supported
 
 binutils:
 * `amiga-2.47`: binutils 2.47 with AmigaOS support and DWARF2 debugging (default)
-* `amiga-2.46`: binutils 2.46, the previous default
+* `amiga-2.46`: binutils 2.46, no longer supported
 
 ## Switching modules
 

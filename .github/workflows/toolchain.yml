@@ -118,7 +118,6 @@ jobs:
                  "ci-linux",
                  "ci-linux-x86",
                  "ci-linux-arm",
-                 "ci-linux-gcc6",
                  "ci-macos",
                  "ci-amigaos",
                  "ci-mingw",
@@ -143,8 +142,7 @@ jobs:
       # the pull request heads the pending status went to, if any
       pr_heads: ${{ steps.pr-status.outputs.heads }}
     env:
-      # the label first: gcc_version defaults to 16.2 for a module repo's call
-      GCC_VER: ${{ ((inputs.ci_label || github.event.label.name) == 'ci-linux-gcc6' && '6') || inputs.gcc_version || '16.2' }}
+      GCC_VER: ${{ inputs.gcc_version || '16.2' }}
       TAG: ${{ inputs.tag }}
     steps:
       - uses: actions/checkout@v7
@@ -230,7 +228,7 @@ jobs:
       AMITOOLS_GIT: ${{ inputs.amitools_git || 'git+https://github.com/AmigaPorts/amitools.git' }}
       # not GCC_VERSION: the Makefile reads that from gcc's BASE-VER
       # (16.2.1b) and derives the lib/gcc/<target>/<version> directory (16)
-      GCC_VER: ${{ (needs.refs.outputs.label == 'ci-linux-gcc6' && '6') || inputs.gcc_version || '16.2' }}
+      GCC_VER: ${{ inputs.gcc_version || '16.2' }}
       # mirrors to try, in order, before aminet.net itself; see
       # https://wiki.aminet.net/Mirrors (some serve the tree under /aminet)
       AMINET_MIRROR: http://us4.aminet.net/aminet http://de4.aminet.net
