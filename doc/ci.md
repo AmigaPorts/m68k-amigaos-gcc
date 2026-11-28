@@ -38,7 +38,7 @@ is a separate job, and they all run in parallel. For example:
 /ci macos
 /ci linux-arm make check-gcc-c board=volamos/-mcrt=newlib
 /ci linux-arm make all all-sdk libpng check-gcc-c++
-/ci linux binutils=amiga-2.46 make check-gcc-c
+/ci linux binutils=my-fix make check-gcc-c
 ```
 
 A `<module>=<branch>` word builds that module, named as in `default-repos`,
@@ -57,7 +57,6 @@ make all-dist package check-gdb-libpython check-fast
 |---|---|---|
 | `linux`, `linux-arm` | arm64 Ubuntu | the make targets above |
 | `linux-x86` | x86-64 Ubuntu | same |
-| `linux-gcc6` | x86-64 Ubuntu | same, with gcc branch `amiga6` |
 | `macos` | macOS 15 | same |
 | `amigaos` | x86-64 Ubuntu | the Linux build, then the AmigaOS-hosted toolchain bootstrapped with it |
 | `mingw` | MinGW cross container | the Windows-hosted toolchain and its installer |
@@ -147,8 +146,8 @@ pull requests build this repository's `master` with the module's pull
 request, as merged into its base, swapped in for the module. That swap is
 the `repos` input, `module=URL#ref`. For example,
 `gcc=https://github.com/AmigaPorts/gcc.git#refs/pull/131/merge`.
-A gcc pull request builds the toolchain for its own branch: `amiga6` builds
-gcc 6, `amiga16.2` builds 16.2.
+A gcc pull request builds the toolchain for its own branch: one against
+`amiga16.2` builds 16.2.
 
 ## Results
 

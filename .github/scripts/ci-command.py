@@ -120,8 +120,8 @@ if pr["state"] != "open":
 if pr["mergeable"] is False:
     fail(f"The pull request conflicts with {base}: rebase it first.")
 head = pr["head"]["sha"]
-# A gcc pull request builds the toolchain for its own branch: amiga6 for gcc 6,
-# amiga16.2 for 16.2.
+# A gcc pull request builds the toolchain for its own branch: amiga16.2 for
+# 16.2.
 gcc_version = base.removeprefix("amiga") if env.get("MODULE") == "gcc" else ""
 
 with open(env.get("GITHUB_OUTPUT", "/dev/stdout"), "a") as out:
