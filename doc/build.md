@@ -109,7 +109,7 @@ most of it in the multilib phases.
 | `THREADS=` | threads | newlib's stdio and `malloc()` |
 |---|---|---|
 | `amigaos`, the default | DOS processes, locked with gcc's `<benaphore.h>` | locked in a program built with `-pthread`, which a newlib program needs to start threads; without it, they cost an empty call |
-| `no` | none: one task | not locked, so they cost nothing |
+| `no` | none: one task, no longer tested | not locked, so they cost nothing |
 
 The release binaries are built with the default.
 

@@ -87,8 +87,7 @@ workflows, so it is the way to test a change to them. Remove and re-add a
 label to rebuild after a push. The platform labels are the `/ci` platforms
 above (`ci-linux`, `ci-linux-arm`, ...), without `make`. Each `ci-check-*`
 label runs one testsuite on `linux-arm`, except `ci-check-threads`, which runs
-the thread tests with the `amigaos` thread model that the default build leaves
-out:
+the thread tests:
 
 | label | same as |
 |---|---|
@@ -100,7 +99,7 @@ out:
 | `ci-check-c++-baserel32` | `/ci linux-arm make check-gcc-c++ board=volamos/-mcrt=nix20/-m68020-60/-fbaserel32` |
 | `ci-check-c++-newlib` | `/ci linux-arm make check-gcc-c++ board=volamos/-mcrt=newlib` |
 | `ci-check-newlib` | `/ci linux-arm make check-newlib` |
-| `ci-check-threads` | `/ci linux-arm make THREADS=amigaos check-gcc-amigaos check-libpthread check-newlib` |
+| `ci-check-threads` | `/ci linux-arm make check-gcc-amigaos check-libnix check-libpthread check-newlib` |
 
 The `claude-review` label has Claude review the pull request, with inline
 comments; remove and re-add it for another review after a push.
