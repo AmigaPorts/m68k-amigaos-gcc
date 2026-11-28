@@ -220,7 +220,7 @@ jobs:
             || needs.refs.outputs.label == 'ci-check-c++-baserel32' && 'check-gcc-c++ board=volamos/-mcrt=nix20/-m68020-60/-fbaserel32'
             || needs.refs.outputs.label == 'ci-check-c++-newlib' && 'check-gcc-c++ board=volamos/-mcrt=newlib'
             || needs.refs.outputs.label == 'ci-check-newlib' && 'check-newlib'
-            || needs.refs.outputs.label == 'ci-check-threads' && 'THREADS=amigaos check-gcc-amigaos check-libnix check-libpthread check-newlib'
+            || needs.refs.outputs.label == 'ci-check-threads' && 'check-gcc-amigaos check-libnix check-libpthread check-newlib'
             || format('all-dist package check-gdb-libpython {0}{1}{2}',
                       inputs.run_testsuite && 'check' || 'check-fast',
                       inputs.run_cxx_testsuite && ' check-gcc-c++' || '',
