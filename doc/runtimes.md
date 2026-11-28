@@ -25,27 +25,25 @@ The executables built with `-Os` for the 68000, stripped, in bytes:
 
 | runtime | empty | hello | `%f` | date | minigzip |
 |---|---:|---:|---:|---:|---:|
-| `-mcrt=nix20` | 1880 | 5420 | 14476 | 8104 | 66060 |
-| `-mcrt=nix13` | 2100 | 5644 | 14792 | 8208 | 66500 |
-| `-mcrt=library` | 1880 | 2292 | 11260 | 2460 | 53192 |
-| `-mcrt=newlib` | 5668 | 14556 | 50588 | 46932 | 120812 |
-| `-mcrt=clib2` | 15344 | 15780 | 30888 | 21716 | 79388 |
-| `-mcrt=ixemul` | 4340 | 4388 | 4460 | 12368 | 54620 |
+| `-mcrt=nix20` | 1880 | 5408 | 14412 | 8068 | 66772 |
+| `-mcrt=nix13` | 2100 | 5636 | 14568 | 8184 | 67152 |
+| `-mcrt=library` | 1880 | 2292 | 11048 | 2460 | 53788 |
+| `-mcrt=newlib` | 5880 | 15152 | 51516 | 47716 | 122432 |
+| `-mcrt=clib2` | 15308 | 15744 | 30872 | 21680 | 79968 |
+| `-mcrt=ixemul` | 4340 | 4388 | 4460 | 12368 | 55220 |
 
 - empty: `int main(void) { return 0; }`, the startup code alone
 - hello: `puts("hello, world")`, which adds stdio
 - `%f`: `printf("%f\n", x)`, which adds floating-point formatting
 - date: `strftime(buf, sizeof(buf), "%c", localtime(&t))`, which adds time zones and dates
-- minigzip: zlib 1.3.2's example program, a typical C program: file I/O through stdio and POSIX calls, `malloc()` and the string functions, plus about 50 KB of its own code
+- minigzip: zlib 1.4's example program, a typical C program: file I/O through stdio and POSIX calls, `malloc()` and the string functions, plus about 50 KB of its own code
 
 `-mcrt=library` and `-mcrt=ixemul` keep most of the C library in a shared
 library, `libnix4.library` or `ixemul.library`, which these sizes leave out.
 libnix's floating-point `printf()` comes from libm, and so is linked into
-the program even with `-mcrt=library`. newlib has no `fcntl()`, which zlib
-calls, so its minigzip is linked with a stub.
+the program even with `-mcrt=library`.
 
-To reproduce the table, write the four small programs, and a stub for
-newlib:
+To reproduce the table, write the four small programs:
 
 ```c
 // empty.c
@@ -85,29 +83,21 @@ int main(void)
     puts(buf);
     return 0;
 }
-
-// fcntl-stub.c, for newlib
-int fcntl(int fd, int cmd, ...)
-{
-    return -1;
-}
 ```
 
-and build them, and minigzip from the zlib sources, with each runtime; `-s`
-links them stripped:
+and build them with each runtime, and minigzip from the zlib sources that
+`make zlib` unpacks in `projects/` of the toolchain checkout, with the
+changes zlib needs on AmigaOS; `-s` links them stripped:
 
 ```shell
-curl -LO https://github.com/madler/zlib/releases/download/v1.3.2/zlib-1.3.2.tar.gz
-tar xzf zlib-1.3.2.tar.gz
-z=zlib-1.3.2
+z=<toolchain checkout>/projects/zlib-1.4
 for crt in nix20 nix13 library newlib clib2 ixemul; do
   for p in empty hello printf-f date; do
     m68k-amigaos-gcc -mcrt=$crt -Os -fomit-frame-pointer -s -o $p-$crt $p.c -lm
   done
   m68k-amigaos-gcc -mcrt=$crt -Os -fomit-frame-pointer -s -DZ_HAVE_UNISTD_H -I$z \
     -o minigzip-$crt $z/test/minigzip.c \
-    $z/{adler32,crc32,deflate,inflate,inffast,inftrees,trees,zutil,gzlib,gzread,gzwrite,gzclose}.c \
-    $([ $crt = newlib ] && echo fcntl-stub.c)
+    $z/{adler32,crc32,deflate,inflate,inffast,inftrees,trees,zutil,gzlib,gzread,gzwrite,gzclose}.c
 done
 ls -l *-nix20 *-nix13 *-library *-newlib *-clib2 *-ixemul
 ```
