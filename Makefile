@@ -312,17 +312,13 @@ __PROJECTDIR := $(shell mkdir -p $(PROJECTS))
 __DOWNLOADDIR := $(shell mkdir -p $(DOWNLOAD))
 
 GCC_VERSION ?= $(shell cat 2>/dev/null $(PROJECTS)/gcc/gcc/BASE-VER)
-# gcc 13 and 16 omit the frame pointer at -O1 and up on every target; gcc 6
-# left that to each target, and m68k never turned it on.
-GCC6_OMIT_FRAME_POINTER = $(if $(filter 6.%,$(GCC_VERSION)),-fomit-frame-pointer)
-# gcc 7 and later are configured with --with-gcc-major-version-only, so
-# lib/gcc/<target>/ and the versioned driver are named after the major
-# version (16, not 16.2.1b) and stay put across point releases.  gcc 6
-# predates the option.
-GCC_DIR_VERSION = $(if $(filter 6.%,$(GCC_VERSION)),$(GCC_VERSION),$(firstword $(subst ., ,$(GCC_VERSION))))
+# gcc is configured with --with-gcc-major-version-only, so lib/gcc/<target>/
+# and the versioned driver are named after the major version (16, not
+# 16.2.1b) and stay put across point releases.
+GCC_DIR_VERSION = $(firstword $(subst ., ,$(GCC_VERSION)))
 
 # The release a build is part of, after the gcc it was built from: projects/gcc's release tag without its m68k-amigaos-gcc-v prefix, plus commit count and hash past it.
-# A gcc branch without release tags, such as amiga6, gives its name and hash instead.
+# A gcc branch without release tags gives its name and hash instead.
 PACKAGE_VERSION ?= $(shell cd $(PROJECTS)/gcc 2>/dev/null && \
 	{ v=$$(git describe --tags --match 'm68k-amigaos-gcc-v*' --dirty 2>/dev/null) && \
 	  echo "$${v#m68k-amigaos-gcc-v}" || \
@@ -375,13 +371,8 @@ NDK_FOLDER_NAME_LIBS := NDK3.2/lib
 # brings the multilibs with an FPU back to -O2, through the MULTI_CXXFLAGS_
 # hook of gcc's config-ml.in.  They get the C flags with -Os in place of -O,
 # so flags like -mshort still reach C++, and a different -O for C++ goes in
-# CXXFLAGS_FOR_TARGET.  A gcc without the hook, such as gcc 6 or an older
-# 16.2, builds them with the C flags as they are.  Before make update has
-# cloned gcc there is no tree to look at.  Drop this check with the last of
-# the gcc 6 support.
-GCC_HAS_MULTI_CXXFLAGS := $(if $(wildcard $(PROJECTS)/gcc/config-ml.in),$(shell \
-	grep -l MULTI_CXXFLAGS_ $(PROJECTS)/gcc/config-ml.in),yes)
-CXXFLAGS_FOR_TARGET ?= $(strip $(if $(GCC_HAS_MULTI_CXXFLAGS),$(filter-out -O%,$(CFLAGS_FOR_TARGET)) -Os,$(CFLAGS_FOR_TARGET)))
+# CXXFLAGS_FOR_TARGET.
+CXXFLAGS_FOR_TARGET ?= $(strip $(filter-out -O%,$(CFLAGS_FOR_TARGET)) -Os)
 
 # $(E) is the environment of gcc's configure: the original one, exactly, in a
 # native build, and the flags for the host the toolchain runs on in a hosted
@@ -391,7 +382,7 @@ ifeq (,$(strip $(HOST)))
   CXXFLAGS ?= $(CFLAGS)
   BUILD_CFLAGS ?= $(CFLAGS)
   BUILD_CXXFLAGS ?= $(CXXFLAGS)
-  CFLAGS_FOR_TARGET ?= $(strip -O2 $(GCC6_OMIT_FRAME_POINTER))
+  CFLAGS_FOR_TARGET ?= -O2
   E := CFLAGS="$(CFLAGS)" CXXFLAGS="$(CXXFLAGS)" CFLAGS_FOR_BUILD="$(CFLAGS)" CXXFLAGS_FOR_BUILD="$(CXXFLAGS)"  CFLAGS_FOR_TARGET="$(CFLAGS_FOR_TARGET)" CXXFLAGS_FOR_TARGET="$(CXXFLAGS_FOR_TARGET)"
 else
   CFLAGS ?= -Os $(HOST_CPU_FLAGS) $(HOST_CRT_FLAGS)
@@ -400,19 +391,14 @@ else
   BUILD_CFLAGS ?= -O2
   BUILD_CXXFLAGS ?= $(BUILD_CFLAGS)
   BUILD_LDFLAGS ?=
-  CFLAGS_FOR_TARGET ?= $(strip -O2 $(GCC6_OMIT_FRAME_POINTER))
+  CFLAGS_FOR_TARGET ?= -O2
   E := CFLAGS="$(CFLAGS)" CXXFLAGS="$(CXXFLAGS)" LDFLAGS="$(LDFLAGS)" CFLAGS_FOR_BUILD="$(BUILD_CFLAGS)" CXXFLAGS_FOR_BUILD="$(BUILD_CXXFLAGS)" LDFLAGS_FOR_BUILD="$(BUILD_LDFLAGS)" CFLAGS_FOR_TARGET="$(CFLAGS_FOR_TARGET)" CXXFLAGS_FOR_TARGET="$(CXXFLAGS_FOR_TARGET)"
 endif
 
-# gcc's thread model for C++ thread_local, std::thread, the static-local
-# guards and libgcc's emutls: amigaos, the default, runs threads as DOS
-# processes and locks with the inline benaphore; no is the single-task model.
-# amigaos needs gcc's <benaphore.h>, from 16.2 on, so an older gcc defaults
-# to no and stops with amigaos.  Before make update has cloned gcc there is
-# no tree to look at.
-GCC_HAS_THREADS := $(if $(wildcard $(PROJECTS)/gcc/gcc/BASE-VER),$(wildcard \
-	$(PROJECTS)/gcc/gcc/config/m68k/benaphore.h),yes)
-THREADS ?= $(if $(GCC_HAS_THREADS),amigaos,no)
+# gcc's thread model for C++ thread_local, std::thread, the static-local guards and libgcc's emutls:
+# - amigaos (default): lightweight threading model using AmigaDOS processes and the inline benaphore locks;
+# - no: the old single-task model, no longer tested.
+THREADS ?= amigaos
 
 # A configured gcc tree keeps its thread model: reconfiguring it doesn't
 # reach the target libraries already configured in it, so another THREADS
@@ -421,8 +407,8 @@ GCC_THREADS := $(shell sed -n 's/.*--enable-threads=\([a-z]*\).*/\1/p' \
 	$(BUILD)/gcc/config.status 2>/dev/null | head -1)
 
 # newlib locks its stdio and malloc() only with a thread model: without one,
-# a program pays nothing for them, and newlib builds with a gcc that has no
-# <benaphore.h>.  A configured tree's newlib.h says whether it locks.
+# a program pays nothing for them.  A configured tree's newlib.h says
+# whether it locks.
 ifneq ($(THREADS),no)
   NEWLIB_FLAGS += --enable-newlib-retargetable-locking
 endif
@@ -434,12 +420,6 @@ endif
 ifeq ($(filter $(NO_PREFIX_GOALS),$(GOALS)),)
   ifeq ($(filter no amigaos,$(THREADS)),)
     $(error THREADS=$(THREADS): use amigaos or no)
-  endif
-
-  ifeq ($(GCC_HAS_THREADS),)
-    ifneq ($(THREADS),no)
-      $(error THREADS=$(THREADS) needs gcc 16.2 or later; gcc $(GCC_VERSION) builds with THREADS=no)
-    endif
   endif
 
   ifneq ($(GCC_THREADS),)
@@ -538,7 +518,7 @@ help:
 	echo ""
 	echo "Parameters:"
 	echo "PREFIX=<path>            install directory; required once, the build tree remembers it"
-	echo "THREADS=no|amigaos       gcc's thread model and newlib's locks (default: amigaos on gcc >= 16.2, no on older compilers)"
+	echo "THREADS=no|amigaos       gcc's thread model and newlib's locks (default: amigaos)"
 	echo "ADDLANG=lang,lang...     configure additional language frontends"
 	echo "board=volamos/<flags>    the board of the gcc testsuites, e.g. board=volamos/-mcrt=newlib"
 	echo "SIM=<path>               the simulator of every check (default: the volamos in the prefix)"
@@ -961,9 +941,7 @@ CONFIG_GCC = --prefix=$(PREFIX) --target=$(TARGET) $(HOST_CONFIGURE) $(CONFIG_VE
 CONFIG_GCC += --disable-libquadmath
 # libstdc++: no experimental filesystem TS, and only the "C" locale.
 CONFIG_GCC += --disable-libstdcxx-filesystem-ts --enable-clocale=generic
-ifeq (,$(filter 6.%,$(GCC_VERSION)))
 CONFIG_GCC += --with-gcc-major-version-only
-endif
 
 ifneq ($(strip $(HOST)),$(TARGET))
 CONFIG_GCC += --with-headers=$(PROJECTS)/newlib-cygwin/newlib/libc/sys/amigaos/include/
@@ -1705,7 +1683,7 @@ libdebug: $(BUILD)/libdebug/_done
 # libdebug's configure is only told CC and LD; in a hosted build its AR
 # can resolve to the build machine's, which cannot read hunk objects and
 # writes the archive without a symbol index ("archive has no index; run
-# ranlib" at link time, seen with the MinGW amiga6 package). Index it.
+# ranlib" at link time). Index it.
 $(BUILD)/libdebug/_done: $(BUILD)/libdebug/Makefile
 	$(L0)"make libdebug"$(L1) $(MAKE) -C $(BUILD)/libdebug $(L2)
 	@install -m 644 $(BUILD)/libdebug/libdebug.a $(PREFIX)/$(TARGET)/lib/
@@ -2034,7 +2012,6 @@ check-binutils-ld: $(call if-missing,$(BUILD)/binutils/_done,binutils)
 	@grep -qE '^PASS' $(BUILD)/binutils/ld/ld.sum
 	@! grep -qE '^(FAIL|ERROR|XPASS|UNRESOLVED)' $(BUILD)/binutils/ld/ld.sum
 
-# A no-op on gcc branches that predate amigaos.exp, such as amiga6.
 .PHONY: check-gcc-amigaos
 check-gcc-amigaos: $(MIN_IF_MISSING) $(BOARD_PREREQ)
 	@ln -sfn $(PREFIX)/$(TARGET)/libnix $(BUILD)/gcc/$(TARGET)/libnix

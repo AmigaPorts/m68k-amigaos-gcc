@@ -126,10 +126,7 @@ these but `libfreetype2`.
 | `amigaos`, the default | DOS processes, locked with gcc's `<benaphore.h>` | locked in a program built with `-pthread`, which a newlib program needs to start threads; without it, they cost an empty call |
 | `no` | none: one task | not locked, so they cost nothing |
 
-The release binaries are built with the default. `THREADS=amigaos` needs gcc
-16.2 or later: an older gcc branch (see [Version management](branches.md))
-builds with `THREADS=no` by default, and `THREADS=amigaos` stops with an
-error.
+The release binaries are built with the default.
 
 A build tree keeps the model it was configured with: building it with
 another `THREADS` stops with an error that names the tree. The remedies are
