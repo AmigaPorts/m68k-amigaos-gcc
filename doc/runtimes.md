@@ -9,7 +9,7 @@ A program links one C runtime, chosen with `-mcrt=`:
 | `-mcrt=nix20` | libnix | native Amiga programs, Kickstart 2.0 and later: the recommended choice, with the smallest executables |
 | `-mcrt=nix13` | libnix | the same for Kickstart 1.3, with the NDK 1.3 headers from `ndk13-include`; defines `__KICK13__` |
 | `-mcrt=library` | libnix | the same as `nix20`, in the shared `libnix4.library` |
-| `-mcrt=newlib` | newlib | the default without `-mcrt=`: portable code, with good POSIX and C99 compatibility and some C11 and C23 features, but larger executables |
+| `-mcrt=newlib` | newlib | the default without `-mcrt=`: portable code, with good POSIX and C99 compatibility and some C11 and C23 features, time zones, and the only thread-safe C library, but larger executables |
 | `-mcrt=ixemul` | ixemul | Unix programs: `ixemul.library` emulates much of a Unix system |
 | `-mcrt=clib2` | clib2 | portable code that needs correct math: it passes musl's libc-test, with full precision `long double` and UTF-8 |
 | `-noixemul` | libnix | the same as `-mcrt=nix20`, under an older name: prefer `-mcrt=nix20` |
@@ -129,9 +129,10 @@ ls -l *-nix20 *-nix13 *-library *-newlib *-clib2 *-ixemul
 | `fork()` | no | no | `vfork()` only | no |
 | sockets | `-lsocket` | no | `ixnet.library` | `-lnet` |
 | locale | `locale.library` | "C" | "C" | `locale.library` |
+| time zone | none: the clock is UTC | `locale.library`'s, or `TZ`[^tz] | `TZ` | `locale.library`'s |
 | wide characters | no | yes | no | yes |
 | UTF-8 | no | no | no | yes[^utf8] |
-| threads | `-pthread` | `-pthread` | no | no |
+| threads | `-pthread`, but stdio isn't thread-safe | `-pthread`, with a thread-safe C library | no | no |
 | stack overflow check | no | no | no | no |
 | minimum stack | `__stack`[^stkinit] | no | `__stack` | `__stack_size` |
 | C++ | yes | yes | mostly broken | yes |
@@ -140,6 +141,7 @@ ls -l *-nix20 *-nix13 *-library *-newlib *-clib2 *-ixemul
 [^nix13]: 1.3 (V34) with `-mcrt=nix13`.
 [^ldio]: `printf()` and `scanf()` convert `long double` through `double`, so `%Lf` has only 17 significant digits.
 [^utf8]: when the locale name given to `setlocale()` contains `UTF-8`.
+[^tz]: set by the program with `setenv()`: newlib's `getenv()` doesn't see AmigaDOS variables.
 [^stkinit]: only if the program also references `__stkinit`: see [libnix](#libnix).
 
 The minimum stack is checked at startup: if the program gets less than the
@@ -156,15 +158,15 @@ rest depends on the thread model the toolchain was built with (see
 |---|---|---|
 | C++'s `std::thread`, `std::mutex` | `<thread>` and `<mutex>` don't compile | need `-pthread` with newlib |
 | `thread_local`, `_Thread_local` | one per program | one per thread |
-| newlib's `malloc()` and stdio | not safe from several threads | safe with `-pthread` |
+| newlib's `malloc()` and stdio | not thread-safe | thread-safe with `-pthread` |
 | newlib's `errno`, `strtok()` | one per program | one per thread with `-pthread` |
 
 With `THREADS=amigaos`, a newlib program starts threads only when it is
 built and linked with `-pthread` (or `-lpthread`), which brings the C
 library's locks: without it, starting a thread fails with `ENOSYS`, and
 `std::thread` throws a `std::system_error`. In a newlib program without
-`-pthread`, a lock is an empty call. libnix's stdio isn't safe from several
-threads with either model.
+`-pthread`, a lock is an empty call. libnix's stdio isn't thread-safe with
+either model.
 [examples/cxx_thread](../examples/cxx_thread/) and
 [examples/pthreads](../examples/pthreads/) say hello from four threads.
 
@@ -238,12 +240,20 @@ prints and reads only 17 significant digits.
 
 Of POSIX, most of the file, directory and time functions: `open()`,
 `stat()`, `lstat()`, `fstat()`, `opendir()`, `mkdir()`, `getcwd()`,
-`chdir()`, `link()`, `symlink()`, `utime()`, `gettimeofday()`, `sleep()`,
-`usleep()`, `getpid()`, and `kill()` for `SIGINT` and `SIGTERM`. None of the
-process, pipe and file descriptor functions: `fork()`, `exec*()`, `pipe()`,
-`popen()`, `dup()`, `fcntl()`, `access()`, `sigaction()` and
-`clock_gettime()` are missing, and `system()` fails with `ENOSYS`.
-`getenv()` doesn't see AmigaDOS variables.
+`chdir()`, `link()`, `symlink()`, `utime()`, `gettimeofday()`,
+`clock_gettime()`, `sleep()`, `usleep()`, `getpid()`, and `kill()` for
+`SIGINT` and `SIGTERM`. None of the process, pipe and file descriptor
+functions: `fork()`, `exec*()`, `pipe()`, `popen()`, `dup()`, `fcntl()`,
+`access()` and `sigaction()` are missing, and `system()` fails with
+`ENOSYS`. `getenv()` doesn't see AmigaDOS variables.
+
+The system clock runs on local time, the time zone of the default locale:
+`time()` and file dates are UTC, and `localtime()` gives the clock's time
+back. The offset comes from `locale.library` when it is in memory at
+startup, as it is once IPrefs has run; without it, the clock is taken as
+UTC. A `TZ` the program sets with `setenv()`, in POSIX form such as
+`CET-1CEST,M3.5.0,M10.5.0/3`, changes what `localtime()` makes of it,
+daylight saving time included.
 
 newlib is built without multibyte support: `setlocale()` accepts only "C",
 and a byte is a character, as in the ISO 8859-1 text of AmigaOS.
@@ -252,9 +262,10 @@ and a byte is a character, as in the ISO 8859-1 text of AmigaOS.
 the g++ testsuite runs on newlib too. Kickstart 2.0 and later. `uname()`
 needs `workbench.library`.
 
-**Strengths:** the widest standards coverage, and full precision
-`long double` math. newlib's own testsuite runs with `make check-newlib`, and
-the gcc testsuites have newlib boards.
+**Strengths:** the widest standards coverage, full precision `long double`
+math, time zones, and the only thread-safe C library, with `-pthread` (see
+[Features](#features)). newlib's own testsuite runs with `make check-newlib`,
+and the gcc testsuites have newlib boards.
 
 **Weaknesses:** larger executables: the startup code links `malloc()` even
 into an empty program, and stdio adds about 9 KB.
